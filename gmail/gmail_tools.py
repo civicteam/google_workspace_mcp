@@ -341,8 +341,9 @@ async def get_gmail_profile() -> str:
     Get the authenticated user's Gmail profile including their email address.
     Use this to discover the user's email address without asking them directly.
 
-    This tool requires OAuth 2.1 authentication. The user's email is automatically
-    determined from the authentication token.
+    This tool automatically determines the user from:
+    1. OAuth 2.1 authentication token (if available)
+    2. Stored credentials from previous authentication
 
     Returns:
         str: The user's Gmail profile information including email address and mailbox statistics.
@@ -350,46 +351,58 @@ async def get_gmail_profile() -> str:
     from googleapiclient.discovery import build
     from fastmcp.server.dependencies import get_access_token, get_context
     from auth.oauth21_session_store import ensure_session_from_access_token
+    from auth.credential_store import get_credential_store
 
     logger.info("[get_gmail_profile] Invoked")
 
-    # Get authentication context
-    ctx = get_context()
-    access_token = get_access_token()
+    credentials = None
+    resolved_email = None
 
-    if not access_token:
-        raise Exception(
-            "get_gmail_profile requires OAuth 2.1 authentication. "
-            "No access token found in the current context."
-        )
+    # Strategy 1: Try OAuth 2.1 token extraction
+    try:
+        ctx = get_context()
+        access_token = get_access_token()
 
-    # Extract email from token claims if available
-    token_email = None
-    if getattr(access_token, "claims", None):
-        token_email = access_token.claims.get("email")
+        if access_token:
+            # Extract email from token claims
+            token_email = None
+            if getattr(access_token, "claims", None):
+                token_email = access_token.claims.get("email")
 
-    # Get authenticated user from context
-    authenticated_user = None
-    if ctx:
-        authenticated_user = ctx.get_state("authenticated_user_email")
+            # Or from context state
+            authenticated_user = None
+            if ctx:
+                authenticated_user = ctx.get_state("authenticated_user_email")
 
-    resolved_email = token_email or authenticated_user
-    if not resolved_email:
-        raise Exception(
-            "Could not determine user email from authentication token. "
-            "Ensure OAuth 2.1 is properly configured."
-        )
+            resolved_email = token_email or authenticated_user
 
-    # Get session ID for credential lookup
-    mcp_session_id = ctx.session_id if ctx and hasattr(ctx, "session_id") else None
+            if resolved_email:
+                mcp_session_id = ctx.session_id if ctx and hasattr(ctx, "session_id") else None
+                credentials = ensure_session_from_access_token(
+                    access_token, resolved_email, mcp_session_id
+                )
+                if credentials:
+                    logger.info(f"[get_gmail_profile] Using OAuth 2.1 credentials for: {resolved_email}")
+    except Exception as e:
+        logger.debug(f"[get_gmail_profile] OAuth 2.1 extraction failed: {e}")
 
-    # Build credentials from access token
-    credentials = ensure_session_from_access_token(
-        access_token, resolved_email, mcp_session_id
-    )
+    # Strategy 2: Fall back to credential store (OAuth 2.0 / single-user mode)
+    if not credentials:
+        try:
+            store = get_credential_store()
+            users = store.list_users()
+            if users:
+                # Use the first available user's credentials
+                resolved_email = users[0]
+                credentials = store.get_credential(resolved_email)
+                if credentials:
+                    logger.info(f"[get_gmail_profile] Using stored credentials for: {resolved_email}")
+        except Exception as e:
+            logger.debug(f"[get_gmail_profile] Credential store lookup failed: {e}")
+
     if not credentials:
         raise Exception(
-            "Unable to build Google credentials from access token."
+            "No authenticated user found. Please authenticate first using start_google_auth."
         )
 
     # Build Gmail service and fetch profile
