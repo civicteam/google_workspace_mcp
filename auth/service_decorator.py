@@ -297,6 +297,10 @@ def _extract_oauth21_user_email(
     """
     Extract user email for OAuth 2.1 mode.
 
+    Priority:
+    1. Use authenticated_user from OAuth 2.1 context if available and valid
+    2. Fall back to credential store (for stdio mode or when no OAuth context)
+
     Args:
         authenticated_user: The authenticated user from context
         func_name: Name of the function being decorated (for error messages)
@@ -305,13 +309,33 @@ def _extract_oauth21_user_email(
         User email string
 
     Raises:
-        Exception: If no authenticated user found in OAuth 2.1 mode
+        Exception: If no authenticated user found from any source
     """
-    if not authenticated_user:
-        raise Exception(
-            f"OAuth 2.1 mode requires an authenticated user for {func_name}, but none was found."
-        )
-    return authenticated_user
+    # If we have a valid authenticated user from OAuth 2.1 context, use it
+    if authenticated_user and "@" in authenticated_user:
+        return authenticated_user
+
+    # Fall back to credential store (supports stdio mode and single-user scenarios)
+    try:
+        from auth.credential_store import get_credential_store
+
+        store = get_credential_store()
+        users = store.list_users()
+        if users:
+            # Use the first (and typically only) authenticated user
+            resolved_email = users[0]
+            if "@" in resolved_email:
+                logger.info(
+                    f"[{func_name}] OAuth 2.1 mode: No context user, using credential store: {resolved_email}"
+                )
+                return resolved_email
+    except Exception as e:
+        logger.debug(f"[{func_name}] Could not get email from credential store: {e}")
+
+    raise Exception(
+        f"Could not determine user email for {func_name}. "
+        "Please authenticate first using start_google_auth."
+    )
 
 
 def _extract_oauth20_user_email(
@@ -337,7 +361,7 @@ def _extract_oauth20_user_email(
         bound_args = wrapper_sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
         user_google_email = bound_args.arguments.get("user_google_email")
-        if user_google_email:
+        if user_google_email and "@" in user_google_email:
             return user_google_email
     except TypeError:
         # Binding failed, likely because user_google_email is not in signature
@@ -352,10 +376,11 @@ def _extract_oauth20_user_email(
         if users:
             # Use the first (and typically only) authenticated user
             resolved_email = users[0]
-            logger.debug(
-                f"[{func_name}] Auto-detected user email from credential store: {resolved_email}"
-            )
-            return resolved_email
+            if "@" in resolved_email:
+                logger.debug(
+                    f"[{func_name}] Auto-detected user email from credential store: {resolved_email}"
+                )
+                return resolved_email
     except Exception as e:
         logger.debug(f"[{func_name}] Could not get email from credential store: {e}")
 
