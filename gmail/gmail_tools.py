@@ -335,6 +335,99 @@ def _format_gmail_results_plain(
 
 
 @server.tool()
+@handle_http_errors("get_gmail_profile", is_read_only=True, service_type="gmail")
+async def get_gmail_profile() -> str:
+    """
+    Get the authenticated user's Gmail profile including their email address.
+    Use this to discover the user's email address without asking them directly.
+
+    This tool automatically determines the user from:
+    1. OAuth 2.1 authentication token (if available)
+    2. Stored credentials from previous authentication
+
+    Returns:
+        str: The user's Gmail profile information including email address and mailbox statistics.
+    """
+    from googleapiclient.discovery import build
+    from fastmcp.server.dependencies import get_access_token, get_context
+    from auth.oauth21_session_store import ensure_session_from_access_token
+    from auth.credential_store import get_credential_store
+
+    logger.info("[get_gmail_profile] Invoked")
+
+    credentials = None
+    resolved_email = None
+
+    # Strategy 1: Try OAuth 2.1 token extraction
+    try:
+        ctx = get_context()
+        access_token = get_access_token()
+
+        if access_token:
+            # Extract email from token claims
+            token_email = None
+            if getattr(access_token, "claims", None):
+                token_email = access_token.claims.get("email")
+
+            # Or from context state
+            authenticated_user = None
+            if ctx:
+                authenticated_user = ctx.get_state("authenticated_user_email")
+
+            resolved_email = token_email or authenticated_user
+
+            if resolved_email:
+                mcp_session_id = ctx.session_id if ctx and hasattr(ctx, "session_id") else None
+                credentials = ensure_session_from_access_token(
+                    access_token, resolved_email, mcp_session_id
+                )
+                if credentials:
+                    logger.info(f"[get_gmail_profile] Using OAuth 2.1 credentials for: {resolved_email}")
+    except Exception as e:
+        logger.debug(f"[get_gmail_profile] OAuth 2.1 extraction failed: {e}")
+
+    # Strategy 2: Fall back to credential store (OAuth 2.0 / single-user mode)
+    if not credentials:
+        try:
+            store = get_credential_store()
+            users = store.list_users()
+            if users:
+                # Use the first available user's credentials
+                resolved_email = users[0]
+                credentials = store.get_credential(resolved_email)
+                if credentials:
+                    logger.info(f"[get_gmail_profile] Using stored credentials for: {resolved_email}")
+        except Exception as e:
+            logger.debug(f"[get_gmail_profile] Credential store lookup failed: {e}")
+
+    if not credentials:
+        raise Exception(
+            "No authenticated user found. Please authenticate first using start_google_auth."
+        )
+
+    # Build Gmail service and fetch profile
+    service = build("gmail", "v1", credentials=credentials)
+    profile = await asyncio.to_thread(
+        service.users().getProfile(userId="me").execute
+    )
+
+    email_address = profile.get("emailAddress", "(unknown)")
+    messages_total = profile.get("messagesTotal", 0)
+    threads_total = profile.get("threadsTotal", 0)
+    history_id = profile.get("historyId", "(unknown)")
+
+    logger.info(f"[get_gmail_profile] Retrieved profile for: {email_address}")
+
+    return (
+        f"Gmail Profile:\n"
+        f"  Email Address: {email_address}\n"
+        f"  Total Messages: {messages_total:,}\n"
+        f"  Total Threads: {threads_total:,}\n"
+        f"  History ID: {history_id}"
+    )
+
+
+@server.tool()
 @handle_http_errors("search_gmail_messages", is_read_only=True, service_type="gmail")
 @require_google_service("gmail", "gmail_read")
 async def search_gmail_messages(
