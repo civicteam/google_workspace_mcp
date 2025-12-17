@@ -574,10 +574,31 @@ def require_google_service(
                 "must have 'service' as its first parameter."
             )
 
-        # Create a new signature for the wrapper that excludes 'service' and 'user_google_email'.
-        # The email is automatically determined from auth context (OAuth 2.1) or credential store (OAuth 2.0).
-        filtered_params = [p for p in params[1:] if p.name != "user_google_email"]
-        wrapper_sig = original_sig.replace(parameters=filtered_params)
+        # Create a new signature for the wrapper that excludes 'service' and makes 'user_google_email' optional.
+        # The email is automatically determined from auth context (OAuth 2.1) or credential store (OAuth 2.0)
+        # if not provided by the caller.
+        # We need to reorder parameters: required params first, then optional params (including user_google_email=None).
+        required_params = []
+        optional_params = []
+        user_email_param = None
+
+        for p in params[1:]:  # Skip 'service' parameter
+            if p.name == "user_google_email":
+                # Make user_google_email optional with default None - will be added to optional_params
+                user_email_param = p.replace(default=None, annotation=Optional[str])
+            elif p.default is inspect.Parameter.empty:
+                # Required parameter (no default)
+                required_params.append(p)
+            else:
+                # Optional parameter (has default)
+                optional_params.append(p)
+
+        # Build final param list: required first, then optional, with user_google_email at the end
+        new_params = required_params + optional_params
+        if user_email_param:
+            new_params.append(user_email_param)
+
+        wrapper_sig = original_sig.replace(parameters=new_params)
 
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -589,12 +610,21 @@ def require_google_service(
                 func.__name__
             )
 
-            # Extract user_google_email based on OAuth mode
-            if is_oauth21_enabled():
+            # Extract user_google_email: first check if caller provided it, otherwise auto-detect
+            caller_provided_email = kwargs.get("user_google_email")
+            if caller_provided_email and "@" in caller_provided_email:
+                # Caller explicitly provided a valid email
+                user_google_email = caller_provided_email
+                logger.debug(
+                    f"[{func.__name__}] Using caller-provided user_google_email: {user_google_email}"
+                )
+            elif is_oauth21_enabled():
+                # Auto-detect from OAuth 2.1 context or credential store
                 user_google_email = _extract_oauth21_user_email(
                     authenticated_user, func.__name__
                 )
             else:
+                # Auto-detect from credential store (OAuth 2.0 mode)
                 user_google_email = _extract_oauth20_user_email(
                     args, kwargs, wrapper_sig, func.__name__
                 )
@@ -707,15 +737,34 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
         service_param_names = {config["param_name"] for config in service_configs}
         params = list(original_sig.parameters.values())
 
-        # Remove injected service params and user_google_email from the wrapper signature.
-        # The email is automatically determined from auth context (OAuth 2.1) or credential store (OAuth 2.0).
-        filtered_params = [
-            p for p in params
-            if p.name not in service_param_names and p.name != "user_google_email"
-        ]
+        # Remove injected service params and make user_google_email optional in the wrapper signature.
+        # The email is automatically determined from auth context (OAuth 2.1) or credential store (OAuth 2.0)
+        # if not provided by the caller.
+        # We need to reorder parameters: required params first, then optional params (including user_google_email=None).
+        required_params = []
+        optional_params = []
+        user_email_param = None
 
-        wrapper_sig = original_sig.replace(parameters=filtered_params)
-        wrapper_param_names = [p.name for p in filtered_params]
+        for p in params:
+            if p.name in service_param_names:
+                continue  # Skip service parameters
+            if p.name == "user_google_email":
+                # Make user_google_email optional with default None - will be added to optional_params
+                user_email_param = p.replace(default=None, annotation=Optional[str])
+            elif p.default is inspect.Parameter.empty:
+                # Required parameter (no default)
+                required_params.append(p)
+            else:
+                # Optional parameter (has default)
+                optional_params.append(p)
+
+        # Build final param list: required first, then optional, with user_google_email at the end
+        new_params = required_params + optional_params
+        if user_email_param:
+            new_params.append(user_email_param)
+
+        wrapper_sig = original_sig.replace(parameters=new_params)
+        wrapper_param_names = [p.name for p in new_params]
 
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -723,12 +772,21 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
             tool_name = func.__name__
             authenticated_user, _, mcp_session_id = _get_auth_context(tool_name)
 
-            # Extract user_google_email based on OAuth mode
-            if is_oauth21_enabled():
+            # Extract user_google_email: first check if caller provided it, otherwise auto-detect
+            caller_provided_email = kwargs.get("user_google_email")
+            if caller_provided_email and "@" in caller_provided_email:
+                # Caller explicitly provided a valid email
+                user_google_email = caller_provided_email
+                logger.debug(
+                    f"[{tool_name}] Using caller-provided user_google_email: {user_google_email}"
+                )
+            elif is_oauth21_enabled():
+                # Auto-detect from OAuth 2.1 context or credential store
                 user_google_email = _extract_oauth21_user_email(
                     authenticated_user, tool_name
                 )
             else:
+                # Auto-detect from credential store (OAuth 2.0 mode)
                 user_google_email = _extract_oauth20_user_email(
                     args, kwargs, wrapper_sig, tool_name
                 )
