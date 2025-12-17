@@ -315,29 +315,54 @@ def _extract_oauth21_user_email(
 
 
 def _extract_oauth20_user_email(
-    args: tuple, kwargs: dict, wrapper_sig: inspect.Signature
+    args: tuple, kwargs: dict, wrapper_sig: inspect.Signature, func_name: str
 ) -> str:
     """
-    Extract user email for OAuth 2.0 mode from function arguments.
+    Extract user email for OAuth 2.0 mode from function arguments or credential store.
 
     Args:
         args: Positional arguments passed to wrapper
         kwargs: Keyword arguments passed to wrapper
         wrapper_sig: Function signature for parameter binding
+        func_name: Name of the function being decorated (for logging)
 
     Returns:
         User email string
 
     Raises:
-        Exception: If user_google_email parameter not found
+        Exception: If user email cannot be determined
     """
-    bound_args = wrapper_sig.bind(*args, **kwargs)
-    bound_args.apply_defaults()
+    # First, try to get from function arguments
+    try:
+        bound_args = wrapper_sig.bind(*args, **kwargs)
+        bound_args.apply_defaults()
+        user_google_email = bound_args.arguments.get("user_google_email")
+        if user_google_email:
+            return user_google_email
+    except TypeError:
+        # Binding failed, likely because user_google_email is not in signature
+        pass
 
-    user_google_email = bound_args.arguments.get("user_google_email")
-    if not user_google_email:
-        raise Exception("'user_google_email' parameter is required but was not found.")
-    return user_google_email
+    # Fall back to credential store (auto-detect authenticated user)
+    try:
+        from auth.credential_store import get_credential_store
+
+        store = get_credential_store()
+        users = store.list_users()
+        if users:
+            # Use the first (and typically only) authenticated user
+            resolved_email = users[0]
+            logger.debug(
+                f"[{func_name}] Auto-detected user email from credential store: {resolved_email}"
+            )
+            return resolved_email
+    except Exception as e:
+        logger.debug(f"[{func_name}] Could not get email from credential store: {e}")
+
+    raise Exception(
+        f"Could not determine user email for {func_name}. "
+        "Please authenticate first using start_google_auth."
+    )
 
 
 def _remove_user_email_arg_from_docstring(docstring: str) -> str:
@@ -524,15 +549,10 @@ def require_google_service(
                 "must have 'service' as its first parameter."
             )
 
-        # Create a new signature for the wrapper that excludes the 'service' parameter.
-        # In OAuth 2.1 mode, also exclude 'user_google_email' since it's automatically determined.
-        if is_oauth21_enabled():
-            # Remove both 'service' and 'user_google_email' parameters
-            filtered_params = [p for p in params[1:] if p.name != "user_google_email"]
-            wrapper_sig = original_sig.replace(parameters=filtered_params)
-        else:
-            # Only remove 'service' parameter for OAuth 2.0 mode
-            wrapper_sig = original_sig.replace(parameters=params[1:])
+        # Create a new signature for the wrapper that excludes 'service' and 'user_google_email'.
+        # The email is automatically determined from auth context (OAuth 2.1) or credential store (OAuth 2.0).
+        filtered_params = [p for p in params[1:] if p.name != "user_google_email"]
+        wrapper_sig = original_sig.replace(parameters=filtered_params)
 
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -551,7 +571,7 @@ def require_google_service(
                 )
             else:
                 user_google_email = _extract_oauth20_user_email(
-                    args, kwargs, wrapper_sig
+                    args, kwargs, wrapper_sig, func.__name__
                 )
 
             # Get service configuration from the decorator's arguments
@@ -613,9 +633,8 @@ def require_google_service(
                 raise
 
             try:
-                # In OAuth 2.1 mode, we need to add user_google_email to kwargs since it was removed from signature
-                if is_oauth21_enabled():
-                    kwargs["user_google_email"] = user_google_email
+                # Add user_google_email to kwargs since it was removed from the wrapper signature
+                kwargs["user_google_email"] = user_google_email
 
                 # Prepend the fetched service object to the original arguments
                 return await func(service, *args, **kwargs)
@@ -628,13 +647,9 @@ def require_google_service(
         # Set the wrapper's signature to the one without 'service'
         wrapper.__signature__ = wrapper_sig
 
-        # Conditionally modify docstring to remove user_google_email parameter documentation
-        if is_oauth21_enabled():
-            logger.debug(
-                "OAuth 2.1 mode enabled, removing user_google_email from docstring"
-            )
-            if func.__doc__:
-                wrapper.__doc__ = _remove_user_email_arg_from_docstring(func.__doc__)
+        # Remove user_google_email parameter from docstring since it's auto-detected
+        if func.__doc__:
+            wrapper.__doc__ = _remove_user_email_arg_from_docstring(func.__doc__)
 
         return wrapper
 
@@ -667,12 +682,12 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
         service_param_names = {config["param_name"] for config in service_configs}
         params = list(original_sig.parameters.values())
 
-        # Remove injected service params from the wrapper signature; drop user_google_email only for OAuth 2.1.
-        filtered_params = [p for p in params if p.name not in service_param_names]
-        if is_oauth21_enabled():
-            filtered_params = [
-                p for p in filtered_params if p.name != "user_google_email"
-            ]
+        # Remove injected service params and user_google_email from the wrapper signature.
+        # The email is automatically determined from auth context (OAuth 2.1) or credential store (OAuth 2.0).
+        filtered_params = [
+            p for p in params
+            if p.name not in service_param_names and p.name != "user_google_email"
+        ]
 
         wrapper_sig = original_sig.replace(parameters=filtered_params)
         wrapper_param_names = [p.name for p in filtered_params]
@@ -690,7 +705,7 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
                 )
             else:
                 user_google_email = _extract_oauth20_user_email(
-                    args, kwargs, wrapper_sig
+                    args, kwargs, wrapper_sig, tool_name
                 )
 
             # Authenticate all services
@@ -751,9 +766,8 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
 
             # Call the original function with refresh error handling
             try:
-                # In OAuth 2.1 mode, we need to add user_google_email to kwargs since it was removed from signature
-                if is_oauth21_enabled():
-                    kwargs["user_google_email"] = user_google_email
+                # Add user_google_email to kwargs since it was removed from the wrapper signature
+                kwargs["user_google_email"] = user_google_email
 
                 return await func(*args, **kwargs)
             except RefreshError as e:
@@ -766,13 +780,9 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
         # Set the wrapper's signature
         wrapper.__signature__ = wrapper_sig
 
-        # Conditionally modify docstring to remove user_google_email parameter documentation
-        if is_oauth21_enabled():
-            logger.debug(
-                "OAuth 2.1 mode enabled, removing user_google_email from docstring"
-            )
-            if func.__doc__:
-                wrapper.__doc__ = _remove_user_email_arg_from_docstring(func.__doc__)
+        # Remove user_google_email parameter from docstring since it's auto-detected
+        if func.__doc__:
+            wrapper.__doc__ = _remove_user_email_arg_from_docstring(func.__doc__)
 
         return wrapper
 
