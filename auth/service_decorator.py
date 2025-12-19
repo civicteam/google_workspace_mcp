@@ -299,7 +299,8 @@ def _extract_oauth21_user_email(
 
     Priority:
     1. Use authenticated_user from OAuth 2.1 context if available and valid
-    2. Fall back to credential store (for stdio mode or when no OAuth context)
+    2. Fall back to OAuth 2.1 session store (for single-user OAuth 2.1 scenarios)
+    3. Fall back to credential store (for stdio mode or legacy OAuth 2.0)
 
     Args:
         authenticated_user: The authenticated user from context
@@ -315,7 +316,19 @@ def _extract_oauth21_user_email(
     if authenticated_user and "@" in authenticated_user:
         return authenticated_user
 
-    # Fall back to credential store (supports stdio mode and single-user scenarios)
+    # Fall back to OAuth 2.1 session store (supports single-user OAuth 2.1 scenarios)
+    try:
+        store = get_oauth21_session_store()
+        single_user = store.get_single_user_email()
+        if single_user and "@" in single_user:
+            logger.info(
+                f"[{func_name}] OAuth 2.1 mode: No context user, using OAuth 2.1 session store: {single_user}"
+            )
+            return single_user
+    except Exception as e:
+        logger.debug(f"[{func_name}] Could not get email from OAuth 2.1 session store: {e}")
+
+    # Fall back to credential store (supports stdio mode and legacy OAuth 2.0 scenarios)
     try:
         from auth.credential_store import get_credential_store
 
