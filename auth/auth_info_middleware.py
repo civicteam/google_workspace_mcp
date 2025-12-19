@@ -46,6 +46,14 @@ class AuthInfoMiddleware(Middleware):
 
                 # Get the Authorization header
                 auth_header = headers.get("authorization", "")
+
+                # Log the authorization header (redacted for security)
+                if auth_header:
+                    header_preview = auth_header[:20] + "..." if len(auth_header) > 20 else auth_header
+                    logger.info(f"Authorization header received: {header_preview}")
+                else:
+                    logger.info("No Authorization header found in request")
+
                 if auth_header.startswith("Bearer "):
                     token_str = auth_header[7:]  # Remove "Bearer " prefix
                     logger.debug("Found Bearer token")
@@ -269,13 +277,13 @@ class AuthInfoMiddleware(Middleware):
                         except Exception as e:
                             logger.error(f"Error processing JWT: {e}")
                 else:
-                    logger.debug("No Bearer token in Authorization header")
+                    logger.info("Authorization header present but not a Bearer token")
             else:
-                logger.debug(
+                logger.info(
                     "No HTTP headers available (might be using stdio transport)"
                 )
         except Exception as e:
-            logger.debug(f"Could not get HTTP request: {e}")
+            logger.info(f"Could not get HTTP request: {e}")
 
         # After trying HTTP headers, check for other authentication methods
         # This consolidates all authentication logic in the middleware
@@ -347,6 +355,14 @@ class AuthInfoMiddleware(Middleware):
                             )
                     except Exception as e:
                         logger.debug(f"Error checking MCP session binding: {e}")
+
+        # Log final authentication state
+        final_user = context.fastmcp_context.get_state("authenticated_user_email")
+        final_method = context.fastmcp_context.get_state("authenticated_via")
+        if final_user:
+            logger.info(f"Authentication complete: {final_user} via {final_method}")
+        else:
+            logger.info("Authentication complete: No authenticated user found")
 
     async def on_call_tool(self, context: MiddlewareContext, call_next):
         """Extract auth info from token and set in context state"""
