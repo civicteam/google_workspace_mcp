@@ -41,8 +41,15 @@ class AuthInfoMiddleware(Middleware):
         try:
             # Use the new FastMCP method to get HTTP headers
             headers = get_http_headers()
+
+            # Log transport mode for debugging
+            from core.config import get_transport_mode
+            transport_mode = get_transport_mode()
+            logger.info(f"Transport mode: {transport_mode}, Headers available: {headers is not None and len(headers) > 0 if headers else False}")
+
             if headers:
-                logger.debug("Processing HTTP headers for authentication")
+                # Log all header keys (not values) for debugging
+                logger.info(f"Available headers: {list(headers.keys())}")
 
                 # Get the Authorization header
                 auth_header = headers.get("authorization", "")
@@ -52,7 +59,7 @@ class AuthInfoMiddleware(Middleware):
                     header_preview = auth_header[:20] + "..." if len(auth_header) > 20 else auth_header
                     logger.info(f"Authorization header received: {header_preview}")
                 else:
-                    logger.info("No Authorization header found in request")
+                    logger.info("No Authorization header found in request headers")
 
                 if auth_header.startswith("Bearer "):
                     token_str = auth_header[7:]  # Remove "Bearer " prefix
