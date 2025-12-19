@@ -72,7 +72,6 @@ def _adjust_due_max_for_tasks_api(due_max: str) -> str:
 @handle_http_errors("list_task_lists", service_type="tasks")  # type: ignore
 async def list_task_lists(
     service: Resource,
-    user_google_email: str,
     max_results: int = 1000,
     page_token: Optional[str] = None,
 ) -> str:
@@ -80,14 +79,13 @@ async def list_task_lists(
     List all task lists for the user.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         max_results (int): Maximum number of task lists to return (default: 1000, max: 1000).
         page_token (Optional[str]): Token for pagination.
 
     Returns:
         str: List of task lists with their IDs, titles, and details.
     """
-    logger.info(f"[list_task_lists] Invoked. Email: '{user_google_email}'")
+    logger.info("[list_task_lists] Invoked")
 
     try:
         params: Dict[str, Any] = {}
@@ -102,9 +100,9 @@ async def list_task_lists(
         next_page_token = result.get("nextPageToken")
 
         if not task_lists:
-            return f"No task lists found for {user_google_email}."
+            return "No task lists found."
 
-        response = f"Task Lists for {user_google_email}:\n"
+        response = "Task Lists:\n"
         for task_list in task_lists:
             response += f"- {task_list['title']} (ID: {task_list['id']})\n"
             response += f"  Updated: {task_list.get('updated', 'N/A')}\n"
@@ -112,11 +110,11 @@ async def list_task_lists(
         if next_page_token:
             response += f"\nNext page token: {next_page_token}"
 
-        logger.info(f"Found {len(task_lists)} task lists for {user_google_email}")
+        logger.info(f"Found {len(task_lists)} task lists")
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Tasks'."
+        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -129,40 +127,35 @@ async def list_task_lists(
 @require_google_service("tasks", "tasks_read")  # type: ignore
 @handle_http_errors("get_task_list", service_type="tasks")  # type: ignore
 async def get_task_list(
-    service: Resource, user_google_email: str, task_list_id: str
+    service: Resource, task_list_id: str
 ) -> str:
     """
     Get details of a specific task list.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         task_list_id (str): The ID of the task list to retrieve.
 
     Returns:
         str: Task list details including title, ID, and last updated time.
     """
-    logger.info(
-        f"[get_task_list] Invoked. Email: '{user_google_email}', Task List ID: {task_list_id}"
-    )
+    logger.info(f"[get_task_list] Invoked. Task List ID: {task_list_id}")
 
     try:
         task_list = await asyncio.to_thread(
             service.tasklists().get(tasklist=task_list_id).execute
         )
 
-        response = f"""Task List Details for {user_google_email}:
+        response = f"""Task List Details:
 - Title: {task_list["title"]}
 - ID: {task_list["id"]}
 - Updated: {task_list.get("updated", "N/A")}
 - Self Link: {task_list.get("selfLink", "N/A")}"""
 
-        logger.info(
-            f"Retrieved task list '{task_list['title']}' for {user_google_email}"
-        )
+        logger.info(f"Retrieved task list '{task_list['title']}'")
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Tasks'."
+        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -175,40 +168,35 @@ async def get_task_list(
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("create_task_list", service_type="tasks")  # type: ignore
 async def create_task_list(
-    service: Resource, user_google_email: str, title: str
+    service: Resource, title: str
 ) -> str:
     """
     Create a new task list.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         title (str): The title of the new task list.
 
     Returns:
         str: Confirmation message with the new task list ID and details.
     """
-    logger.info(
-        f"[create_task_list] Invoked. Email: '{user_google_email}', Title: '{title}'"
-    )
+    logger.info(f"[create_task_list] Invoked. Title: '{title}'")
 
     try:
         body = {"title": title}
 
         result = await asyncio.to_thread(service.tasklists().insert(body=body).execute)
 
-        response = f"""Task List Created for {user_google_email}:
+        response = f"""Task List Created:
 - Title: {result["title"]}
 - ID: {result["id"]}
 - Created: {result.get("updated", "N/A")}
 - Self Link: {result.get("selfLink", "N/A")}"""
 
-        logger.info(
-            f"Created task list '{title}' with ID {result['id']} for {user_google_email}"
-        )
+        logger.info(f"Created task list '{title}' with ID {result['id']}")
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Tasks'."
+        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -221,13 +209,12 @@ async def create_task_list(
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("update_task_list", service_type="tasks")  # type: ignore
 async def update_task_list(
-    service: Resource, user_google_email: str, task_list_id: str, title: str
+    service: Resource, task_list_id: str, title: str
 ) -> str:
     """
     Update an existing task list.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         task_list_id (str): The ID of the task list to update.
         title (str): The new title for the task list.
 
@@ -235,7 +222,7 @@ async def update_task_list(
         str: Confirmation message with updated task list details.
     """
     logger.info(
-        f"[update_task_list] Invoked. Email: '{user_google_email}', Task List ID: {task_list_id}, New Title: '{title}'"
+        f"[update_task_list] Invoked. Task List ID: {task_list_id}, New Title: '{title}'"
     )
 
     try:
@@ -245,18 +232,16 @@ async def update_task_list(
             service.tasklists().update(tasklist=task_list_id, body=body).execute
         )
 
-        response = f"""Task List Updated for {user_google_email}:
+        response = f"""Task List Updated:
 - Title: {result["title"]}
 - ID: {result["id"]}
 - Updated: {result.get("updated", "N/A")}"""
 
-        logger.info(
-            f"Updated task list {task_list_id} with new title '{title}' for {user_google_email}"
-        )
+        logger.info(f"Updated task list {task_list_id} with new title '{title}'")
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Tasks'."
+        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -269,34 +254,31 @@ async def update_task_list(
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("delete_task_list", service_type="tasks")  # type: ignore
 async def delete_task_list(
-    service: Resource, user_google_email: str, task_list_id: str
+    service: Resource, task_list_id: str
 ) -> str:
     """
     Delete a task list. Note: This will also delete all tasks in the list.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         task_list_id (str): The ID of the task list to delete.
 
     Returns:
         str: Confirmation message.
     """
-    logger.info(
-        f"[delete_task_list] Invoked. Email: '{user_google_email}', Task List ID: {task_list_id}"
-    )
+    logger.info(f"[delete_task_list] Invoked. Task List ID: {task_list_id}")
 
     try:
         await asyncio.to_thread(
             service.tasklists().delete(tasklist=task_list_id).execute
         )
 
-        response = f"Task list {task_list_id} has been deleted for {user_google_email}. All tasks in this list have also been deleted."
+        response = f"Task list {task_list_id} has been deleted. All tasks in this list have also been deleted."
 
-        logger.info(f"Deleted task list {task_list_id} for {user_google_email}")
+        logger.info(f"Deleted task list {task_list_id}")
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Tasks'."
+        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -310,7 +292,6 @@ async def delete_task_list(
 @handle_http_errors("list_tasks", service_type="tasks")  # type: ignore
 async def list_tasks(
     service: Resource,
-    user_google_email: str,
     task_list_id: str,
     max_results: int = LIST_TASKS_MAX_RESULTS_DEFAULT,
     page_token: Optional[str] = None,
@@ -328,7 +309,6 @@ async def list_tasks(
     List all tasks in a specific task list.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         task_list_id (str): The ID of the task list to retrieve tasks from.
         max_results (int): Maximum number of tasks to return. (default: 20, max: 10000).
         page_token (Optional[str]): Token for pagination.
@@ -345,9 +325,7 @@ async def list_tasks(
     Returns:
         str: List of tasks with their details.
     """
-    logger.info(
-        f"[list_tasks] Invoked. Email: '{user_google_email}', Task List ID: {task_list_id}"
-    )
+    logger.info(f"[list_tasks] Invoked. Task List ID: {task_list_id}")
 
     try:
         params: Dict[str, Any] = {"tasklist": task_list_id}
@@ -407,25 +385,21 @@ async def list_tasks(
             results_remaining -= len(more_tasks)
 
         if not tasks:
-            return (
-                f"No tasks found in task list {task_list_id} for {user_google_email}."
-            )
+            return f"No tasks found in task list {task_list_id}."
 
         structured_tasks = get_structured_tasks(tasks)
 
-        response = f"Tasks in list {task_list_id} for {user_google_email}:\n"
+        response = f"Tasks in list {task_list_id}:\n"
         response += serialize_tasks(structured_tasks, 0)
 
         if next_page_token:
             response += f"Next page token: {next_page_token}\n"
 
-        logger.info(
-            f"Found {len(tasks)} tasks in list {task_list_id} for {user_google_email}"
-        )
+        logger.info(f"Found {len(tasks)} tasks in list {task_list_id}")
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Tasks'."
+        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -553,29 +527,26 @@ This can also occur due to filtering that excludes parent tasks while including 
 @require_google_service("tasks", "tasks_read")  # type: ignore
 @handle_http_errors("get_task", service_type="tasks")  # type: ignore
 async def get_task(
-    service: Resource, user_google_email: str, task_list_id: str, task_id: str
+    service: Resource, task_list_id: str, task_id: str
 ) -> str:
     """
     Get details of a specific task.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         task_list_id (str): The ID of the task list containing the task.
         task_id (str): The ID of the task to retrieve.
 
     Returns:
         str: Task details including title, notes, status, due date, etc.
     """
-    logger.info(
-        f"[get_task] Invoked. Email: '{user_google_email}', Task List ID: {task_list_id}, Task ID: {task_id}"
-    )
+    logger.info(f"[get_task] Invoked. Task List ID: {task_list_id}, Task ID: {task_id}")
 
     try:
         task = await asyncio.to_thread(
             service.tasks().get(tasklist=task_list_id, task=task_id).execute
         )
 
-        response = f"""Task Details for {user_google_email}:
+        response = f"""Task Details:
 - Title: {task.get("title", "Untitled")}
 - ID: {task["id"]}
 - Status: {task.get("status", "N/A")}
@@ -596,13 +567,11 @@ async def get_task(
         if task.get("webViewLink"):
             response += f"\n- Web View Link: {task['webViewLink']}"
 
-        logger.info(
-            f"Retrieved task '{task.get('title', 'Untitled')}' for {user_google_email}"
-        )
+        logger.info(f"Retrieved task '{task.get('title', 'Untitled')}'")
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Tasks'."
+        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -616,7 +585,6 @@ async def get_task(
 @handle_http_errors("create_task", service_type="tasks")  # type: ignore
 async def create_task(
     service: Resource,
-    user_google_email: str,
     task_list_id: str,
     title: str,
     notes: Optional[str] = None,
@@ -628,7 +596,6 @@ async def create_task(
     Create a new task in a task list.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         task_list_id (str): The ID of the task list to create the task in.
         title (str): The title of the task.
         notes (Optional[str]): Notes/description for the task.
@@ -639,9 +606,7 @@ async def create_task(
     Returns:
         str: Confirmation message with the new task ID and details.
     """
-    logger.info(
-        f"[create_task] Invoked. Email: '{user_google_email}', Task List ID: {task_list_id}, Title: '{title}'"
-    )
+    logger.info(f"[create_task] Invoked. Task List ID: {task_list_id}, Title: '{title}'")
 
     try:
         body = {"title": title}
@@ -658,7 +623,7 @@ async def create_task(
 
         result = await asyncio.to_thread(service.tasks().insert(**params).execute)
 
-        response = f"""Task Created for {user_google_email}:
+        response = f"""Task Created:
 - Title: {result["title"]}
 - ID: {result["id"]}
 - Status: {result.get("status", "N/A")}
@@ -671,13 +636,11 @@ async def create_task(
         if result.get("webViewLink"):
             response += f"\n- Web View Link: {result['webViewLink']}"
 
-        logger.info(
-            f"Created task '{title}' with ID {result['id']} for {user_google_email}"
-        )
+        logger.info(f"Created task '{title}' with ID {result['id']}")
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Tasks'."
+        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -691,7 +654,6 @@ async def create_task(
 @handle_http_errors("update_task", service_type="tasks")  # type: ignore
 async def update_task(
     service: Resource,
-    user_google_email: str,
     task_list_id: str,
     task_id: str,
     title: Optional[str] = None,
@@ -703,7 +665,6 @@ async def update_task(
     Update an existing task.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         task_list_id (str): The ID of the task list containing the task.
         task_id (str): The ID of the task to update.
         title (Optional[str]): New title for the task.
@@ -714,9 +675,7 @@ async def update_task(
     Returns:
         str: Confirmation message with updated task details.
     """
-    logger.info(
-        f"[update_task] Invoked. Email: '{user_google_email}', Task List ID: {task_list_id}, Task ID: {task_id}"
-    )
+    logger.info(f"[update_task] Invoked. Task List ID: {task_list_id}, Task ID: {task_id}")
 
     try:
         # First get the current task to build the update body
@@ -748,7 +707,7 @@ async def update_task(
             .execute
         )
 
-        response = f"""Task Updated for {user_google_email}:
+        response = f"""Task Updated:
 - Title: {result["title"]}
 - ID: {result["id"]}
 - Status: {result.get("status", "N/A")}
@@ -761,11 +720,11 @@ async def update_task(
         if result.get("completed"):
             response += f"\n- Completed: {result['completed']}"
 
-        logger.info(f"Updated task {task_id} for {user_google_email}")
+        logger.info(f"Updated task {task_id}")
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Tasks'."
+        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -778,35 +737,32 @@ async def update_task(
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("delete_task", service_type="tasks")  # type: ignore
 async def delete_task(
-    service: Resource, user_google_email: str, task_list_id: str, task_id: str
+    service: Resource, task_list_id: str, task_id: str
 ) -> str:
     """
     Delete a task from a task list.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         task_list_id (str): The ID of the task list containing the task.
         task_id (str): The ID of the task to delete.
 
     Returns:
         str: Confirmation message.
     """
-    logger.info(
-        f"[delete_task] Invoked. Email: '{user_google_email}', Task List ID: {task_list_id}, Task ID: {task_id}"
-    )
+    logger.info(f"[delete_task] Invoked. Task List ID: {task_list_id}, Task ID: {task_id}")
 
     try:
         await asyncio.to_thread(
             service.tasks().delete(tasklist=task_list_id, task=task_id).execute
         )
 
-        response = f"Task {task_id} has been deleted from task list {task_list_id} for {user_google_email}."
+        response = f"Task {task_id} has been deleted from task list {task_list_id}."
 
-        logger.info(f"Deleted task {task_id} for {user_google_email}")
+        logger.info(f"Deleted task {task_id}")
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Tasks'."
+        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -820,7 +776,6 @@ async def delete_task(
 @handle_http_errors("move_task", service_type="tasks")  # type: ignore
 async def move_task(
     service: Resource,
-    user_google_email: str,
     task_list_id: str,
     task_id: str,
     parent: Optional[str] = None,
@@ -831,7 +786,6 @@ async def move_task(
     Move a task to a different position or parent within the same list, or to a different list.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         task_list_id (str): The ID of the current task list containing the task.
         task_id (str): The ID of the task to move.
         parent (Optional[str]): New parent task ID (for making it a subtask).
@@ -841,9 +795,7 @@ async def move_task(
     Returns:
         str: Confirmation message with updated task details.
     """
-    logger.info(
-        f"[move_task] Invoked. Email: '{user_google_email}', Task List ID: {task_list_id}, Task ID: {task_id}"
-    )
+    logger.info(f"[move_task] Invoked. Task List ID: {task_list_id}, Task ID: {task_id}")
 
     try:
         params = {"tasklist": task_list_id, "task": task_id}
@@ -856,7 +808,7 @@ async def move_task(
 
         result = await asyncio.to_thread(service.tasks().move(**params).execute)
 
-        response = f"""Task Moved for {user_google_email}:
+        response = f"""Task Moved:
 - Title: {result["title"]}
 - ID: {result["id"]}
 - Status: {result.get("status", "N/A")}
@@ -878,11 +830,11 @@ async def move_task(
         if move_details:
             response += f"\n- Move Details: {', '.join(move_details)}"
 
-        logger.info(f"Moved task {task_id} for {user_google_email}")
+        logger.info(f"Moved task {task_id}")
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Tasks'."
+        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -895,34 +847,29 @@ async def move_task(
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("clear_completed_tasks", service_type="tasks")  # type: ignore
 async def clear_completed_tasks(
-    service: Resource, user_google_email: str, task_list_id: str
+    service: Resource, task_list_id: str
 ) -> str:
     """
     Clear all completed tasks from a task list. The tasks will be marked as hidden.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         task_list_id (str): The ID of the task list to clear completed tasks from.
 
     Returns:
         str: Confirmation message.
     """
-    logger.info(
-        f"[clear_completed_tasks] Invoked. Email: '{user_google_email}', Task List ID: {task_list_id}"
-    )
+    logger.info(f"[clear_completed_tasks] Invoked. Task List ID: {task_list_id}")
 
     try:
         await asyncio.to_thread(service.tasks().clear(tasklist=task_list_id).execute)
 
-        response = f"All completed tasks have been cleared from task list {task_list_id} for {user_google_email}. The tasks are now hidden and won't appear in default task list views."
+        response = f"All completed tasks have been cleared from task list {task_list_id}. The tasks are now hidden and won't appear in default task list views."
 
-        logger.info(
-            f"Cleared completed tasks from list {task_list_id} for {user_google_email}"
-        )
+        logger.info(f"Cleared completed tasks from list {task_list_id}")
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Tasks'."
+        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:

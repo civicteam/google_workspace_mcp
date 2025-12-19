@@ -156,7 +156,6 @@ def main():
     config_vars = {
         "GOOGLE_OAUTH_CLIENT_ID": os.getenv("GOOGLE_OAUTH_CLIENT_ID", "Not Set"),
         "GOOGLE_OAUTH_CLIENT_SECRET": redacted_secret,
-        "USER_GOOGLE_EMAIL": os.getenv("USER_GOOGLE_EMAIL", "Not Set"),
         "MCP_SINGLE_USER_MODE": os.getenv("MCP_SINGLE_USER_MODE", "false"),
         "MCP_ENABLE_OAUTH21": os.getenv("MCP_ENABLE_OAUTH21", "false"),
         "WORKSPACE_MCP_STATELESS_MODE": os.getenv(

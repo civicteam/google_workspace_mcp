@@ -13,10 +13,6 @@ startCommand:
       googleOauthClientSecret:
         type: string
         description: "Your Google OAuth 2.0 Client Secret from Google Cloud Console"
-      userGoogleEmail:
-        type: string
-        default: ""
-        description: "Default email for single-user auth - avoids needing to specify email in system prompts"
       googleOauthRedirectUri:
         type: string
         default: ""
@@ -83,7 +79,6 @@ startCommand:
         env: {
           GOOGLE_OAUTH_CLIENT_ID: config.googleOauthClientId,
           GOOGLE_OAUTH_CLIENT_SECRET: config.googleOauthClientSecret,
-          ...(config.userGoogleEmail && { USER_GOOGLE_EMAIL: config.userGoogleEmail }),
           ...(config.googleOauthRedirectUri && { GOOGLE_OAUTH_REDIRECT_URI: config.googleOauthRedirectUri }),
           ...(config.googleClientSecretPath && { GOOGLE_CLIENT_SECRET_PATH: config.googleClientSecretPath }),
           WORKSPACE_MCP_BASE_URI: config.workspaceMcpBaseUri,

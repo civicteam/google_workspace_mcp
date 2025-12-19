@@ -23,7 +23,6 @@ logger = logging.getLogger(__name__)
 @handle_http_errors("list_spaces", service_type="chat")
 async def list_spaces(
     service,
-    user_google_email: str,
     page_size: int = 100,
     space_type: str = "all",  # "all", "room", "dm"
 ) -> str:
@@ -33,7 +32,7 @@ async def list_spaces(
     Returns:
         str: A formatted list of Google Chat spaces accessible to the user.
     """
-    logger.info(f"[list_spaces] Email={user_google_email}, Type={space_type}")
+    logger.info(f"[list_spaces] Type={space_type}")
 
     # Build filter based on space_type
     filter_param = None
@@ -67,7 +66,6 @@ async def list_spaces(
 @handle_http_errors("get_messages", service_type="chat")
 async def get_messages(
     service,
-    user_google_email: str,
     space_id: str,
     page_size: int = 50,
     order_by: str = "createTime desc",
@@ -78,7 +76,7 @@ async def get_messages(
     Returns:
         str: Formatted messages from the specified space.
     """
-    logger.info(f"[get_messages] Space ID: '{space_id}' for user '{user_google_email}'")
+    logger.info(f"[get_messages] Space ID: '{space_id}'")
 
     # Get space info first
     space_info = await asyncio.to_thread(service.spaces().get(name=space_id).execute)
@@ -115,7 +113,6 @@ async def get_messages(
 @handle_http_errors("send_message", service_type="chat")
 async def send_message(
     service,
-    user_google_email: str,
     space_id: str,
     message_text: str,
     thread_key: Optional[str] = None,
@@ -126,7 +123,7 @@ async def send_message(
     Returns:
         str: Confirmation message with sent message details.
     """
-    logger.info(f"[send_message] Email: '{user_google_email}', Space: '{space_id}'")
+    logger.info(f"[send_message] Space: '{space_id}'")
 
     message_body = {"text": message_text}
 
@@ -142,9 +139,9 @@ async def send_message(
     message_name = message.get("name", "")
     create_time = message.get("createTime", "")
 
-    msg = f"Message sent to space '{space_id}' by {user_google_email}. Message ID: {message_name}, Time: {create_time}"
+    msg = f"Message sent to space '{space_id}'. Message ID: {message_name}, Time: {create_time}"
     logger.info(
-        f"Successfully sent message to space '{space_id}' by {user_google_email}"
+        f"Successfully sent message to space '{space_id}'"
     )
     return msg
 
@@ -154,7 +151,6 @@ async def send_message(
 @handle_http_errors("search_messages", service_type="chat")
 async def search_messages(
     service,
-    user_google_email: str,
     query: str,
     space_id: Optional[str] = None,
     page_size: int = 25,
@@ -165,7 +161,7 @@ async def search_messages(
     Returns:
         str: A formatted list of messages matching the search query.
     """
-    logger.info(f"[search_messages] Email={user_google_email}, Query='{query}'")
+    logger.info(f"[search_messages] Query='{query}'")
 
     # If specific space provided, search within that space
     if space_id:

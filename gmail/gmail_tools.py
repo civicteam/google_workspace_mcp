@@ -340,7 +340,6 @@ def _format_gmail_results_plain(
 async def search_gmail_messages(
     service,
     query: str,
-    user_google_email: str,
     page_size: int = 10,
     page_token: Optional[str] = None,
 ) -> str:
@@ -351,7 +350,6 @@ async def search_gmail_messages(
 
     Args:
         query (str): The search query. Supports standard Gmail search operators.
-        user_google_email (str): The user's Google email address. Required.
         page_size (int): The maximum number of messages to return. Defaults to 10.
         page_token (Optional[str]): Token for retrieving the next page of results. Use the next_page_token from a previous response.
 
@@ -360,7 +358,7 @@ async def search_gmail_messages(
         Includes pagination token if more results are available.
     """
     logger.info(
-        f"[search_gmail_messages] Email: '{user_google_email}', Query: '{query}', Page size: {page_size}"
+        f"[search_gmail_messages] Query: '{query}', Page size: {page_size}"
     )
 
     # Build the API request parameters
@@ -404,23 +402,20 @@ async def search_gmail_messages(
 )
 @require_google_service("gmail", "gmail_read")
 async def get_gmail_message_content(
-    service, message_id: str, user_google_email: str
+    service, message_id: str
 ) -> str:
     """
     Retrieves the full content (subject, sender, recipients, plain text body) of a specific Gmail message.
 
     Args:
         message_id (str): The unique ID of the Gmail message to retrieve.
-        user_google_email (str): The user's Google email address. Required.
 
     Returns:
         str: The message details including subject, sender, recipients (To, Cc), and body content.
     """
     logger.info(
-        f"[get_gmail_message_content] Invoked. Message ID: '{message_id}', Email: '{user_google_email}'"
+        f"[get_gmail_message_content] Invoked. Message ID: '{message_id}'"
     )
-
-    logger.info(f"[get_gmail_message_content] Using service for: {user_google_email}")
 
     # Fetch message metadata first to get headers
     message_metadata = await asyncio.to_thread(
@@ -502,7 +497,6 @@ async def get_gmail_message_content(
 async def get_gmail_messages_content_batch(
     service,
     message_ids: List[str],
-    user_google_email: str,
     format: Literal["full", "metadata"] = "full",
 ) -> str:
     """
@@ -511,14 +505,13 @@ async def get_gmail_messages_content_batch(
 
     Args:
         message_ids (List[str]): List of Gmail message IDs to retrieve (max 25 per batch).
-        user_google_email (str): The user's Google email address. Required.
         format (Literal["full", "metadata"]): Message format. "full" includes body, "metadata" only headers.
 
     Returns:
         str: A formatted list of message contents including subject, sender, recipients (To, Cc), and body (if full format).
     """
     logger.info(
-        f"[get_gmail_messages_content_batch] Invoked. Message count: {len(message_ids)}, Email: '{user_google_email}'"
+        f"[get_gmail_messages_content_batch] Invoked. Message count: {len(message_ids)}"
     )
 
     if not message_ids:
@@ -692,7 +685,6 @@ async def get_gmail_attachment_content(
     service,
     message_id: str,
     attachment_id: str,
-    user_google_email: str,
 ) -> str:
     """
     Downloads the content of a specific email attachment.
@@ -700,13 +692,12 @@ async def get_gmail_attachment_content(
     Args:
         message_id (str): The ID of the Gmail message containing the attachment.
         attachment_id (str): The ID of the attachment to download.
-        user_google_email (str): The user's Google email address. Required.
 
     Returns:
         str: Attachment metadata and base64-encoded content that can be decoded and saved.
     """
     logger.info(
-        f"[get_gmail_attachment_content] Invoked. Message ID: '{message_id}', Email: '{user_google_email}'"
+        f"[get_gmail_attachment_content] Invoked. Message ID: '{message_id}'"
     )
 
     # Download attachment directly without refetching message metadata.
@@ -835,7 +826,6 @@ async def get_gmail_attachment_content(
 @require_google_service("gmail", GMAIL_SEND_SCOPE)
 async def send_gmail_message(
     service,
-    user_google_email: str,
     to: str = Body(..., description="Recipient email address."),
     subject: str = Body(..., description="Email subject."),
     body: str = Body(..., description="Email body content (plain text or HTML)."),
@@ -865,7 +855,6 @@ async def send_gmail_message(
         body_format (Literal['plain', 'html']): Email body format. Defaults to 'plain'.
         cc (Optional[str]): Optional CC email address.
         bcc (Optional[str]): Optional BCC email address.
-        user_google_email (str): The user's Google email address. Required.
         thread_id (Optional[str]): Optional Gmail thread ID to reply within. When provided, sends a reply.
         in_reply_to (Optional[str]): Optional Message-ID of the message being replied to. Used for proper threading.
         references (Optional[str]): Optional chain of Message-IDs for proper threading. Should include all previous Message-IDs.
@@ -905,7 +894,7 @@ async def send_gmail_message(
         )
     """
     logger.info(
-        f"[send_gmail_message] Invoked. Email: '{user_google_email}', Subject: '{subject}'"
+        f"[send_gmail_message] Invoked. Subject: '{subject}'"
     )
 
     # Prepare the email message
@@ -919,7 +908,6 @@ async def send_gmail_message(
         in_reply_to=in_reply_to,
         references=references,
         body_format=body_format,
-        from_email=user_google_email,
     )
 
     send_body = {"raw": raw_message}
@@ -941,7 +929,6 @@ async def send_gmail_message(
 @require_google_service("gmail", GMAIL_COMPOSE_SCOPE)
 async def draft_gmail_message(
     service,
-    user_google_email: str,
     subject: str = Body(..., description="Email subject."),
     body: str = Body(..., description="Email body (plain text)."),
     body_format: Literal["plain", "html"] = Body(
@@ -965,7 +952,6 @@ async def draft_gmail_message(
     Creates a draft email in the user's Gmail account. Supports both new drafts and reply drafts.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         subject (str): Email subject.
         body (str): Email body (plain text).
         body_format (Literal['plain', 'html']): Email body format. Defaults to 'plain'.
@@ -1024,7 +1010,7 @@ async def draft_gmail_message(
         )
     """
     logger.info(
-        f"[draft_gmail_message] Invoked. Email: '{user_google_email}', Subject: '{subject}'"
+        f"[draft_gmail_message] Invoked. Subject: '{subject}'"
     )
 
     # Prepare the email message
@@ -1038,7 +1024,6 @@ async def draft_gmail_message(
         thread_id=thread_id,
         in_reply_to=in_reply_to,
         references=references,
-        from_email=user_google_email,
     )
 
     # Create a draft instead of sending
@@ -1135,20 +1120,19 @@ def _format_thread_content(thread_data: dict, thread_id: str) -> str:
 @require_google_service("gmail", "gmail_read")
 @handle_http_errors("get_gmail_thread_content", is_read_only=True, service_type="gmail")
 async def get_gmail_thread_content(
-    service, thread_id: str, user_google_email: str
+    service, thread_id: str
 ) -> str:
     """
     Retrieves the complete content of a Gmail conversation thread, including all messages.
 
     Args:
         thread_id (str): The unique ID of the Gmail thread to retrieve.
-        user_google_email (str): The user's Google email address. Required.
 
     Returns:
         str: The complete thread content with all messages formatted for reading.
     """
     logger.info(
-        f"[get_gmail_thread_content] Invoked. Thread ID: '{thread_id}', Email: '{user_google_email}'"
+        f"[get_gmail_thread_content] Invoked. Thread ID: '{thread_id}'"
     )
 
     # Fetch the complete thread with all messages
@@ -1167,7 +1151,6 @@ async def get_gmail_thread_content(
 async def get_gmail_threads_content_batch(
     service,
     thread_ids: List[str],
-    user_google_email: str,
 ) -> str:
     """
     Retrieves the content of multiple Gmail threads in a single batch request.
@@ -1175,13 +1158,12 @@ async def get_gmail_threads_content_batch(
 
     Args:
         thread_ids (List[str]): A list of Gmail thread IDs to retrieve. The function will automatically batch requests in chunks of 25.
-        user_google_email (str): The user's Google email address. Required.
 
     Returns:
         str: A formatted list of thread contents with separators.
     """
     logger.info(
-        f"[get_gmail_threads_content_batch] Invoked. Thread count: {len(thread_ids)}, Email: '{user_google_email}'"
+        f"[get_gmail_threads_content_batch] Invoked. Thread count: {len(thread_ids)}"
     )
 
     if not thread_ids:
@@ -1271,17 +1253,14 @@ async def get_gmail_threads_content_batch(
 @server.tool()
 @handle_http_errors("list_gmail_labels", is_read_only=True, service_type="gmail")
 @require_google_service("gmail", "gmail_read")
-async def list_gmail_labels(service, user_google_email: str) -> str:
+async def list_gmail_labels(service) -> str:
     """
     Lists all labels in the user's Gmail account.
-
-    Args:
-        user_google_email (str): The user's Google email address. Required.
 
     Returns:
         str: A formatted list of all labels with their IDs, names, and types.
     """
-    logger.info(f"[list_gmail_labels] Invoked. Email: '{user_google_email}'")
+    logger.info(f"[list_gmail_labels] Invoked")
 
     response = await asyncio.to_thread(
         service.users().labels().list(userId="me").execute
@@ -1321,7 +1300,6 @@ async def list_gmail_labels(service, user_google_email: str) -> str:
 @require_google_service("gmail", GMAIL_LABELS_SCOPE)
 async def manage_gmail_label(
     service,
-    user_google_email: str,
     action: Literal["create", "update", "delete"],
     name: Optional[str] = None,
     label_id: Optional[str] = None,
@@ -1332,7 +1310,6 @@ async def manage_gmail_label(
     Manages Gmail labels: create, update, or delete labels.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         action (Literal["create", "update", "delete"]): Action to perform on the label.
         name (Optional[str]): Label name. Required for create, optional for update.
         label_id (Optional[str]): Label ID. Required for update and delete operations.
@@ -1343,7 +1320,7 @@ async def manage_gmail_label(
         str: Confirmation message of the label operation.
     """
     logger.info(
-        f"[manage_gmail_label] Invoked. Email: '{user_google_email}', Action: '{action}'"
+        f"[manage_gmail_label] Invoked. Action: '{action}'"
     )
 
     if action == "create" and not name:
@@ -1398,17 +1375,14 @@ async def manage_gmail_label(
 @server.tool()
 @handle_http_errors("list_gmail_filters", is_read_only=True, service_type="gmail")
 @require_google_service("gmail", "gmail_settings_basic")
-async def list_gmail_filters(service, user_google_email: str) -> str:
+async def list_gmail_filters(service) -> str:
     """
     Lists all Gmail filters configured in the user's mailbox.
-
-    Args:
-        user_google_email (str): The user's Google email address. Required.
 
     Returns:
         str: A formatted list of filters with their criteria and actions.
     """
-    logger.info(f"[list_gmail_filters] Invoked. Email: '{user_google_email}'")
+    logger.info(f"[list_gmail_filters] Invoked")
 
     response = await asyncio.to_thread(
         service.users().settings().filters().list(userId="me").execute
@@ -1478,7 +1452,6 @@ async def list_gmail_filters(service, user_google_email: str) -> str:
 @require_google_service("gmail", "gmail_settings_basic")
 async def create_gmail_filter(
     service,
-    user_google_email: str,
     criteria: Dict[str, Any] = Body(
         ..., description="Filter criteria object as defined in the Gmail API."
     ),
@@ -1490,7 +1463,6 @@ async def create_gmail_filter(
     Creates a Gmail filter using the users.settings.filters API.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         criteria (Dict[str, Any]): Criteria for matching messages.
         action (Dict[str, Any]): Actions to apply to matched messages.
 
@@ -1518,14 +1490,12 @@ async def create_gmail_filter(
 @require_google_service("gmail", "gmail_settings_basic")
 async def delete_gmail_filter(
     service,
-    user_google_email: str,
     filter_id: str = Field(..., description="ID of the filter to delete."),
 ) -> str:
     """
     Deletes a Gmail filter by ID.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         filter_id (str): The ID of the filter to delete.
 
     Returns:
@@ -1557,7 +1527,6 @@ async def delete_gmail_filter(
 @require_google_service("gmail", GMAIL_MODIFY_SCOPE)
 async def modify_gmail_message_labels(
     service,
-    user_google_email: str,
     message_id: str,
     add_label_ids: List[str] = Field(
         default=[], description="Label IDs to add to the message."
@@ -1572,7 +1541,6 @@ async def modify_gmail_message_labels(
     To delete an email, add the TRASH label.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         message_id (str): The ID of the message to modify.
         add_label_ids (Optional[List[str]]): List of label IDs to add to the message.
         remove_label_ids (Optional[List[str]]): List of label IDs to remove from the message.
@@ -1581,7 +1549,7 @@ async def modify_gmail_message_labels(
         str: Confirmation message of the label changes applied to the message.
     """
     logger.info(
-        f"[modify_gmail_message_labels] Invoked. Email: '{user_google_email}', Message ID: '{message_id}'"
+        f"[modify_gmail_message_labels] Invoked. Message ID: '{message_id}'"
     )
 
     if not add_label_ids and not remove_label_ids:
@@ -1613,7 +1581,6 @@ async def modify_gmail_message_labels(
 @require_google_service("gmail", GMAIL_MODIFY_SCOPE)
 async def batch_modify_gmail_message_labels(
     service,
-    user_google_email: str,
     message_ids: List[str],
     add_label_ids: List[str] = Field(
         default=[], description="Label IDs to add to messages."
@@ -1626,7 +1593,6 @@ async def batch_modify_gmail_message_labels(
     Adds or removes labels from multiple Gmail messages in a single batch request.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         message_ids (List[str]): A list of message IDs to modify.
         add_label_ids (Optional[List[str]]): List of label IDs to add to the messages.
         remove_label_ids (Optional[List[str]]): List of label IDs to remove from the messages.
@@ -1635,7 +1601,7 @@ async def batch_modify_gmail_message_labels(
         str: Confirmation message of the label changes applied to the messages.
     """
     logger.info(
-        f"[batch_modify_gmail_message_labels] Invoked. Email: '{user_google_email}', Message IDs: '{message_ids}'"
+        f"[batch_modify_gmail_message_labels] Invoked. Message IDs: '{message_ids}'"
     )
 
     if not add_label_ids and not remove_label_ids:

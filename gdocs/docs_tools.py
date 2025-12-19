@@ -55,7 +55,6 @@ logger = logging.getLogger(__name__)
 @require_google_service("drive", "drive_read")
 async def search_docs(
     service: Any,
-    user_google_email: str,
     query: str,
     page_size: int = 10,
 ) -> str:
@@ -65,7 +64,7 @@ async def search_docs(
     Returns:
         str: A formatted list of Google Docs matching the search query.
     """
-    logger.info(f"[search_docs] Email={user_google_email}, Query='{query}'")
+    logger.info(f"[search_docs] Query='{query}'")
 
     escaped_query = query.replace("'", "\\'")
 
@@ -107,7 +106,6 @@ async def search_docs(
 async def get_doc_content(
     drive_service: Any,
     docs_service: Any,
-    user_google_email: str,
     document_id: str,
 ) -> str:
     """
@@ -119,7 +117,7 @@ async def get_doc_content(
         str: The document content with metadata header.
     """
     logger.info(
-        f"[get_doc_content] Invoked. Document/File ID: '{document_id}' for user '{user_google_email}'"
+        f"[get_doc_content] Invoked. Document/File ID: '{document_id}'"
     )
 
     # Step 2: Get file metadata from Drive
@@ -281,7 +279,7 @@ async def get_doc_content(
 @handle_http_errors("list_docs_in_folder", is_read_only=True, service_type="docs")
 @require_google_service("drive", "drive_read")
 async def list_docs_in_folder(
-    service: Any, user_google_email: str, folder_id: str = "root", page_size: int = 100
+    service: Any, folder_id: str = "root", page_size: int = 100
 ) -> str:
     """
     Lists Google Docs within a specific Drive folder.
@@ -290,7 +288,7 @@ async def list_docs_in_folder(
         str: A formatted list of Google Docs in the specified folder.
     """
     logger.info(
-        f"[list_docs_in_folder] Invoked. Email: '{user_google_email}', Folder ID: '{folder_id}'"
+        f"[list_docs_in_folder] Invoked. Folder ID: '{folder_id}'"
     )
 
     rsp = await asyncio.to_thread(
@@ -320,7 +318,6 @@ async def list_docs_in_folder(
 @require_google_service("docs", "docs_write")
 async def create_doc(
     service: Any,
-    user_google_email: str,
     title: str,
     content: str = "",
 ) -> str:
@@ -330,7 +327,7 @@ async def create_doc(
     Returns:
         str: Confirmation message with document ID and link.
     """
-    logger.info(f"[create_doc] Invoked. Email: '{user_google_email}', Title='{title}'")
+    logger.info(f"[create_doc] Invoked. Title='{title}'")
 
     doc = await asyncio.to_thread(
         service.documents().create(body={"title": title}).execute
@@ -344,9 +341,9 @@ async def create_doc(
             .execute
         )
     link = f"https://docs.google.com/document/d/{doc_id}/edit"
-    msg = f"Created Google Doc '{title}' (ID: {doc_id}) for {user_google_email}. Link: {link}"
+    msg = f"Created Google Doc '{title}' (ID: {doc_id}). Link: {link}"
     logger.info(
-        f"Successfully created Google Doc '{title}' (ID: {doc_id}) for {user_google_email}. Link: {link}"
+        f"Successfully created Google Doc '{title}' (ID: {doc_id}). Link: {link}"
     )
     return msg
 
@@ -356,7 +353,6 @@ async def create_doc(
 @require_google_service("docs", "docs_write")
 async def modify_doc_text(
     service: Any,
-    user_google_email: str,
     document_id: str,
     start_index: int,
     end_index: int = None,
@@ -373,7 +369,6 @@ async def modify_doc_text(
     Modifies text in a Google Doc - can insert/replace text and/or apply formatting in a single operation.
 
     Args:
-        user_google_email: User's Google email address
         document_id: ID of the document to update
         start_index: Start position for operation (0-based)
         end_index: End position for text replacement/formatting (if not provided with text, text is inserted)
@@ -565,7 +560,6 @@ async def modify_doc_text(
 @require_google_service("docs", "docs_write")
 async def find_and_replace_doc(
     service: Any,
-    user_google_email: str,
     document_id: str,
     find_text: str,
     replace_text: str,
@@ -575,7 +569,6 @@ async def find_and_replace_doc(
     Finds and replaces text throughout a Google Doc.
 
     Args:
-        user_google_email: User's Google email address
         document_id: ID of the document to update
         find_text: Text to search for
         replace_text: Text to replace with
@@ -612,7 +605,6 @@ async def find_and_replace_doc(
 @require_google_service("docs", "docs_write")
 async def insert_doc_elements(
     service: Any,
-    user_google_email: str,
     document_id: str,
     element_type: str,
     index: int,
@@ -625,7 +617,6 @@ async def insert_doc_elements(
     Inserts structural elements like tables, lists, or page breaks into a Google Doc.
 
     Args:
-        user_google_email: User's Google email address
         document_id: ID of the document to update
         element_type: Type of element to insert ("table", "list", "page_break")
         index: Position to insert element (0-based)
@@ -704,7 +695,6 @@ async def insert_doc_elements(
 async def insert_doc_image(
     docs_service: Any,
     drive_service: Any,
-    user_google_email: str,
     document_id: str,
     image_source: str,
     index: int,
@@ -715,7 +705,6 @@ async def insert_doc_image(
     Inserts an image into a Google Doc from Drive or a URL.
 
     Args:
-        user_google_email: User's Google email address
         document_id: ID of the document to update
         image_source: Drive file ID or public image URL
         index: Position to insert image (0-based)
@@ -786,7 +775,6 @@ async def insert_doc_image(
 @require_google_service("docs", "docs_write")
 async def update_doc_headers_footers(
     service: Any,
-    user_google_email: str,
     document_id: str,
     section_type: str,
     content: str,
@@ -796,7 +784,6 @@ async def update_doc_headers_footers(
     Updates headers or footers in a Google Doc.
 
     Args:
-        user_google_email: User's Google email address
         document_id: ID of the document to update
         section_type: Type of section to update ("header" or "footer")
         content: Text content for the header/footer
@@ -843,7 +830,6 @@ async def update_doc_headers_footers(
 @require_google_service("docs", "docs_write")
 async def batch_update_doc(
     service: Any,
-    user_google_email: str,
     document_id: str,
     operations: List[Dict[str, Any]],
 ) -> str:
@@ -851,7 +837,6 @@ async def batch_update_doc(
     Executes multiple document operations in a single atomic batch update.
 
     Args:
-        user_google_email: User's Google email address
         document_id: ID of the document to update
         operations: List of operation dictionaries. Each operation should contain:
                    - type: Operation type ('insert_text', 'delete_text', 'replace_text', 'format_text', 'insert_table', 'insert_page_break')
@@ -900,7 +885,6 @@ async def batch_update_doc(
 @require_google_service("docs", "docs_read")
 async def inspect_doc_structure(
     service: Any,
-    user_google_email: str,
     document_id: str,
     detailed: bool = False,
 ) -> str:
@@ -929,7 +913,6 @@ async def inspect_doc_structure(
     Step 4: Create your table
 
     Args:
-        user_google_email: User's Google email address
         document_id: ID of the document to inspect
         detailed: Whether to return detailed structure information
 
@@ -1028,7 +1011,6 @@ async def inspect_doc_structure(
 @require_google_service("docs", "docs_write")
 async def create_table_with_data(
     service: Any,
-    user_google_email: str,
     document_id: str,
     table_data: List[List[str]],
     index: int,
@@ -1066,7 +1048,6 @@ async def create_table_with_data(
     - Use debug_table_structure after creation to verify results
 
     Args:
-        user_google_email: User's Google email address
         document_id: ID of the document to update
         table_data: 2D list of strings - EXACT format: [["col1", "col2"], ["row1col1", "row1col2"]]
         index: Document position (MANDATORY: get from inspect_doc_structure 'total_length')
@@ -1126,7 +1107,6 @@ async def create_table_with_data(
 @require_google_service("docs", "docs_read")
 async def debug_table_structure(
     service: Any,
-    user_google_email: str,
     document_id: str,
     table_index: int = 0,
 ) -> str:
@@ -1160,7 +1140,6 @@ async def debug_table_structure(
     4. When debugging → Compare your data array to actual table structure
 
     Args:
-        user_google_email: User's Google email address
         document_id: ID of the document to inspect
         table_index: Which table to debug (0 = first table, 1 = second table, etc.)
 
@@ -1213,7 +1192,6 @@ async def debug_table_structure(
 @require_google_service("drive", "drive_file")
 async def export_doc_to_pdf(
     service: Any,
-    user_google_email: str,
     document_id: str,
     pdf_filename: str = None,
     folder_id: str = None,
@@ -1222,7 +1200,6 @@ async def export_doc_to_pdf(
     Exports a Google Doc to PDF format and saves it to Google Drive.
 
     Args:
-        user_google_email: User's Google email address
         document_id: ID of the Google Doc to export
         pdf_filename: Name for the PDF file (optional - if not provided, uses original name + "_PDF")
         folder_id: Drive folder ID to save PDF in (optional - if not provided, saves in root)
@@ -1231,7 +1208,7 @@ async def export_doc_to_pdf(
         str: Confirmation message with PDF file details and links
     """
     logger.info(
-        f"[export_doc_to_pdf] Email={user_google_email}, Doc={document_id}, pdf_filename={pdf_filename}, folder_id={folder_id}"
+        f"[export_doc_to_pdf] Doc={document_id}, pdf_filename={pdf_filename}, folder_id={folder_id}"
     )
 
     # Get file metadata first to validate it's a Google Doc

@@ -69,13 +69,6 @@ spec:
                 secretKeyRef:
                   name: {{ include "workspace-mcp.fullname" . }}-oauth
                   key: client-secret
-            {{- if .Values.secrets.googleOAuth.userEmail }}
-            - name: USER_GOOGLE_EMAIL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "workspace-mcp.fullname" . }}-oauth
-                  key: user-email
-            {{- end }}
             # Single-user mode
             {{- if .Values.singleUserMode }}
             - name: MCP_SINGLE_USER_MODE

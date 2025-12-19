@@ -289,7 +289,6 @@ def handle_http_errors(
                     logger.warning(message)
                     raise e
                 except HttpError as error:
-                    user_google_email = kwargs.get("user_google_email", "N/A")
                     error_details = str(error)
 
                     # Check if this is an API not enabled error
@@ -303,8 +302,7 @@ def handle_http_errors(
 
                         if enablement_msg:
                             message = (
-                                f"API error in {tool_name}: {enablement_msg}\n\n"
-                                f"User: {user_google_email}"
+                                f"API error in {tool_name}: {enablement_msg}"
                             )
                         else:
                             message = (
@@ -316,7 +314,7 @@ def handle_http_errors(
                         # Authentication/authorization errors
                         message = (
                             f"API error in {tool_name}: {error}. "
-                            f"You might need to re-authenticate for user '{user_google_email}'. "
+                            f"You might need to re-authenticate. "
                             f"LLM: Try 'start_google_auth' with the user's email and the appropriate service_name."
                         )
                     else:

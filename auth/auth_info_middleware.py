@@ -294,39 +294,7 @@ class AuthInfoMiddleware(Middleware):
                 # This is ONLY safe in stdio mode because it's single-user
                 logger.debug("Checking for stdio mode authentication")
 
-                # Get the requested user from the context if available
-                requested_user = None
-                if hasattr(context, "request") and hasattr(context.request, "params"):
-                    requested_user = context.request.params.get("user_google_email")
-                elif hasattr(context, "arguments"):
-                    # FastMCP may store arguments differently
-                    requested_user = context.arguments.get("user_google_email")
-
-                if requested_user:
-                    try:
-                        from auth.oauth21_session_store import get_oauth21_session_store
-
-                        store = get_oauth21_session_store()
-
-                        # Check if user has a recent session
-                        if store.has_session(requested_user):
-                            logger.debug(
-                                f"Using recent stdio session for {requested_user}"
-                            )
-                            # In stdio mode, we can trust the user has authenticated recently
-                            context.fastmcp_context.set_state(
-                                "authenticated_user_email", requested_user
-                            )
-                            context.fastmcp_context.set_state(
-                                "authenticated_via", "stdio_session"
-                            )
-                            context.fastmcp_context.set_state(
-                                "auth_provider_type", "oauth21_stdio"
-                            )
-                    except Exception as e:
-                        logger.debug(f"Error checking stdio session: {e}")
-
-                # If no requested user was provided but exactly one session exists, assume it in stdio mode
+                # If exactly one session exists, assume it in stdio mode
                 if not context.fastmcp_context.get_state("authenticated_user_email"):
                     try:
                         from auth.oauth21_session_store import get_oauth21_session_store

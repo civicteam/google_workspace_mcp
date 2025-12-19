@@ -21,7 +21,6 @@ class OAuth21ServiceRequest:
     service_name: str
     version: str
     tool_name: str
-    user_google_email: str
     required_scopes: List[str]
     session_id: Optional[str] = None
     auth_token_email: Optional[str] = None
@@ -34,7 +33,6 @@ class OAuth21ServiceRequest:
             "service_name": self.service_name,
             "version": self.version,
             "tool_name": self.tool_name,
-            "user_google_email": self.user_google_email,
             "required_scopes": self.required_scopes,
         }
 
