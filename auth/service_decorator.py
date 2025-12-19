@@ -222,7 +222,9 @@ async def get_authenticated_google_service_oauth21(
     provider = get_auth_provider()
     access_token = get_access_token()
 
-    if provider and access_token:
+    # In external OAuth mode, we may have an access token without a provider
+    # (since FASTMCP_SERVER_AUTH is not set in external mode)
+    if access_token and (provider or is_external_oauth21_provider()):
         token_email = None
         if getattr(access_token, "claims", None):
             token_email = access_token.claims.get("email")
@@ -260,6 +262,13 @@ async def get_authenticated_google_service_oauth21(
         service = build(service_name, version, credentials=credentials)
         logger.info(f"[{tool_name}] Authenticated {service_name} for {resolved_email}")
         return service, resolved_email
+
+    # In external OAuth mode without an access token, we can't authenticate
+    if is_external_oauth21_provider():
+        raise GoogleAuthenticationError(
+            f"External OAuth mode requires a valid Bearer token in the Authorization header. "
+            f"No access token was found for {tool_name}."
+        )
 
     store = get_oauth21_session_store()
 
