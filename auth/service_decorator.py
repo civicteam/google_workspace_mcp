@@ -14,7 +14,7 @@ from auth.oauth21_session_store import (
     get_oauth21_session_store,
     ensure_session_from_access_token,
 )
-from auth.oauth_config import is_oauth21_enabled, get_oauth_config
+from auth.oauth_config import is_oauth21_enabled, is_external_oauth21_provider, get_oauth_config
 from core.context import set_fastmcp_session_id
 from auth.scopes import (
     GMAIL_READONLY_SCOPE,
@@ -90,6 +90,11 @@ def _detect_oauth_version(
     """
     if not is_oauth21_enabled():
         return False
+
+    # External OAuth provider mode always uses OAuth 2.1
+    if is_external_oauth21_provider():
+        logger.debug(f"[{tool_name}] External OAuth provider mode: using OAuth 2.1")
+        return True
 
     # When OAuth 2.1 is enabled globally, ALWAYS use OAuth 2.1 for authenticated users
     if authenticated_user:
