@@ -1251,6 +1251,29 @@ async def get_gmail_threads_content_batch(
 
 
 @server.tool()
+@handle_http_errors("get_gmail_user_email", is_read_only=True, service_type="gmail")
+@require_google_service("gmail", "gmail_read")
+async def get_gmail_user_email(service) -> str:
+    """
+    Retrieves the email address of the currently authenticated Gmail user.
+
+    Returns:
+        str: The user's email address.
+    """
+    logger.info("[get_gmail_user_email] Invoked")
+
+    profile = await asyncio.to_thread(
+        service.users().getProfile(userId="me").execute
+    )
+
+    email = profile.get("emailAddress", "")
+    if not email:
+        return "Unable to retrieve user email address."
+
+    return f"Current user email: {email}"
+
+
+@server.tool()
 @handle_http_errors("list_gmail_labels", is_read_only=True, service_type="gmail")
 @require_google_service("gmail", "gmail_read")
 async def list_gmail_labels(service) -> str:
