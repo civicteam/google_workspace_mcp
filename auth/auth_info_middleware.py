@@ -309,7 +309,33 @@ class AuthInfoMiddleware(Middleware):
                 # This is ONLY safe in stdio mode because it's single-user
                 logger.debug("Checking for stdio mode authentication")
 
-                # If exactly one session exists, assume it in stdio mode
+                # First, check for file-based credentials (used by civic-mcp hub)
+                # The hub writes credentials to a fixed file like user_credentials.json
+                # In single-user mode, we just need to confirm credentials exist - the actual
+                # credential loading happens later in get_credentials() via _find_any_credentials()
+                if not context.fastmcp_context.get_state("authenticated_user_email"):
+                    try:
+                        credentials_dir = os.getenv("GOOGLE_MCP_CREDENTIALS_DIR")
+                        if credentials_dir:
+                            user_creds_path = os.path.join(credentials_dir, "user_credentials.json")
+                            if os.path.exists(user_creds_path):
+                                logger.info(f"Found file-based credentials at {user_creds_path}, using single-user mode")
+                                # Use a placeholder - actual credentials are loaded by get_credentials()
+                                # in single-user mode via _find_any_credentials()
+                                placeholder_user = "single-user-mode"
+                                context.fastmcp_context.set_state(
+                                    "authenticated_user_email", placeholder_user
+                                )
+                                context.fastmcp_context.set_state(
+                                    "authenticated_via", "file_credentials"
+                                )
+                                context.fastmcp_context.set_state(
+                                    "auth_provider_type", "file_based"
+                                )
+                    except Exception as e:
+                        logger.debug(f"Error checking file-based credentials: {e}")
+
+                # If no file-based auth, check OAuth session store
                 if not context.fastmcp_context.get_state("authenticated_user_email"):
                     try:
                         from auth.oauth21_session_store import get_oauth21_session_store
