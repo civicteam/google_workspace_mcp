@@ -299,8 +299,9 @@ def _extract_oauth21_user_email(
 
     Priority:
     1. Use authenticated_user from OAuth 2.1 context if available and valid
-    2. Fall back to OAuth 2.1 session store (for single-user OAuth 2.1 scenarios)
-    3. Fall back to credential store (for stdio mode or legacy OAuth 2.0)
+    2. Try to extract email from access token claims (for external OAuth provider mode)
+    3. Fall back to OAuth 2.1 session store (for single-user OAuth 2.1 scenarios)
+    4. Fall back to credential store (for stdio mode or legacy OAuth 2.0)
 
     Args:
         authenticated_user: The authenticated user from context
@@ -315,6 +316,19 @@ def _extract_oauth21_user_email(
     # If we have a valid authenticated user from OAuth 2.1 context, use it
     if authenticated_user and "@" in authenticated_user:
         return authenticated_user
+
+    # Try to extract email from access token claims (for external OAuth provider mode)
+    try:
+        access_token = get_access_token()
+        if access_token and getattr(access_token, "claims", None):
+            token_email = access_token.claims.get("email")
+            if token_email and "@" in token_email:
+                logger.info(
+                    f"[{func_name}] OAuth 2.1 mode: Extracted email from access token claims: {token_email}"
+                )
+                return token_email
+    except Exception as e:
+        logger.debug(f"[{func_name}] Could not get email from access token: {e}")
 
     # Fall back to OAuth 2.1 session store (supports single-user OAuth 2.1 scenarios)
     try:
