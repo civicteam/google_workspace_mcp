@@ -512,15 +512,18 @@ def require_google_service(
         # Make 'user_google_email' optional to support both OAuth modes at runtime.
         # In OAuth 2.1 mode, it will be auto-populated from the authenticated user.
         # In OAuth 2.0 mode, it must be provided (validated at runtime).
+        # Move user_google_email to the end since optional params must follow required ones.
         filtered_params = []
+        user_email_param = None
         for p in params[1:]:  # Skip 'service' parameter
             if p.name == "user_google_email":
-                # Make user_google_email optional with None default
-                filtered_params.append(
-                    p.replace(default=None, annotation=Optional[str])
-                )
+                # Make user_google_email optional with None default - will add at end
+                user_email_param = p.replace(default=None, annotation=Optional[str])
             else:
                 filtered_params.append(p)
+        # Add optional user_google_email at the end
+        if user_email_param:
+            filtered_params.append(user_email_param)
         wrapper_sig = original_sig.replace(parameters=filtered_params)
 
         @wraps(func)
@@ -613,12 +616,15 @@ def require_google_service(
                 raise
 
             try:
-                # In OAuth 2.1 mode, we need to add user_google_email to kwargs since it was removed from signature
-                if is_oauth21_enabled():
-                    kwargs["user_google_email"] = user_google_email
+                # Bind all arguments by name to handle reordered parameters correctly
+                bound = wrapper_sig.bind(*args, **kwargs)
+                bound.apply_defaults()
+                call_kwargs = dict(bound.arguments)
+                # Ensure user_google_email is set (may have been resolved from auth context)
+                call_kwargs["user_google_email"] = user_google_email
 
-                # Prepend the fetched service object to the original arguments
-                return await func(service, *args, **kwargs)
+                # Call the original function with service + all named arguments
+                return await func(service, **call_kwargs)
             except RefreshError as e:
                 error_message = _handle_token_refresh_error(
                     e, actual_user_email, service_name
@@ -669,17 +675,20 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
 
         # Remove injected service params from the wrapper signature.
         # Make 'user_google_email' optional to support both OAuth modes at runtime.
+        # Move user_google_email to the end since optional params must follow required ones.
         filtered_params = []
+        user_email_param = None
         for p in params:
             if p.name in service_param_names:
                 continue  # Skip injected service params
             if p.name == "user_google_email":
-                # Make user_google_email optional with None default
-                filtered_params.append(
-                    p.replace(default=None, annotation=Optional[str])
-                )
+                # Make user_google_email optional with None default - will add at end
+                user_email_param = p.replace(default=None, annotation=Optional[str])
             else:
                 filtered_params.append(p)
+        # Add optional user_google_email at the end
+        if user_email_param:
+            filtered_params.append(user_email_param)
 
         wrapper_sig = original_sig.replace(parameters=filtered_params)
         wrapper_param_names = [p.name for p in filtered_params]
@@ -769,11 +778,17 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
 
             # Call the original function with refresh error handling
             try:
-                # In OAuth 2.1 mode, we need to add user_google_email to kwargs since it was removed from signature
-                if is_oauth21_enabled():
-                    kwargs["user_google_email"] = user_google_email
+                # Bind all arguments by name to handle reordered parameters correctly
+                bound = wrapper_sig.bind(*args, **kwargs)
+                bound.apply_defaults()
+                call_kwargs = dict(bound.arguments)
+                # Ensure user_google_email is set (may have been resolved from auth context)
+                call_kwargs["user_google_email"] = user_google_email
+                # Add the injected services
+                for config in service_configs:
+                    call_kwargs[config["param_name"]] = kwargs[config["param_name"]]
 
-                return await func(*args, **kwargs)
+                return await func(**call_kwargs)
             except RefreshError as e:
                 # Handle token refresh errors gracefully
                 error_message = _handle_token_refresh_error(
