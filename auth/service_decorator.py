@@ -205,7 +205,7 @@ async def get_authenticated_google_service_oauth21(
     service_name: str,
     version: str,
     tool_name: str,
-    user_google_email: str,
+    user_google_email: Optional[str],
     required_scopes: List[str],
     session_id: Optional[str] = None,
     auth_token_email: Optional[str] = None,
@@ -222,12 +222,9 @@ async def get_authenticated_google_service_oauth21(
         if getattr(access_token, "claims", None):
             token_email = access_token.claims.get("email")
 
-        resolved_email = token_email or auth_token_email or user_google_email
-        if not resolved_email:
-            raise GoogleAuthenticationError(
-                "Authenticated user email could not be determined from access token."
-            )
+        resolved_email = token_email or auth_token_email or user_google_email or ""
 
+        # Only validate email matches if both are provided
         if auth_token_email and token_email and token_email != auth_token_email:
             raise GoogleAuthenticationError(
                 "Access token email does not match authenticated session context."
@@ -293,7 +290,7 @@ async def get_authenticated_google_service_oauth21(
 
 def _extract_oauth21_user_email(
     authenticated_user: Optional[str], func_name: str
-) -> str:
+) -> Optional[str]:
     """
     Extract user email for OAuth 2.1 mode.
 
@@ -302,21 +299,14 @@ def _extract_oauth21_user_email(
         func_name: Name of the function being decorated (for error messages)
 
     Returns:
-        User email string
-
-    Raises:
-        Exception: If no authenticated user found in OAuth 2.1 mode
+        User email string, or None if not available from context.
     """
-    if not authenticated_user:
-        raise Exception(
-            f"OAuth 2.1 mode requires an authenticated user for {func_name}, but none was found."
-        )
     return authenticated_user
 
 
 def _extract_oauth20_user_email(
     args: tuple, kwargs: dict, wrapper_sig: inspect.Signature
-) -> str:
+) -> Optional[str]:
     """
     Extract user email for OAuth 2.0 mode from function arguments.
 
@@ -326,18 +316,12 @@ def _extract_oauth20_user_email(
         wrapper_sig: Function signature for parameter binding
 
     Returns:
-        User email string
-
-    Raises:
-        Exception: If user_google_email parameter not found
+        User email string or None if not provided
     """
     bound_args = wrapper_sig.bind(*args, **kwargs)
     bound_args.apply_defaults()
 
-    user_google_email = bound_args.arguments.get("user_google_email")
-    if not user_google_email:
-        raise Exception("'user_google_email' parameter is required but was not found.")
-    return user_google_email
+    return bound_args.arguments.get("user_google_email")
 
 
 def _remove_user_email_arg_from_docstring(docstring: str) -> str:
@@ -525,14 +509,19 @@ def require_google_service(
             )
 
         # Create a new signature for the wrapper that excludes the 'service' parameter.
-        # In OAuth 2.1 mode, also exclude 'user_google_email' since it's automatically determined.
-        if is_oauth21_enabled():
-            # Remove both 'service' and 'user_google_email' parameters
-            filtered_params = [p for p in params[1:] if p.name != "user_google_email"]
-            wrapper_sig = original_sig.replace(parameters=filtered_params)
-        else:
-            # Only remove 'service' parameter for OAuth 2.0 mode
-            wrapper_sig = original_sig.replace(parameters=params[1:])
+        # Make 'user_google_email' optional to support both OAuth modes at runtime.
+        # In OAuth 2.1 mode, it will be auto-populated from the authenticated user.
+        # In OAuth 2.0 mode, it must be provided (validated at runtime).
+        filtered_params = []
+        for p in params[1:]:  # Skip 'service' parameter
+            if p.name == "user_google_email":
+                # Make user_google_email optional with None default
+                filtered_params.append(
+                    p.replace(default=None, annotation=Optional[str])
+                )
+            else:
+                filtered_params.append(p)
+        wrapper_sig = original_sig.replace(parameters=filtered_params)
 
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -544,15 +533,26 @@ def require_google_service(
                 func.__name__
             )
 
-            # Extract user_google_email based on OAuth mode
+            # Extract user_google_email - it may be None if not provided
+            provided_user_email = _extract_oauth20_user_email(
+                args, kwargs, wrapper_sig
+            )
+
+            # Determine which email to use based on OAuth mode and what's available
             if is_oauth21_enabled():
+                # OAuth 2.1 mode: use authenticated user, fall back to provided if needed
                 user_google_email = _extract_oauth21_user_email(
                     authenticated_user, func.__name__
                 )
+            elif provided_user_email:
+                # OAuth 2.0 mode with provided email
+                user_google_email = provided_user_email
+            elif authenticated_user:
+                # OAuth 2.0 mode but authenticated user available (hybrid scenario)
+                user_google_email = authenticated_user
             else:
-                user_google_email = _extract_oauth20_user_email(
-                    args, kwargs, wrapper_sig
-                )
+                # OAuth 2.0 mode with no email provided and no authenticated user
+                raise Exception("'user_google_email' parameter is required but was not found.")
 
             # Get service configuration from the decorator's arguments
             if service_type not in SERVICE_CONFIGS:
@@ -667,12 +667,19 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
         service_param_names = {config["param_name"] for config in service_configs}
         params = list(original_sig.parameters.values())
 
-        # Remove injected service params from the wrapper signature; drop user_google_email only for OAuth 2.1.
-        filtered_params = [p for p in params if p.name not in service_param_names]
-        if is_oauth21_enabled():
-            filtered_params = [
-                p for p in filtered_params if p.name != "user_google_email"
-            ]
+        # Remove injected service params from the wrapper signature.
+        # Make 'user_google_email' optional to support both OAuth modes at runtime.
+        filtered_params = []
+        for p in params:
+            if p.name in service_param_names:
+                continue  # Skip injected service params
+            if p.name == "user_google_email":
+                # Make user_google_email optional with None default
+                filtered_params.append(
+                    p.replace(default=None, annotation=Optional[str])
+                )
+            else:
+                filtered_params.append(p)
 
         wrapper_sig = original_sig.replace(parameters=filtered_params)
         wrapper_param_names = [p.name for p in filtered_params]
@@ -683,15 +690,26 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
             tool_name = func.__name__
             authenticated_user, _, mcp_session_id = _get_auth_context(tool_name)
 
-            # Extract user_google_email based on OAuth mode
+            # Extract user_google_email - it may be None if not provided
+            provided_user_email = _extract_oauth20_user_email(
+                args, kwargs, wrapper_sig
+            )
+
+            # Determine which email to use based on OAuth mode and what's available
             if is_oauth21_enabled():
+                # OAuth 2.1 mode: use authenticated user
                 user_google_email = _extract_oauth21_user_email(
                     authenticated_user, tool_name
                 )
+            elif provided_user_email:
+                # OAuth 2.0 mode with provided email
+                user_google_email = provided_user_email
+            elif authenticated_user:
+                # OAuth 2.0 mode but authenticated user available (hybrid scenario)
+                user_google_email = authenticated_user
             else:
-                user_google_email = _extract_oauth20_user_email(
-                    args, kwargs, wrapper_sig
-                )
+                # OAuth 2.0 mode with no email provided and no authenticated user
+                raise Exception("'user_google_email' parameter is required but was not found.")
 
             # Authenticate all services
             for config in service_configs:
