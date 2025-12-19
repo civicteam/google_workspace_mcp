@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Any, Callable, Union, Tuple
 
 from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
-from fastmcp.server.dependencies import get_access_token, get_context
+from fastmcp.server.dependencies import get_access_token, get_context, get_http_headers
 from auth.google_auth import get_authenticated_google_service, GoogleAuthenticationError
 from auth.oauth21_session_store import (
     get_auth_provider,
@@ -221,6 +221,27 @@ async def get_authenticated_google_service_oauth21(
     """
     provider = get_auth_provider()
     access_token = get_access_token()
+
+    # In external OAuth mode, try to get Bearer token directly from headers if not available
+    if is_external_oauth21_provider() and not access_token:
+        try:
+            headers = get_http_headers()
+            if headers:
+                auth_header = headers.get("authorization", "")
+                if auth_header.startswith("Bearer "):
+                    token_str = auth_header[7:]  # Remove "Bearer " prefix
+                    logger.debug(f"[{tool_name}] External OAuth: extracted Bearer token from headers")
+
+                    # Build Google credentials directly from the token
+                    from google.oauth2.credentials import Credentials
+                    credentials = Credentials(token=token_str)
+
+                    service = build(service_name, version, credentials=credentials)
+                    resolved_email = user_google_email or ""
+                    logger.info(f"[{tool_name}] External OAuth: authenticated {service_name} with Bearer token")
+                    return service, resolved_email
+        except Exception as e:
+            logger.warning(f"[{tool_name}] Failed to extract Bearer token from headers: {e}")
 
     # In external OAuth mode, we may have an access token without a provider
     # (since FASTMCP_SERVER_AUTH is not set in external mode)
