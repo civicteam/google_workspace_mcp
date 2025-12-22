@@ -41,11 +41,26 @@ class AuthInfoMiddleware(Middleware):
         try:
             # Use the new FastMCP method to get HTTP headers
             headers = get_http_headers()
+
+            # Log transport mode for debugging
+            from core.config import get_transport_mode
+            transport_mode = get_transport_mode()
+            logger.info(f"Transport mode: {transport_mode}, Headers available: {headers is not None and len(headers) > 0 if headers else False}")
+
             if headers:
-                logger.debug("Processing HTTP headers for authentication")
+                # Log all header keys (not values) for debugging
+                logger.info(f"Available headers: {list(headers.keys())}")
 
                 # Get the Authorization header
                 auth_header = headers.get("authorization", "")
+
+                # Log the authorization header (redacted for security)
+                if auth_header:
+                    header_preview = auth_header[:20] + "..." if len(auth_header) > 20 else auth_header
+                    logger.info(f"Authorization header received: {header_preview}")
+                else:
+                    logger.info("No Authorization header found in request headers")
+
                 if auth_header.startswith("Bearer "):
                     token_str = auth_header[7:]  # Remove "Bearer " prefix
                     logger.debug("Found Bearer token")
@@ -269,13 +284,13 @@ class AuthInfoMiddleware(Middleware):
                         except Exception as e:
                             logger.error(f"Error processing JWT: {e}")
                 else:
-                    logger.debug("No Bearer token in Authorization header")
+                    logger.info("Authorization header present but not a Bearer token")
             else:
-                logger.debug(
+                logger.info(
                     "No HTTP headers available (might be using stdio transport)"
                 )
         except Exception as e:
-            logger.debug(f"Could not get HTTP request: {e}")
+            logger.info(f"Could not get HTTP request: {e}")
 
         # After trying HTTP headers, check for other authentication methods
         # This consolidates all authentication logic in the middleware
@@ -294,39 +309,33 @@ class AuthInfoMiddleware(Middleware):
                 # This is ONLY safe in stdio mode because it's single-user
                 logger.debug("Checking for stdio mode authentication")
 
-                # Get the requested user from the context if available
-                requested_user = None
-                if hasattr(context, "request") and hasattr(context.request, "params"):
-                    requested_user = context.request.params.get("user_google_email")
-                elif hasattr(context, "arguments"):
-                    # FastMCP may store arguments differently
-                    requested_user = context.arguments.get("user_google_email")
-
-                if requested_user:
+                # First, check for file-based credentials (used by civic-mcp hub)
+                # The hub writes credentials to a fixed file like user_credentials.json
+                # In single-user mode, we just need to confirm credentials exist - the actual
+                # credential loading happens later in get_credentials() via _find_any_credentials()
+                if not context.fastmcp_context.get_state("authenticated_user_email"):
                     try:
-                        from auth.oauth21_session_store import get_oauth21_session_store
-
-                        store = get_oauth21_session_store()
-
-                        # Check if user has a recent session
-                        if store.has_session(requested_user):
-                            logger.debug(
-                                f"Using recent stdio session for {requested_user}"
-                            )
-                            # In stdio mode, we can trust the user has authenticated recently
-                            context.fastmcp_context.set_state(
-                                "authenticated_user_email", requested_user
-                            )
-                            context.fastmcp_context.set_state(
-                                "authenticated_via", "stdio_session"
-                            )
-                            context.fastmcp_context.set_state(
-                                "auth_provider_type", "oauth21_stdio"
-                            )
+                        credentials_dir = os.getenv("GOOGLE_MCP_CREDENTIALS_DIR")
+                        if credentials_dir:
+                            user_creds_path = os.path.join(credentials_dir, "user_credentials.json")
+                            if os.path.exists(user_creds_path):
+                                logger.info(f"Found file-based credentials at {user_creds_path}, using single-user mode")
+                                # Use a placeholder - actual credentials are loaded by get_credentials()
+                                # in single-user mode via _find_any_credentials()
+                                placeholder_user = "single-user-mode"
+                                context.fastmcp_context.set_state(
+                                    "authenticated_user_email", placeholder_user
+                                )
+                                context.fastmcp_context.set_state(
+                                    "authenticated_via", "file_credentials"
+                                )
+                                context.fastmcp_context.set_state(
+                                    "auth_provider_type", "file_based"
+                                )
                     except Exception as e:
-                        logger.debug(f"Error checking stdio session: {e}")
+                        logger.debug(f"Error checking file-based credentials: {e}")
 
-                # If no requested user was provided but exactly one session exists, assume it in stdio mode
+                # If no file-based auth, check OAuth session store
                 if not context.fastmcp_context.get_state("authenticated_user_email"):
                     try:
                         from auth.oauth21_session_store import get_oauth21_session_store
@@ -379,6 +388,14 @@ class AuthInfoMiddleware(Middleware):
                             )
                     except Exception as e:
                         logger.debug(f"Error checking MCP session binding: {e}")
+
+        # Log final authentication state
+        final_user = context.fastmcp_context.get_state("authenticated_user_email")
+        final_method = context.fastmcp_context.get_state("authenticated_via")
+        if final_user:
+            logger.info(f"Authentication complete: {final_user} via {final_method}")
+        else:
+            logger.info("Authentication complete: No authenticated user found")
 
     async def on_call_tool(self, context: MiddlewareContext, call_next):
         """Extract auth info from token and set in context state"""

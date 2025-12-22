@@ -225,7 +225,6 @@ uvx workspace-mcp --tools gmail drive --tool-tier extended
 
 | Variable | Description |
 |----------|-------------|
-| `USER_GOOGLE_EMAIL` | Default email for single-user mode |
 | `GOOGLE_PSE_API_KEY` | Custom Search API key |
 | `GOOGLE_PSE_ENGINE_ID` | Programmable Search Engine ID |
 | `MCP_ENABLE_OAUTH21` | Enable OAuth 2.1 multi-user support |
@@ -373,7 +372,7 @@ google_workspace_mcp/
 ```python
 @server.tool()
 @require_google_service("gmail", "gmail_read")
-async def search_gmail_messages(service, user_google_email: str, query: str):
+async def search_gmail_messages(service, query: str):
     # service is injected automatically
     ...
 ```

@@ -165,7 +165,6 @@ uv run main.py --tools gmail drive
 **Optional**
 | Variable | Purpose |
 |----------|---------|
-| `USER_GOOGLE_EMAIL` | Default email for single-user auth |
 | `GOOGLE_PSE_API_KEY` | API key for Custom Search |
 | `GOOGLE_PSE_ENGINE_ID` | Search Engine ID for Custom Search |
 | `MCP_ENABLE_OAUTH21` | Set to `true` for OAuth 2.1 support |
@@ -310,16 +309,6 @@ export OAUTHLIB_INSECURE_TRANSPORT=1
 </td>
 <td width="33%" align="center">
 
-**@ Default User**
-```bash
-export USER_GOOGLE_EMAIL=\
-  your.email@gmail.com
-```
-<sub>Single-user authentication</sub>
-
-</td>
-<td width="34%" align="center">
-
 **◆ Custom Search**
 ```bash
 export GOOGLE_PSE_API_KEY=xxx
@@ -363,13 +352,6 @@ export MCP_ENABLE_OAUTH21=
 </td>
 <td width="34%" align="center">
 
-**@ Default Email**
-```bash
-export USER_GOOGLE_EMAIL=\
-  your.email@gmail.com
-```
-<sub>Skip email in auth flows in single user mode</sub>
-
 </td>
 </tr>
 </table>
@@ -383,7 +365,6 @@ export USER_GOOGLE_EMAIL=\
 | `WORKSPACE_MCP_PORT` | Server listening port | `8000` |
 | `WORKSPACE_EXTERNAL_URL` | External URL for reverse proxy setups | None |
 | `GOOGLE_OAUTH_REDIRECT_URI` | Override OAuth callback URL | Auto-constructed |
-| `USER_GOOGLE_EMAIL` | Default auth email | None |
 
 </details>
 

@@ -305,7 +305,6 @@ def create_oauth_flow(
 
 
 async def start_auth_flow(
-    user_google_email: Optional[str],
     service_name: str,  # e.g., "Google Calendar", "Gmail" for user messages
     redirect_uri: str,  # Added redirect_uri as a required parameter
 ) -> str:
@@ -313,7 +312,6 @@ async def start_auth_flow(
     Initiates the Google OAuth flow and returns an actionable message for the user.
 
     Args:
-        user_google_email: The user's specified Google email, if provided.
         service_name: The name of the Google service requiring auth (for user messages).
         redirect_uri: The URI Google will redirect to after authorization.
 
@@ -323,16 +321,7 @@ async def start_auth_flow(
     Raises:
         Exception: If the OAuth flow cannot be initiated.
     """
-    initial_email_provided = bool(
-        user_google_email
-        and user_google_email.strip()
-        and user_google_email.lower() != "default"
-    )
-    user_display_name = (
-        f"{service_name} for '{user_google_email}'"
-        if initial_email_provided
-        else service_name
-    )
+    user_display_name = service_name
 
     logger.info(
         f"[start_auth_flow] Initiating auth for {user_display_name} with scopes for enabled tools."
@@ -382,25 +371,9 @@ async def start_auth_flow(
             f"Markdown for hyperlink: [Click here to authorize {service_name} access]({auth_url})\n",
             "**LLM, after presenting the link, instruct the user as follows:**",
             "1. Click the link and complete the authorization in their browser.",
+            "2. After successful authorization, **retry their original command**.",
+            "\nThe application will use the new credentials."
         ]
-        session_info_for_llm = ""
-
-        if not initial_email_provided:
-            message_lines.extend(
-                [
-                    f"2. After successful authorization{session_info_for_llm}, the browser page will display the authenticated email address.",
-                    "   **LLM: Instruct the user to provide you with this email address.**",
-                    "3. Once you have the email, **retry their original command, ensuring you include this `user_google_email`.**",
-                ]
-            )
-        else:
-            message_lines.append(
-                f"2. After successful authorization{session_info_for_llm}, **retry their original command**."
-            )
-
-        message_lines.append(
-            f"\nThe application will use the new credentials. If '{user_google_email}' was provided, it must match the authenticated account."
-        )
         return "\n".join(message_lines)
 
     except FileNotFoundError as e:
@@ -428,7 +401,7 @@ def handle_auth_callback(
 ) -> Tuple[str, Credentials]:
     """
     Handles the callback from Google, exchanges the code for credentials,
-    fetches user info, determines user_google_email, saves credentials (file & session),
+    fetches user info, determines user email, saves credentials (file & session),
     and returns them.
 
     Args:
@@ -440,7 +413,7 @@ def handle_auth_callback(
         client_secrets_path: (Deprecated) Path to client secrets file. Ignored if environment variables are set.
 
     Returns:
-        A tuple containing the user_google_email and the obtained Credentials object.
+        A tuple containing the user email and the obtained Credentials object.
 
     Raises:
         ValueError: If the state is missing or doesn't match.
@@ -489,17 +462,17 @@ def handle_auth_callback(
             logger.error("Could not retrieve user email from Google.")
             raise ValueError("Failed to get user email for identification.")
 
-        user_google_email = user_info["email"]
-        logger.info(f"Identified user_google_email: {user_google_email}")
+        user_email = user_info["email"]
+        logger.info(f"Identified user email: {user_email}")
 
         # Save the credentials
         credential_store = get_credential_store()
-        credential_store.store_credential(user_google_email, credentials)
+        credential_store.store_credential(user_email, credentials)
 
         # Always save to OAuth21SessionStore for centralized management
         store = get_oauth21_session_store()
         store.store_session(
-            user_email=user_google_email,
+            user_email=user_email,
             access_token=credentials.token,
             refresh_token=credentials.refresh_token,
             token_uri=credentials.token_uri,
@@ -515,7 +488,7 @@ def handle_auth_callback(
         if session_id:
             save_credentials_to_session(session_id, credentials)
 
-        return user_google_email, credentials
+        return user_email, credentials
 
     except Exception as e:  # Catch specific exceptions like FlowExchangeError if needed
         logger.error(f"Error handling auth callback: {e}")
@@ -523,7 +496,6 @@ def handle_auth_callback(
 
 
 def get_credentials(
-    user_google_email: Optional[str],  # Can be None if relying on session_id
     required_scopes: List[str],
     client_secrets_path: Optional[str] = None,
     credentials_base_dir: str = DEFAULT_CREDENTIALS_DIR,
@@ -535,7 +507,6 @@ def get_credentials(
     In single-user mode, bypasses session mapping and uses any available credentials.
 
     Args:
-        user_google_email: Optional user's Google email.
         required_scopes: List of scopes the credentials must have.
         client_secrets_path: Optional path to client secrets (legacy; refresh uses embedded client info).
         credentials_base_dir: Base directory for credential files.
@@ -596,6 +567,7 @@ def get_credentials(
             logger.debug(f"[get_credentials] Error checking OAuth 2.1 store: {e}")
 
     # Check for single-user mode
+    user_email = None  # Will be extracted from credentials if needed
     if os.getenv("MCP_SINGLE_USER_MODE") == "1":
         logger.info(
             "[get_credentials] Single-user mode: bypassing session mapping, finding any credentials"
@@ -607,15 +579,14 @@ def get_credentials(
             )
             return None
 
-        # In single-user mode, if user_google_email wasn't provided, try to get it from user info
-        # This is needed for proper credential saving after refresh
-        if not user_google_email and credentials.valid:
+        # In single-user mode, extract email from credentials for proper credential saving after refresh
+        if credentials.valid:
             try:
                 user_info = get_user_info(credentials)
                 if user_info and "email" in user_info:
-                    user_google_email = user_info["email"]
+                    user_email = user_info["email"]
                     logger.debug(
-                        f"[get_credentials] Single-user mode: extracted user email {user_google_email} from credentials"
+                        f"[get_credentials] Single-user mode: extracted user email {user_email} from credentials"
                     )
             except Exception as e:
                 logger.debug(
@@ -629,7 +600,7 @@ def get_credentials(
             logger.debug("[get_credentials] No session_id provided")
 
         logger.debug(
-            f"[get_credentials] Called for user_google_email: '{user_google_email}', session_id: '{session_id}', required_scopes: {required_scopes}"
+            f"[get_credentials] Called for session_id: '{session_id}', required_scopes: {required_scopes}"
         )
 
         if session_id:
@@ -639,29 +610,9 @@ def get_credentials(
                     f"[get_credentials] Loaded credentials from session for session_id '{session_id}'."
                 )
 
-        if not credentials and user_google_email:
-            if not is_stateless_mode():
-                logger.debug(
-                    f"[get_credentials] No session credentials, trying credential store for user_google_email '{user_google_email}'."
-                )
-                store = get_credential_store()
-                credentials = store.get_credential(user_google_email)
-            else:
-                logger.debug(
-                    f"[get_credentials] No session credentials, skipping file store in stateless mode for user_google_email '{user_google_email}'."
-                )
-
-            if credentials and session_id:
-                logger.debug(
-                    f"[get_credentials] Loaded from file for user '{user_google_email}', caching to session '{session_id}'."
-                )
-                save_credentials_to_session(
-                    session_id, credentials
-                )  # Cache for current session
-
         if not credentials:
             logger.info(
-                f"[get_credentials] No credentials found for user '{user_google_email}' or session '{session_id}'."
+                f"[get_credentials] No credentials found for session '{session_id}'."
             )
             return None
 
@@ -671,22 +622,22 @@ def get_credentials(
 
     if not all(scope in credentials.scopes for scope in required_scopes):
         logger.warning(
-            f"[get_credentials] Credentials lack required scopes. Need: {required_scopes}, Have: {credentials.scopes}. User: '{user_google_email}', Session: '{session_id}'"
+            f"[get_credentials] Credentials lack required scopes. Need: {required_scopes}, Have: {credentials.scopes}. Session: '{session_id}'"
         )
         return None  # Re-authentication needed for scopes
 
     logger.debug(
-        f"[get_credentials] Credentials have sufficient scopes. User: '{user_google_email}', Session: '{session_id}'"
+        f"[get_credentials] Credentials have sufficient scopes. Session: '{session_id}'"
     )
 
     if credentials.valid:
         logger.debug(
-            f"[get_credentials] Credentials are valid. User: '{user_google_email}', Session: '{session_id}'"
+            f"[get_credentials] Credentials are valid. Session: '{session_id}'"
         )
         return credentials
     elif credentials.expired and credentials.refresh_token:
         logger.info(
-            f"[get_credentials] Credentials expired. Attempting refresh. User: '{user_google_email}', Session: '{session_id}'"
+            f"[get_credentials] Credentials expired. Attempting refresh. Session: '{session_id}'"
         )
         try:
             logger.debug(
@@ -695,23 +646,33 @@ def get_credentials(
             # client_config = load_client_secrets(client_secrets_path) # Not strictly needed if creds have client_id/secret
             credentials.refresh(Request())
             logger.info(
-                f"[get_credentials] Credentials refreshed successfully. User: '{user_google_email}', Session: '{session_id}'"
+                f"[get_credentials] Credentials refreshed successfully. Session: '{session_id}'"
             )
 
+            # Extract user email from refreshed credentials if needed
+            if not user_email and credentials.id_token:
+                try:
+                    decoded_token = jwt.decode(
+                        credentials.id_token, options={"verify_signature": False}
+                    )
+                    user_email = decoded_token.get("email")
+                except Exception as e:
+                    logger.debug(f"Could not decode id_token to get email: {e}")
+
             # Save refreshed credentials (skip file save in stateless mode)
-            if user_google_email:  # Always save to credential store if email is known
+            if user_email:  # Always save to credential store if email is known
                 if not is_stateless_mode():
                     credential_store = get_credential_store()
-                    credential_store.store_credential(user_google_email, credentials)
+                    credential_store.store_credential(user_email, credentials)
                 else:
                     logger.info(
-                        f"Skipping credential file save in stateless mode for {user_google_email}"
+                        f"Skipping credential file save in stateless mode for {user_email}"
                     )
 
                 # Also update OAuth21SessionStore
                 store = get_oauth21_session_store()
                 store.store_session(
-                    user_email=user_google_email,
+                    user_email=user_email,
                     access_token=credentials.token,
                     refresh_token=credentials.refresh_token,
                     token_uri=credentials.token_uri,
@@ -728,19 +689,19 @@ def get_credentials(
             return credentials
         except RefreshError as e:
             logger.warning(
-                f"[get_credentials] RefreshError - token expired/revoked: {e}. User: '{user_google_email}', Session: '{session_id}'"
+                f"[get_credentials] RefreshError - token expired/revoked: {e}. Session: '{session_id}'"
             )
             # For RefreshError, we should return None to trigger reauthentication
             return None
         except Exception as e:
             logger.error(
-                f"[get_credentials] Error refreshing credentials: {e}. User: '{user_google_email}', Session: '{session_id}'",
+                f"[get_credentials] Error refreshing credentials: {e}. Session: '{session_id}'",
                 exc_info=True,
             )
             return None  # Failed to refresh
     else:
         logger.warning(
-            f"[get_credentials] Credentials invalid/cannot refresh. Valid: {credentials.valid}, Refresh Token: {credentials.refresh_token is not None}. User: '{user_google_email}', Session: '{session_id}'"
+            f"[get_credentials] Credentials invalid/cannot refresh. Valid: {credentials.valid}, Refresh Token: {credentials.refresh_token is not None}. Session: '{session_id}'"
         )
         return None
 
@@ -781,7 +742,6 @@ async def get_authenticated_google_service(
     service_name: str,  # "gmail", "calendar", "drive", "docs"
     version: str,  # "v1", "v3"
     tool_name: str,  # For logging/debugging
-    user_google_email: str,  # Required - no more Optional
     required_scopes: List[str],
     session_id: Optional[str] = None,  # Session context for logging
 ) -> tuple[Any, str]:
@@ -793,8 +753,8 @@ async def get_authenticated_google_service(
         service_name: The Google service name ("gmail", "calendar", "drive", "docs")
         version: The API version ("v1", "v3", etc.)
         tool_name: The name of the calling tool (for logging/debugging)
-        user_google_email: The user's Google email address (required)
         required_scopes: List of required OAuth scopes
+        session_id: Session context for logging
 
     Returns:
         tuple[service, user_email] on success
@@ -846,18 +806,11 @@ async def get_authenticated_google_service(
             )
 
     logger.info(
-        f"[{tool_name}] Attempting to get authenticated {service_name} service. Email: '{user_google_email}', Session: '{session_id}'"
+        f"[{tool_name}] Attempting to get authenticated {service_name} service. Session: '{session_id}'"
     )
-
-    # Validate email format
-    if not user_google_email or "@" not in user_google_email:
-        error_msg = f"Authentication required for {tool_name}. No valid 'user_google_email' provided. Please provide a valid Google email address."
-        logger.info(f"[{tool_name}] {error_msg}")
-        raise GoogleAuthenticationError(error_msg)
 
     credentials = await asyncio.to_thread(
         get_credentials,
-        user_google_email=user_google_email,
         required_scopes=required_scopes,
         client_secrets_path=CONFIG_CLIENT_SECRETS_PATH,
         session_id=session_id,  # Pass through session context
@@ -865,10 +818,10 @@ async def get_authenticated_google_service(
 
     if not credentials or not credentials.valid:
         logger.warning(
-            f"[{tool_name}] No valid credentials. Email: '{user_google_email}'."
+            f"[{tool_name}] No valid credentials."
         )
         logger.info(
-            f"[{tool_name}] Valid email '{user_google_email}' provided, initiating auth flow."
+            f"[{tool_name}] Initiating auth flow."
         )
 
         # Ensure OAuth callback is available
@@ -887,7 +840,6 @@ async def get_authenticated_google_service(
 
         # Generate auth URL and raise exception with it
         auth_response = await start_auth_flow(
-            user_google_email=user_google_email,
             service_name=f"Google {service_name.title()}",
             redirect_uri=redirect_uri,
         )
@@ -897,9 +849,9 @@ async def get_authenticated_google_service(
 
     try:
         service = build(service_name, version, credentials=credentials)
-        log_user_email = user_google_email
+        log_user_email = None
 
-        # Try to get email from credentials if needed for validation
+        # Try to get email from credentials for logging
         if credentials and credentials.id_token:
             try:
                 # Decode without verification (just to get email for logging)
@@ -913,9 +865,14 @@ async def get_authenticated_google_service(
             except Exception as e:
                 logger.debug(f"[{tool_name}] Could not decode id_token: {e}")
 
-        logger.info(
-            f"[{tool_name}] Successfully authenticated {service_name} service for user: {log_user_email}"
-        )
+        if log_user_email:
+            logger.info(
+                f"[{tool_name}] Successfully authenticated {service_name} service for user: {log_user_email}"
+            )
+        else:
+            logger.info(
+                f"[{tool_name}] Successfully authenticated {service_name} service"
+            )
         return service, log_user_email
 
     except Exception as e:

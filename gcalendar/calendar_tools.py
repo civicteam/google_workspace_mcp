@@ -304,34 +304,31 @@ def _correct_time_format_for_api(
 @server.tool()
 @handle_http_errors("list_calendars", is_read_only=True, service_type="calendar")
 @require_google_service("calendar", "calendar_read")
-async def list_calendars(service, user_google_email: str) -> str:
+async def list_calendars(service) -> str:
     """
     Retrieves a list of calendars accessible to the authenticated user.
-
-    Args:
-        user_google_email (str): The user's Google email address. Required.
 
     Returns:
         str: A formatted list of the user's calendars (summary, ID, primary status).
     """
-    logger.info(f"[list_calendars] Invoked. Email: '{user_google_email}'")
+    logger.info(f"[list_calendars] Invoked.")
 
     calendar_list_response = await asyncio.to_thread(
         lambda: service.calendarList().list().execute()
     )
     items = calendar_list_response.get("items", [])
     if not items:
-        return f"No calendars found for {user_google_email}."
+        return f"No calendars found."
 
     calendars_summary_list = [
         f'- "{cal.get("summary", "No Summary")}"{" (Primary)" if cal.get("primary") else ""} (ID: {cal["id"]})'
         for cal in items
     ]
     text_output = (
-        f"Successfully listed {len(items)} calendars for {user_google_email}:\n"
+        f"Successfully listed {len(items)} calendars:\n"
         + "\n".join(calendars_summary_list)
     )
-    logger.info(f"Successfully listed {len(items)} calendars for {user_google_email}.")
+    logger.info(f"Successfully listed {len(items)} calendars.")
     return text_output
 
 
@@ -340,7 +337,6 @@ async def list_calendars(service, user_google_email: str) -> str:
 @require_google_service("calendar", "calendar_read")
 async def get_events(
     service,
-    user_google_email: str,
     calendar_id: str = "primary",
     event_id: Optional[str] = None,
     time_min: Optional[str] = None,
@@ -355,7 +351,6 @@ async def get_events(
     You can also search for events by keyword by supplying the optional "query" param.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         calendar_id (str): The ID of the calendar to query. Use 'primary' for the user's primary calendar. Defaults to 'primary'. Calendar IDs can be obtained using `list_calendars`.
         event_id (Optional[str]): The ID of a specific event to retrieve. If provided, retrieves only this event and ignores time filtering parameters.
         time_min (Optional[str]): The start of the time range (inclusive) in RFC3339 format (e.g., '2024-05-12T10:00:00Z' or '2024-05-12'). If omitted, defaults to the current time. Ignored if event_id is provided.
@@ -428,9 +423,9 @@ async def get_events(
         items = events_result.get("items", [])
     if not items:
         if event_id:
-            return f"Event with ID '{event_id}' not found in calendar '{calendar_id}' for {user_google_email}."
+            return f"Event with ID '{event_id}' not found in calendar '{calendar_id}'."
         else:
-            return f"No events found in calendar '{calendar_id}' for {user_google_email} for the specified time range."
+            return f"No events found in calendar '{calendar_id}' for the specified time range."
 
     # Handle returning detailed output for a single event when requested
     if event_id and detailed:
@@ -467,7 +462,7 @@ async def get_events(
 
         event_details += f"- Event ID: {event_id}\n- Link: {link}"
         logger.info(
-            f"[get_events] Successfully retrieved detailed event {event_id} for {user_google_email}."
+            f"[get_events] Successfully retrieved detailed event {event_id}."
         )
         return event_details
 
@@ -518,17 +513,17 @@ async def get_events(
     if event_id:
         # Single event basic output
         text_output = (
-            f"Successfully retrieved event from calendar '{calendar_id}' for {user_google_email}:\n"
+            f"Successfully retrieved event from calendar '{calendar_id}':\n"
             + "\n".join(event_details_list)
         )
     else:
         # Multiple events output
         text_output = (
-            f"Successfully retrieved {len(items)} events from calendar '{calendar_id}' for {user_google_email}:\n"
+            f"Successfully retrieved {len(items)} events from calendar '{calendar_id}':\n"
             + "\n".join(event_details_list)
         )
 
-    logger.info(f"Successfully retrieved {len(items)} events for {user_google_email}.")
+    logger.info(f"Successfully retrieved {len(items)} events.")
     return text_output
 
 
@@ -537,7 +532,6 @@ async def get_events(
 @require_google_service("calendar", "calendar_events")
 async def create_event(
     service,
-    user_google_email: str,
     summary: str,
     start_time: str,
     end_time: str,
@@ -557,7 +551,6 @@ async def create_event(
     Creates a new event.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         summary (str): Event title.
         start_time (str): Start time (RFC3339, e.g., "2023-10-27T10:00:00-07:00" or "2023-10-27" for all-day).
         end_time (str): End time (RFC3339, e.g., "2023-10-27T11:00:00-07:00" or "2023-10-28" for all-day).
@@ -577,7 +570,7 @@ async def create_event(
         str: Confirmation message of the successful event creation with event link.
     """
     logger.info(
-        f"[create_event] Invoked. Email: '{user_google_email}', Summary: {summary}"
+        f"[create_event] Invoked. Summary: {summary}"
     )
     logger.info(f"[create_event] Incoming attachments param: {attachments}")
     # If attachments value is a string, split by comma and strip whitespace
@@ -724,7 +717,7 @@ async def create_event(
             .execute()
         )
     link = created_event.get("htmlLink", "No link available")
-    confirmation_message = f"Successfully created event '{created_event.get('summary', summary)}' for {user_google_email}. Link: {link}"
+    confirmation_message = f"Successfully created event '{created_event.get('summary', summary)}'. Link: {link}"
 
     # Add Google Meet information if conference was created
     if add_google_meet and "conferenceData" in created_event:
@@ -738,7 +731,7 @@ async def create_event(
                         break
 
     logger.info(
-        f"Event created successfully for {user_google_email}. ID: {created_event.get('id')}, Link: {link}"
+        f"Event created successfully. ID: {created_event.get('id')}, Link: {link}"
     )
     return confirmation_message
 
@@ -748,7 +741,6 @@ async def create_event(
 @require_google_service("calendar", "calendar_events")
 async def modify_event(
     service,
-    user_google_email: str,
     event_id: str,
     calendar_id: str = "primary",
     summary: Optional[str] = None,
@@ -768,7 +760,6 @@ async def modify_event(
     Modifies an existing event.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         event_id (str): The ID of the event to modify.
         calendar_id (str): Calendar ID (default: 'primary').
         summary (Optional[str]): New event title.
@@ -788,7 +779,7 @@ async def modify_event(
         str: Confirmation message of the successful event modification with event link.
     """
     logger.info(
-        f"[modify_event] Invoked. Email: '{user_google_email}', Event ID: {event_id}"
+        f"[modify_event] Invoked. Event ID: {event_id}"
     )
 
     # Build the event body with only the fields that are provided
@@ -955,7 +946,7 @@ async def modify_event(
     )
 
     link = updated_event.get("htmlLink", "No link available")
-    confirmation_message = f"Successfully modified event '{updated_event.get('summary', summary)}' (ID: {event_id}) for {user_google_email}. Link: {link}"
+    confirmation_message = f"Successfully modified event '{updated_event.get('summary', summary)}' (ID: {event_id}). Link: {link}"
 
     # Add Google Meet information if conference was added
     if add_google_meet is True and "conferenceData" in updated_event:
@@ -971,7 +962,7 @@ async def modify_event(
         confirmation_message += " (Google Meet removed)"
 
     logger.info(
-        f"Event modified successfully for {user_google_email}. ID: {updated_event.get('id')}, Link: {link}"
+        f"Event modified successfully. ID: {updated_event.get('id')}, Link: {link}"
     )
     return confirmation_message
 
@@ -980,13 +971,12 @@ async def modify_event(
 @handle_http_errors("delete_event", service_type="calendar")
 @require_google_service("calendar", "calendar_events")
 async def delete_event(
-    service, user_google_email: str, event_id: str, calendar_id: str = "primary"
+    service, event_id: str, calendar_id: str = "primary"
 ) -> str:
     """
     Deletes an existing event.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         event_id (str): The ID of the event to delete.
         calendar_id (str): Calendar ID (default: 'primary').
 
@@ -994,7 +984,7 @@ async def delete_event(
         str: Confirmation message of the successful event deletion.
     """
     logger.info(
-        f"[delete_event] Invoked. Email: '{user_google_email}', Event ID: {event_id}"
+        f"[delete_event] Invoked. Event ID: {event_id}"
     )
 
     # Log the event ID for debugging
@@ -1029,6 +1019,6 @@ async def delete_event(
         .execute()
     )
 
-    confirmation_message = f"Successfully deleted event (ID: {event_id}) from calendar '{calendar_id}' for {user_google_email}."
-    logger.info(f"Event deleted successfully for {user_google_email}. ID: {event_id}")
+    confirmation_message = f"Successfully deleted event (ID: {event_id}) from calendar '{calendar_id}'."
+    logger.info(f"Event deleted successfully. ID: {event_id}")
     return confirmation_message

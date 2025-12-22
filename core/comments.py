@@ -40,7 +40,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
         @require_google_service("drive", "drive_read")
         @handle_http_errors(read_func_name, service_type="drive")
         async def read_comments(
-            service, user_google_email: str, document_id: str
+            service, document_id: str
         ) -> str:
             """Read all comments from a Google Document."""
             return await _read_comments_impl(service, app_name, document_id)
@@ -48,7 +48,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
         @require_google_service("drive", "drive_file")
         @handle_http_errors(create_func_name, service_type="drive")
         async def create_comment(
-            service, user_google_email: str, document_id: str, comment_content: str
+            service, document_id: str, comment_content: str
         ) -> str:
             """Create a new comment on a Google Document."""
             return await _create_comment_impl(
@@ -59,7 +59,6 @@ def create_comment_tools(app_name: str, file_id_param: str):
         @handle_http_errors(reply_func_name, service_type="drive")
         async def reply_to_comment(
             service,
-            user_google_email: str,
             document_id: str,
             comment_id: str,
             reply_content: str,
@@ -72,7 +71,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
         @require_google_service("drive", "drive_file")
         @handle_http_errors(resolve_func_name, service_type="drive")
         async def resolve_comment(
-            service, user_google_email: str, document_id: str, comment_id: str
+            service, document_id: str, comment_id: str
         ) -> str:
             """Resolve a comment in a Google Document."""
             return await _resolve_comment_impl(
@@ -84,7 +83,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
         @require_google_service("drive", "drive_read")
         @handle_http_errors(read_func_name, service_type="drive")
         async def read_comments(
-            service, user_google_email: str, spreadsheet_id: str
+            service, spreadsheet_id: str
         ) -> str:
             """Read all comments from a Google Spreadsheet."""
             return await _read_comments_impl(service, app_name, spreadsheet_id)
@@ -92,7 +91,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
         @require_google_service("drive", "drive_file")
         @handle_http_errors(create_func_name, service_type="drive")
         async def create_comment(
-            service, user_google_email: str, spreadsheet_id: str, comment_content: str
+            service, spreadsheet_id: str, comment_content: str
         ) -> str:
             """Create a new comment on a Google Spreadsheet."""
             return await _create_comment_impl(
@@ -103,7 +102,6 @@ def create_comment_tools(app_name: str, file_id_param: str):
         @handle_http_errors(reply_func_name, service_type="drive")
         async def reply_to_comment(
             service,
-            user_google_email: str,
             spreadsheet_id: str,
             comment_id: str,
             reply_content: str,
@@ -116,7 +114,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
         @require_google_service("drive", "drive_file")
         @handle_http_errors(resolve_func_name, service_type="drive")
         async def resolve_comment(
-            service, user_google_email: str, spreadsheet_id: str, comment_id: str
+            service, spreadsheet_id: str, comment_id: str
         ) -> str:
             """Resolve a comment in a Google Spreadsheet."""
             return await _resolve_comment_impl(
@@ -128,7 +126,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
         @require_google_service("drive", "drive_read")
         @handle_http_errors(read_func_name, service_type="drive")
         async def read_comments(
-            service, user_google_email: str, presentation_id: str
+            service, presentation_id: str
         ) -> str:
             """Read all comments from a Google Presentation."""
             return await _read_comments_impl(service, app_name, presentation_id)
@@ -136,7 +134,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
         @require_google_service("drive", "drive_file")
         @handle_http_errors(create_func_name, service_type="drive")
         async def create_comment(
-            service, user_google_email: str, presentation_id: str, comment_content: str
+            service, presentation_id: str, comment_content: str
         ) -> str:
             """Create a new comment on a Google Presentation."""
             return await _create_comment_impl(
@@ -147,7 +145,6 @@ def create_comment_tools(app_name: str, file_id_param: str):
         @handle_http_errors(reply_func_name, service_type="drive")
         async def reply_to_comment(
             service,
-            user_google_email: str,
             presentation_id: str,
             comment_id: str,
             reply_content: str,
@@ -160,7 +157,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
         @require_google_service("drive", "drive_file")
         @handle_http_errors(resolve_func_name, service_type="drive")
         async def resolve_comment(
-            service, user_google_email: str, presentation_id: str, comment_id: str
+            service, presentation_id: str, comment_id: str
         ) -> str:
             """Resolve a comment in a Google Presentation."""
             return await _resolve_comment_impl(

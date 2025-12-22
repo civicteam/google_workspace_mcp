@@ -40,7 +40,6 @@ UPLOAD_CHUNK_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB (Google recommended minimum)
 @require_google_service("drive", "drive_read")
 async def search_drive_files(
     service,
-    user_google_email: str,
     query: str,
     page_size: int = 10,
     drive_id: Optional[str] = None,
@@ -51,7 +50,6 @@ async def search_drive_files(
     Searches for files and folders within a user's Google Drive, including shared drives.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         query (str): The search query string. Supports Google Drive search operators.
         page_size (int): The maximum number of files to return. Defaults to 10.
         drive_id (Optional[str]): ID of the shared drive to search. If None, behavior depends on `corpora` and `include_items_from_all_drives`.
@@ -64,7 +62,7 @@ async def search_drive_files(
         str: A formatted list of found files/folders with their details (ID, name, type, size, modified time, link).
     """
     logger.info(
-        f"[search_drive_files] Invoked. Email: '{user_google_email}', Query: '{query}'"
+        f"[search_drive_files] Invoked. Query: '{query}'"
     )
 
     # Check if the query looks like a structured Drive query or free text
@@ -98,7 +96,7 @@ async def search_drive_files(
         return f"No files found for '{query}'."
 
     formatted_files_text_parts = [
-        f"Found {len(files)} files for {user_google_email} matching '{query}':"
+        f"Found {len(files)} files matching '{query}':"
     ]
     for item in files:
         size_str = f", Size: {item.get('size', 'N/A')}" if "size" in item else ""
@@ -114,7 +112,6 @@ async def search_drive_files(
 @require_google_service("drive", "drive_read")
 async def get_drive_file_content(
     service,
-    user_google_email: str,
     file_id: str,
 ) -> str:
     """
@@ -126,7 +123,6 @@ async def get_drive_file_content(
     • Any other file → downloaded; tries UTF-8 decode, else notes binary.
 
     Args:
-        user_google_email: The user’s Google email address.
         file_id: Drive file ID.
 
     Returns:
@@ -207,7 +203,6 @@ async def get_drive_file_content(
 @require_google_service("drive", "drive_read")
 async def get_drive_file_download_url(
     service,
-    user_google_email: str,
     file_id: str,
     export_format: Optional[str] = None,
 ) -> str:
@@ -222,7 +217,6 @@ async def get_drive_file_download_url(
     For other files, downloads the original file format.
 
     Args:
-        user_google_email: The user's Google email address. Required.
         file_id: The Google Drive file ID to get a download URL for.
         export_format: Optional export format for Google native files.
                       Options: 'pdf', 'docx', 'xlsx', 'csv', 'pptx'.
@@ -383,7 +377,6 @@ async def get_drive_file_download_url(
 @require_google_service("drive", "drive_read")
 async def list_drive_items(
     service,
-    user_google_email: str,
     folder_id: str = "root",
     page_size: int = 100,
     drive_id: Optional[str] = None,
@@ -396,7 +389,6 @@ async def list_drive_items(
     If `drive_id` is not specified, lists items from user's "My Drive" and accessible shared drives (if `include_items_from_all_drives` is True).
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         folder_id (str): The ID of the Google Drive folder. Defaults to 'root'. For a shared drive, this can be the shared drive's ID to list its root, or a folder ID within that shared drive.
         page_size (int): The maximum number of items to return. Defaults to 100.
         drive_id (Optional[str]): ID of the shared drive. If provided, the listing is scoped to this drive.
@@ -407,7 +399,7 @@ async def list_drive_items(
         str: A formatted list of files/folders in the specified folder.
     """
     logger.info(
-        f"[list_drive_items] Invoked. Email: '{user_google_email}', Folder ID: '{folder_id}'"
+        f"[list_drive_items] Invoked. Folder ID: '{folder_id}'"
     )
 
     resolved_folder_id = await resolve_folder_id(service, folder_id)
@@ -427,7 +419,7 @@ async def list_drive_items(
         return f"No items found in folder '{folder_id}'."
 
     formatted_items_text_parts = [
-        f"Found {len(files)} items in folder '{folder_id}' for {user_google_email}:"
+        f"Found {len(files)} items in folder '{folder_id}':"
     ]
     for item in files:
         size_str = f", Size: {item.get('size', 'N/A')}" if "size" in item else ""
@@ -443,7 +435,6 @@ async def list_drive_items(
 @require_google_service("drive", "drive_file")
 async def create_drive_file(
     service,
-    user_google_email: str,
     file_name: str,
     content: Optional[str] = None,  # Now explicitly Optional
     folder_id: str = "root",
@@ -455,7 +446,6 @@ async def create_drive_file(
     Accepts either direct content or a fileUrl to fetch the content from.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         file_name (str): The name for the new file.
         content (Optional[str]): If provided, the content to write to the file.
         folder_id (str): The ID of the parent folder. Defaults to 'root'. For shared drives, this must be a folder ID within the shared drive.
@@ -466,7 +456,7 @@ async def create_drive_file(
         str: Confirmation message of the successful file creation with file link.
     """
     logger.info(
-        f"[create_drive_file] Invoked. Email: '{user_google_email}', File Name: {file_name}, Folder ID: {folder_id}, fileUrl: {fileUrl}"
+        f"[create_drive_file] Invoked. File Name: {file_name}, Folder ID: {folder_id}, fileUrl: {fileUrl}"
     )
 
     if not content and not fileUrl:
@@ -668,7 +658,7 @@ async def create_drive_file(
         )
 
     link = created_file.get("webViewLink", "No link available")
-    confirmation_message = f"Successfully created file '{created_file.get('name', file_name)}' (ID: {created_file.get('id', 'N/A')}) in folder '{folder_id}' for {user_google_email}. Link: {link}"
+    confirmation_message = f"Successfully created file '{created_file.get('name', file_name)}' (ID: {created_file.get('id', 'N/A')}) in folder '{folder_id}'. Link: {link}"
     logger.info(f"Successfully created file. Link: {link}")
     return confirmation_message
 
@@ -680,21 +670,19 @@ async def create_drive_file(
 @require_google_service("drive", "drive_read")
 async def get_drive_file_permissions(
     service,
-    user_google_email: str,
     file_id: str,
 ) -> str:
     """
     Gets detailed metadata about a Google Drive file including sharing permissions.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         file_id (str): The ID of the file to check permissions for.
 
     Returns:
         str: Detailed file metadata including sharing status and URLs.
     """
     logger.info(
-        f"[get_drive_file_permissions] Checking file {file_id} for {user_google_email}"
+        f"[get_drive_file_permissions] Checking file {file_id}"
     )
 
     resolved_file_id, _ = await resolve_drive_item(service, file_id)
@@ -806,14 +794,12 @@ async def get_drive_file_permissions(
 @require_google_service("drive", "drive_read")
 async def check_drive_file_public_access(
     service,
-    user_google_email: str,
     file_name: str,
 ) -> str:
     """
     Searches for a file by name and checks if it has public link sharing enabled.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         file_name (str): The name of the file to check.
 
     Returns:
@@ -902,7 +888,6 @@ async def check_drive_file_public_access(
 @require_google_service("drive", "drive_file")
 async def update_drive_file(
     service,
-    user_google_email: str,
     file_id: str,
     # File metadata updates
     name: Optional[str] = None,
@@ -924,7 +909,6 @@ async def update_drive_file(
     Updates metadata and properties of a Google Drive file.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         file_id (str): The ID of the file to update. Required.
         name (Optional[str]): New name for the file.
         description (Optional[str]): New description for the file.
@@ -940,7 +924,7 @@ async def update_drive_file(
     Returns:
         str: Confirmation message with details of the updates applied.
     """
-    logger.info(f"[update_drive_file] Updating file {file_id} for {user_google_email}")
+    logger.info(f"[update_drive_file] Updating file {file_id}")
 
     current_file_fields = (
         "name, description, mimeType, parents, starred, trashed, webViewLink, "

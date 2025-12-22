@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 @require_google_service("customsearch", "customsearch")
 async def search_custom(
     service,
-    user_google_email: str,
     q: str,
     num: int = 10,
     start: int = 1,
@@ -38,7 +37,6 @@ async def search_custom(
     Performs a search using Google Custom Search JSON API.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         q (str): The search query. Required.
         num (int): Number of results to return (1-10). Defaults to 10.
         start (int): The index of the first result to return (1-based). Defaults to 1.
@@ -68,7 +66,7 @@ async def search_custom(
         )
 
     logger.info(
-        f"[search_custom] Invoked. Email: '{user_google_email}', Query: '{q}', CX: '{cx}'"
+        f"[search_custom] Invoked. Query: '{q}', CX: '{cx}'"
     )
 
     # Build the request parameters
@@ -109,7 +107,7 @@ async def search_custom(
     items = result.get("items", [])
 
     # Format the response
-    confirmation_message = f"""Search Results for {user_google_email}:
+    confirmation_message = f"""Search Results:
 - Query: "{q}"
 - Search Engine ID: {cx}
 - Total Results: {total_results}
@@ -151,7 +149,7 @@ async def search_custom(
             f"\n\nTo see more results, search again with start={next_start}"
         )
 
-    logger.info(f"Search completed successfully for {user_google_email}")
+    logger.info("Search completed successfully")
     return confirmation_message
 
 
@@ -160,12 +158,9 @@ async def search_custom(
     "get_search_engine_info", is_read_only=True, service_type="customsearch"
 )
 @require_google_service("customsearch", "customsearch")
-async def get_search_engine_info(service, user_google_email: str) -> str:
+async def get_search_engine_info(service) -> str:
     """
     Retrieves metadata about a Programmable Search Engine.
-
-    Args:
-        user_google_email (str): The user's Google email address. Required.
 
     Returns:
         str: Information about the search engine including its configuration and available refinements.
@@ -184,7 +179,7 @@ async def get_search_engine_info(service, user_google_email: str) -> str:
         )
 
     logger.info(
-        f"[get_search_engine_info] Invoked. Email: '{user_google_email}', CX: '{cx}'"
+        f"[get_search_engine_info] Invoked. CX: '{cx}'"
     )
 
     # Perform a minimal search to get the search engine context
@@ -201,7 +196,7 @@ async def get_search_engine_info(service, user_google_email: str) -> str:
     context = result.get("context", {})
     title = context.get("title", "Unknown")
 
-    confirmation_message = f"""Search Engine Information for {user_google_email}:
+    confirmation_message = f"""Search Engine Information:
 - Search Engine ID: {cx}
 - Title: {title}
 """
@@ -222,7 +217,7 @@ async def get_search_engine_info(service, user_google_email: str) -> str:
         confirmation_message += "\nSearch Statistics:\n"
         confirmation_message += f"  - Total indexed results: {total_results}\n"
 
-    logger.info(f"Search engine info retrieved successfully for {user_google_email}")
+    logger.info("Search engine info retrieved successfully")
     return confirmation_message
 
 
@@ -233,7 +228,6 @@ async def get_search_engine_info(service, user_google_email: str) -> str:
 @require_google_service("customsearch", "customsearch")
 async def search_custom_siterestrict(
     service,
-    user_google_email: str,
     q: str,
     sites: List[str],
     num: int = 10,
@@ -244,7 +238,6 @@ async def search_custom_siterestrict(
     Performs a search restricted to specific sites using Google Custom Search.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
         q (str): The search query. Required.
         sites (List[str]): List of sites/domains to search within.
         num (int): Number of results to return (1-10). Defaults to 10.
@@ -255,7 +248,7 @@ async def search_custom_siterestrict(
         str: Formatted search results from the specified sites.
     """
     logger.info(
-        f"[search_custom_siterestrict] Invoked. Email: '{user_google_email}', Query: '{q}', Sites: {sites}"
+        f"[search_custom_siterestrict] Invoked. Query: '{q}', Sites: {sites}"
     )
 
     # Build site restriction query
@@ -265,7 +258,6 @@ async def search_custom_siterestrict(
     # Use the main search function with the modified query
     return await search_custom(
         service=service,
-        user_google_email=user_google_email,
         q=full_query,
         num=num,
         start=start,
