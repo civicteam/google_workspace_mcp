@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional
 from googleapiclient.errors import HttpError  # type: ignore
 from mcp import Resource
 
+from auth.oauth_config import is_oauth21_enabled, is_external_oauth21_provider
 from auth.service_decorator import require_google_service
 from core.server import server
 from core.utils import handle_http_errors
@@ -21,6 +22,24 @@ logger = logging.getLogger(__name__)
 LIST_TASKS_MAX_RESULTS_DEFAULT = 20
 LIST_TASKS_MAX_RESULTS_MAX = 10_000
 LIST_TASKS_MAX_POSITION = "99999999999999999999"
+
+
+def _format_reauth_message(error: Exception) -> str:
+    base = f"API error: {error}. You might need to re-authenticate."
+    if is_oauth21_enabled():
+        if is_external_oauth21_provider():
+            hint = (
+                "LLM: Ask the user to provide a valid OAuth 2.1 bearer token in the "
+                "Authorization header and retry."
+            )
+        else:
+            hint = (
+                "LLM: Ask the user to authenticate via their MCP client's OAuth 2.1 "
+                "flow and retry."
+            )
+    else:
+        hint = "LLM: Try 'start_google_auth' with service_name='Google Tasks'."
+    return f"{base} {hint}"
 
 
 class StructuredTask:
@@ -114,7 +133,7 @@ async def list_task_lists(
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
+        message = _format_reauth_message(error)
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -155,7 +174,7 @@ async def get_task_list(
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
+        message = _format_reauth_message(error)
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -196,7 +215,7 @@ async def create_task_list(
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
+        message = _format_reauth_message(error)
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -241,7 +260,7 @@ async def update_task_list(
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
+        message = _format_reauth_message(error)
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -278,7 +297,7 @@ async def delete_task_list(
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
+        message = _format_reauth_message(error)
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -399,7 +418,7 @@ async def list_tasks(
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
+        message = _format_reauth_message(error)
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -571,7 +590,7 @@ async def get_task(
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
+        message = _format_reauth_message(error)
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -640,7 +659,7 @@ async def create_task(
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
+        message = _format_reauth_message(error)
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -724,7 +743,7 @@ async def update_task(
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
+        message = _format_reauth_message(error)
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -762,7 +781,7 @@ async def delete_task(
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
+        message = _format_reauth_message(error)
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -834,7 +853,7 @@ async def move_task(
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
+        message = _format_reauth_message(error)
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:
@@ -869,7 +888,7 @@ async def clear_completed_tasks(
         return response
 
     except HttpError as error:
-        message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with service_name='Google Tasks'."
+        message = _format_reauth_message(error)
         logger.error(message, exc_info=True)
         raise Exception(message)
     except Exception as e:

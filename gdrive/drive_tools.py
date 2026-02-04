@@ -4,29 +4,40 @@ Google Drive MCP Tools
 This module provides MCP tools for interacting with Google Drive API.
 """
 
-import logging
 import asyncio
-from typing import Optional
+import logging
+import io
+import httpx
+import base64
+import ipaddress
+import socket
+
+from typing import Optional, List, Dict, Any
 from tempfile import NamedTemporaryFile
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 from pathlib import Path
 
+from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
-import io
-import httpx
-import base64
 
 from auth.service_decorator import require_google_service
 from auth.oauth_config import is_stateless_mode
+from core.attachment_storage import get_attachment_storage, get_attachment_url
 from core.utils import extract_office_xml_text, handle_http_errors
 from core.server import server
 from core.config import get_transport_mode
 from gdrive.drive_helpers import (
     DRIVE_QUERY_PATTERNS,
     build_drive_list_params,
+    check_public_link_permission,
+    format_permission_info,
+    get_drive_image_url,
     resolve_drive_item,
     resolve_folder_id,
+    validate_expiration_time,
+    validate_share_role,
+    validate_share_type,
 )
 
 logger = logging.getLogger(__name__)
@@ -211,7 +222,7 @@ async def get_drive_file_download_url(
 
     For Google native files (Docs, Sheets, Slides), exports to a useful format:
     • Google Docs → PDF (default) or DOCX if export_format='docx'
-    • Google Sheets → XLSX (default) or CSV if export_format='csv'
+    • Google Sheets → XLSX (default), PDF if export_format='pdf', or CSV if export_format='csv'
     • Google Slides → PDF (default) or PPTX if export_format='pptx'
 
     For other files, downloads the original file format.
@@ -221,6 +232,7 @@ async def get_drive_file_download_url(
         export_format: Optional export format for Google native files.
                       Options: 'pdf', 'docx', 'xlsx', 'csv', 'pptx'.
                       If not specified, uses sensible defaults (PDF for Docs/Slides, XLSX for Sheets).
+                      For Sheets: supports 'csv', 'pdf', or 'xlsx' (default).
 
     Returns:
         str: Download URL and file metadata. The file is available at the URL for 1 hour.
@@ -265,6 +277,11 @@ async def get_drive_file_download_url(
             output_mime_type = export_mime_type
             if not output_filename.endswith(".csv"):
                 output_filename = f"{Path(output_filename).stem}.csv"
+        elif export_format == "pdf":
+            export_mime_type = "application/pdf"
+            output_mime_type = export_mime_type
+            if not output_filename.endswith(".pdf"):
+                output_filename = f"{Path(output_filename).stem}.pdf"
         else:
             # Default to XLSX
             export_mime_type = (
@@ -325,8 +342,6 @@ async def get_drive_file_download_url(
 
     # Save file and generate URL
     try:
-        from core.attachment_storage import get_attachment_storage, get_attachment_url
-
         storage = get_attachment_storage()
 
         # Encode bytes to base64 (as expected by AttachmentStorage)
@@ -663,6 +678,270 @@ async def create_drive_file(
     return confirmation_message
 
 
+# Mapping of file extensions to source MIME types for Google Docs conversion
+GOOGLE_DOCS_IMPORT_FORMATS = {
+    ".md": "text/markdown",
+    ".markdown": "text/markdown",
+    ".txt": "text/plain",
+    ".text": "text/plain",
+    ".html": "text/html",
+    ".htm": "text/html",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".doc": "application/msword",
+    ".rtf": "application/rtf",
+    ".odt": "application/vnd.oasis.opendocument.text",
+}
+
+GOOGLE_DOCS_MIME_TYPE = "application/vnd.google-apps.document"
+
+
+def _validate_url_not_internal(url: str) -> None:
+    """
+    Validate that a URL doesn't point to internal/private networks (SSRF protection).
+
+    Raises:
+        ValueError: If URL points to localhost or private IP ranges
+    """
+    parsed = urlparse(url)
+    hostname = parsed.hostname
+
+    if not hostname:
+        raise ValueError("Invalid URL: no hostname")
+
+    # Block localhost variants
+    if hostname.lower() in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
+        raise ValueError("URLs pointing to localhost are not allowed")
+
+    # Resolve hostname and check if it's a private IP
+    try:
+        ip = ipaddress.ip_address(socket.gethostbyname(hostname))
+        if ip.is_private or ip.is_loopback or ip.is_reserved:
+            raise ValueError(
+                f"URLs pointing to private/internal networks are not allowed: {hostname}"
+            )
+    except socket.gaierror:
+        pass  # Can't resolve, let httpx handle it
+
+
+def _detect_source_format(file_name: str, content: Optional[str] = None) -> str:
+    """
+    Detect the source MIME type based on file extension.
+    Falls back to text/plain if unknown.
+    """
+    ext = Path(file_name).suffix.lower()
+    if ext in GOOGLE_DOCS_IMPORT_FORMATS:
+        return GOOGLE_DOCS_IMPORT_FORMATS[ext]
+
+    # If content is provided and looks like markdown, use markdown
+    if content and (content.startswith("#") or "```" in content or "**" in content):
+        return "text/markdown"
+
+    return "text/plain"
+
+
+@server.tool()
+@handle_http_errors("import_to_google_doc", service_type="drive")
+@require_google_service("drive", "drive_file")
+async def import_to_google_doc(
+    service,
+    user_google_email: str,
+    file_name: str,
+    content: Optional[str] = None,
+    file_path: Optional[str] = None,
+    file_url: Optional[str] = None,
+    source_format: Optional[str] = None,
+    folder_id: str = "root",
+) -> str:
+    """
+    Imports a file (Markdown, DOCX, TXT, HTML, RTF, ODT) into Google Docs format with automatic conversion.
+
+    Google Drive automatically converts the source file to native Google Docs format,
+    preserving formatting like headings, lists, bold, italic, etc.
+
+    Args:
+        user_google_email (str): The user's Google email address. Required.
+        file_name (str): The name for the new Google Doc (extension will be ignored).
+        content (Optional[str]): Text content for text-based formats (MD, TXT, HTML).
+        file_path (Optional[str]): Local file path for binary formats (DOCX, ODT). Supports file:// URLs.
+        file_url (Optional[str]): Remote URL to fetch the file from (http/https).
+        source_format (Optional[str]): Source format hint ('md', 'markdown', 'docx', 'txt', 'html', 'rtf', 'odt').
+                                       Auto-detected from file_name extension if not provided.
+        folder_id (str): The ID of the parent folder. Defaults to 'root'.
+
+    Returns:
+        str: Confirmation message with the new Google Doc link.
+
+    Examples:
+        # Import markdown content directly
+        import_to_google_doc(file_name="My Doc.md", content="# Title\\n\\nHello **world**")
+
+        # Import a local DOCX file
+        import_to_google_doc(file_name="Report", file_path="/path/to/report.docx")
+
+        # Import from URL
+        import_to_google_doc(file_name="Remote Doc", file_url="https://example.com/doc.md")
+    """
+    logger.info(
+        f"[import_to_google_doc] Invoked. Email: '{user_google_email}', "
+        f"File Name: '{file_name}', Source Format: '{source_format}', Folder ID: '{folder_id}'"
+    )
+
+    # Validate inputs
+    source_count = sum(1 for x in [content, file_path, file_url] if x is not None)
+    if source_count == 0:
+        raise ValueError(
+            "You must provide one of: 'content', 'file_path', or 'file_url'."
+        )
+    if source_count > 1:
+        raise ValueError("Provide only one of: 'content', 'file_path', or 'file_url'.")
+
+    # Determine source MIME type
+    if source_format:
+        # Normalize format hint
+        format_key = f".{source_format.lower().lstrip('.')}"
+        if format_key in GOOGLE_DOCS_IMPORT_FORMATS:
+            source_mime_type = GOOGLE_DOCS_IMPORT_FORMATS[format_key]
+        else:
+            raise ValueError(
+                f"Unsupported source_format: '{source_format}'. "
+                f"Supported: {', '.join(ext.lstrip('.') for ext in GOOGLE_DOCS_IMPORT_FORMATS.keys())}"
+            )
+    else:
+        # Auto-detect from file_name, file_path, or file_url
+        detection_name = file_path or file_url or file_name
+        source_mime_type = _detect_source_format(detection_name, content)
+
+    logger.info(f"[import_to_google_doc] Detected source MIME type: {source_mime_type}")
+
+    # Clean up file name (remove extension since it becomes a Google Doc)
+    doc_name = Path(file_name).stem if Path(file_name).suffix else file_name
+
+    # Resolve folder
+    resolved_folder_id = await resolve_folder_id(service, folder_id)
+
+    # File metadata - destination is Google Docs format
+    file_metadata = {
+        "name": doc_name,
+        "parents": [resolved_folder_id],
+        "mimeType": GOOGLE_DOCS_MIME_TYPE,  # Target format = Google Docs
+    }
+
+    file_data: bytes
+
+    # Handle content (string input for text formats)
+    if content is not None:
+        file_data = content.encode("utf-8")
+        logger.info(f"[import_to_google_doc] Using content: {len(file_data)} bytes")
+
+    # Handle file_path (local file)
+    elif file_path is not None:
+        parsed_url = urlparse(file_path)
+
+        # Handle file:// URL format
+        if parsed_url.scheme == "file":
+            raw_path = parsed_url.path or ""
+            netloc = parsed_url.netloc
+            if netloc and netloc.lower() != "localhost":
+                raw_path = f"//{netloc}{raw_path}"
+            actual_path = url2pathname(raw_path)
+        elif parsed_url.scheme == "":
+            # Regular path
+            actual_path = file_path
+        else:
+            raise ValueError(
+                f"file_path should be a local path or file:// URL, got: {file_path}"
+            )
+
+        path_obj = Path(actual_path)
+        if not path_obj.exists():
+            raise FileNotFoundError(f"File not found: {actual_path}")
+        if not path_obj.is_file():
+            raise ValueError(f"Path is not a file: {actual_path}")
+
+        file_data = await asyncio.to_thread(path_obj.read_bytes)
+        logger.info(f"[import_to_google_doc] Read local file: {len(file_data)} bytes")
+
+        # Re-detect format from actual file if not specified
+        if not source_format:
+            source_mime_type = _detect_source_format(actual_path)
+            logger.info(
+                f"[import_to_google_doc] Re-detected from path: {source_mime_type}"
+            )
+
+    # Handle file_url (remote file)
+    elif file_url is not None:
+        parsed_url = urlparse(file_url)
+        if parsed_url.scheme not in ("http", "https"):
+            raise ValueError(f"file_url must be http:// or https://, got: {file_url}")
+
+        # SSRF protection: block internal/private network URLs
+        _validate_url_not_internal(file_url)
+
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            resp = await client.get(file_url)
+            if resp.status_code != 200:
+                raise Exception(
+                    f"Failed to fetch file from URL: {file_url} (status {resp.status_code})"
+                )
+            file_data = resp.content
+
+        logger.info(
+            f"[import_to_google_doc] Downloaded from URL: {len(file_data)} bytes"
+        )
+
+        # Re-detect format from URL if not specified
+        if not source_format:
+            source_mime_type = _detect_source_format(file_url)
+            logger.info(
+                f"[import_to_google_doc] Re-detected from URL: {source_mime_type}"
+            )
+
+    # Upload with conversion
+    media = MediaIoBaseUpload(
+        io.BytesIO(file_data),
+        mimetype=source_mime_type,  # Source format
+        resumable=True,
+        chunksize=UPLOAD_CHUNK_SIZE_BYTES,
+    )
+
+    logger.info(
+        f"[import_to_google_doc] Uploading to Google Drive with conversion: "
+        f"{source_mime_type} → {GOOGLE_DOCS_MIME_TYPE}"
+    )
+
+    created_file = await asyncio.to_thread(
+        service.files()
+        .create(
+            body=file_metadata,
+            media_body=media,
+            fields="id, name, webViewLink, mimeType",
+            supportsAllDrives=True,
+        )
+        .execute
+    )
+
+    result_mime = created_file.get("mimeType", "unknown")
+    if result_mime != GOOGLE_DOCS_MIME_TYPE:
+        logger.warning(
+            f"[import_to_google_doc] Conversion may have failed. "
+            f"Expected {GOOGLE_DOCS_MIME_TYPE}, got {result_mime}"
+        )
+
+    link = created_file.get("webViewLink", "No link available")
+    doc_id = created_file.get("id", "N/A")
+
+    confirmation = (
+        f"✅ Successfully imported '{doc_name}' as Google Doc\n"
+        f"   Document ID: {doc_id}\n"
+        f"   Source format: {source_mime_type}\n"
+        f"   Folder: {folder_id}\n"
+        f"   Link: {link}"
+    )
+
+    logger.info(f"[import_to_google_doc] Success. Link: {link}")
+    return confirmation
+
+
 @server.tool()
 @handle_http_errors(
     "get_drive_file_permissions", is_read_only=True, service_type="drive"
@@ -689,12 +968,13 @@ async def get_drive_file_permissions(
     file_id = resolved_file_id
 
     try:
-        # Get comprehensive file metadata including permissions
+        # Get comprehensive file metadata including permissions with details
         file_metadata = await asyncio.to_thread(
             service.files()
             .get(
                 fileId=file_id,
-                fields="id, name, mimeType, size, modifiedTime, owners, permissions, "
+                fields="id, name, mimeType, size, modifiedTime, owners, "
+                "permissions(id, type, role, emailAddress, domain, expirationTime, permissionDetails), "
                 "webViewLink, webContentLink, shared, sharingUser, viewersCanCopyContent",
                 supportsAllDrives=True,
             )
@@ -726,22 +1006,7 @@ async def get_drive_file_permissions(
             output_parts.append(f"  Number of permissions: {len(permissions)}")
             output_parts.append("  Permissions:")
             for perm in permissions:
-                perm_type = perm.get("type", "unknown")
-                role = perm.get("role", "unknown")
-
-                if perm_type == "anyone":
-                    output_parts.append(f"    - Anyone with the link ({role})")
-                elif perm_type == "user":
-                    email = perm.get("emailAddress", "unknown")
-                    output_parts.append(f"    - User: {email} ({role})")
-                elif perm_type == "domain":
-                    domain = perm.get("domain", "unknown")
-                    output_parts.append(f"    - Domain: {domain} ({role})")
-                elif perm_type == "group":
-                    email = perm.get("emailAddress", "unknown")
-                    output_parts.append(f"    - Group: {email} ({role})")
-                else:
-                    output_parts.append(f"    - {perm_type} ({role})")
+                output_parts.append(f"    - {format_permission_info(perm)}")
         else:
             output_parts.append("  No additional permissions (private file)")
 
@@ -758,9 +1023,6 @@ async def get_drive_file_permissions(
         web_content_link = file_metadata.get("webContentLink")
         if web_content_link:
             output_parts.append(f"  Direct Download Link: {web_content_link}")
-
-        # Check if file has "anyone with link" permission
-        from gdrive.drive_helpers import check_public_link_permission
 
         has_public_link = check_public_link_permission(permissions)
 
@@ -851,7 +1113,6 @@ async def check_drive_file_public_access(
     )
 
     permissions = file_metadata.get("permissions", [])
-    from gdrive.drive_helpers import check_public_link_permission, get_drive_image_url
 
     has_public_link = check_public_link_permission(permissions)
 
@@ -1054,5 +1315,574 @@ async def update_drive_file(
 
     output_parts.append("")
     output_parts.append(f"View file: {updated_file.get('webViewLink', '#')}")
+
+    return "\n".join(output_parts)
+
+
+@server.tool()
+@handle_http_errors("get_drive_shareable_link", is_read_only=True, service_type="drive")
+@require_google_service("drive", "drive_read")
+async def get_drive_shareable_link(
+    service,
+    user_google_email: str,
+    file_id: str,
+) -> str:
+    """
+    Gets the shareable link for a Google Drive file or folder.
+
+    Args:
+        user_google_email (str): The user's Google email address. Required.
+        file_id (str): The ID of the file or folder to get the shareable link for. Required.
+
+    Returns:
+        str: The shareable links and current sharing status.
+    """
+    logger.info(
+        f"[get_drive_shareable_link] Invoked. Email: '{user_google_email}', File ID: '{file_id}'"
+    )
+
+    resolved_file_id, _ = await resolve_drive_item(service, file_id)
+    file_id = resolved_file_id
+
+    file_metadata = await asyncio.to_thread(
+        service.files()
+        .get(
+            fileId=file_id,
+            fields="id, name, mimeType, webViewLink, webContentLink, shared, "
+            "permissions(id, type, role, emailAddress, domain, expirationTime)",
+            supportsAllDrives=True,
+        )
+        .execute
+    )
+
+    output_parts = [
+        f"File: {file_metadata.get('name', 'Unknown')}",
+        f"ID: {file_id}",
+        f"Type: {file_metadata.get('mimeType', 'Unknown')}",
+        f"Shared: {file_metadata.get('shared', False)}",
+        "",
+        "Links:",
+        f"  View: {file_metadata.get('webViewLink', 'N/A')}",
+    ]
+
+    web_content_link = file_metadata.get("webContentLink")
+    if web_content_link:
+        output_parts.append(f"  Download: {web_content_link}")
+
+    permissions = file_metadata.get("permissions", [])
+    if permissions:
+        output_parts.append("")
+        output_parts.append("Current permissions:")
+        for perm in permissions:
+            output_parts.append(f"  - {format_permission_info(perm)}")
+
+    return "\n".join(output_parts)
+
+
+@server.tool()
+@handle_http_errors("share_drive_file", is_read_only=False, service_type="drive")
+@require_google_service("drive", "drive_file")
+async def share_drive_file(
+    service,
+    user_google_email: str,
+    file_id: str,
+    share_with: Optional[str] = None,
+    role: str = "reader",
+    share_type: str = "user",
+    send_notification: bool = True,
+    email_message: Optional[str] = None,
+    expiration_time: Optional[str] = None,
+    allow_file_discovery: Optional[bool] = None,
+) -> str:
+    """
+    Shares a Google Drive file or folder with a user, group, domain, or anyone with the link.
+
+    When sharing a folder, all files inside inherit the permission.
+
+    Args:
+        user_google_email (str): The user's Google email address. Required.
+        file_id (str): The ID of the file or folder to share. Required.
+        share_with (Optional[str]): Email address (for user/group), domain name (for domain), or omit for 'anyone'.
+        role (str): Permission role - 'reader', 'commenter', or 'writer'. Defaults to 'reader'.
+        share_type (str): Type of sharing - 'user', 'group', 'domain', or 'anyone'. Defaults to 'user'.
+        send_notification (bool): Whether to send a notification email. Defaults to True.
+        email_message (Optional[str]): Custom message for the notification email.
+        expiration_time (Optional[str]): Expiration time in RFC 3339 format (e.g., "2025-01-15T00:00:00Z"). Permission auto-revokes after this time.
+        allow_file_discovery (Optional[bool]): For 'domain' or 'anyone' shares - whether the file can be found via search. Defaults to None (API default).
+
+    Returns:
+        str: Confirmation with permission details and shareable link.
+    """
+    logger.info(
+        f"[share_drive_file] Invoked. Email: '{user_google_email}', File ID: '{file_id}', Share with: '{share_with}', Role: '{role}', Type: '{share_type}'"
+    )
+
+    validate_share_role(role)
+    validate_share_type(share_type)
+
+    if share_type in ("user", "group") and not share_with:
+        raise ValueError(f"share_with is required for share_type '{share_type}'")
+    if share_type == "domain" and not share_with:
+        raise ValueError("share_with (domain name) is required for share_type 'domain'")
+
+    resolved_file_id, file_metadata = await resolve_drive_item(
+        service, file_id, extra_fields="name, webViewLink"
+    )
+    file_id = resolved_file_id
+
+    permission_body = {
+        "type": share_type,
+        "role": role,
+    }
+
+    if share_type in ("user", "group"):
+        permission_body["emailAddress"] = share_with
+    elif share_type == "domain":
+        permission_body["domain"] = share_with
+
+    if expiration_time:
+        validate_expiration_time(expiration_time)
+        permission_body["expirationTime"] = expiration_time
+
+    if share_type in ("domain", "anyone") and allow_file_discovery is not None:
+        permission_body["allowFileDiscovery"] = allow_file_discovery
+
+    create_params = {
+        "fileId": file_id,
+        "body": permission_body,
+        "supportsAllDrives": True,
+        "fields": "id, type, role, emailAddress, domain, expirationTime",
+    }
+
+    if share_type in ("user", "group"):
+        create_params["sendNotificationEmail"] = send_notification
+        if email_message:
+            create_params["emailMessage"] = email_message
+
+    created_permission = await asyncio.to_thread(
+        service.permissions().create(**create_params).execute
+    )
+
+    output_parts = [
+        f"Successfully shared '{file_metadata.get('name', 'Unknown')}'",
+        "",
+        "Permission created:",
+        f"  - {format_permission_info(created_permission)}",
+        "",
+        f"View link: {file_metadata.get('webViewLink', 'N/A')}",
+    ]
+
+    return "\n".join(output_parts)
+
+
+@server.tool()
+@handle_http_errors("batch_share_drive_file", is_read_only=False, service_type="drive")
+@require_google_service("drive", "drive_file")
+async def batch_share_drive_file(
+    service,
+    user_google_email: str,
+    file_id: str,
+    recipients: List[Dict[str, Any]],
+    send_notification: bool = True,
+    email_message: Optional[str] = None,
+) -> str:
+    """
+    Shares a Google Drive file or folder with multiple users or groups in a single operation.
+
+    Each recipient can have a different role and optional expiration time.
+
+    Note: Each recipient is processed sequentially. For very large recipient lists,
+    consider splitting into multiple calls.
+
+    Args:
+        user_google_email (str): The user's Google email address. Required.
+        file_id (str): The ID of the file or folder to share. Required.
+        recipients (List[Dict]): List of recipient objects. Each should have:
+            - email (str): Recipient email address. Required for 'user' or 'group' share_type.
+            - role (str): Permission role - 'reader', 'commenter', or 'writer'. Defaults to 'reader'.
+            - share_type (str, optional): 'user', 'group', or 'domain'. Defaults to 'user'.
+            - expiration_time (str, optional): Expiration in RFC 3339 format (e.g., "2025-01-15T00:00:00Z").
+            For domain shares, use 'domain' field instead of 'email':
+            - domain (str): Domain name. Required when share_type is 'domain'.
+        send_notification (bool): Whether to send notification emails. Defaults to True.
+        email_message (Optional[str]): Custom message for notification emails.
+
+    Returns:
+        str: Summary of created permissions with success/failure for each recipient.
+    """
+    logger.info(
+        f"[batch_share_drive_file] Invoked. Email: '{user_google_email}', File ID: '{file_id}', Recipients: {len(recipients)}"
+    )
+
+    resolved_file_id, file_metadata = await resolve_drive_item(
+        service, file_id, extra_fields="name, webViewLink"
+    )
+    file_id = resolved_file_id
+
+    if not recipients:
+        raise ValueError("recipients list cannot be empty")
+
+    results = []
+    success_count = 0
+    failure_count = 0
+
+    for recipient in recipients:
+        share_type = recipient.get("share_type", "user")
+
+        if share_type == "domain":
+            domain = recipient.get("domain")
+            if not domain:
+                results.append("  - Skipped: missing domain for domain share")
+                failure_count += 1
+                continue
+            identifier = domain
+        else:
+            email = recipient.get("email")
+            if not email:
+                results.append("  - Skipped: missing email address")
+                failure_count += 1
+                continue
+            identifier = email
+
+        role = recipient.get("role", "reader")
+        try:
+            validate_share_role(role)
+        except ValueError as e:
+            results.append(f"  - {identifier}: Failed - {e}")
+            failure_count += 1
+            continue
+
+        try:
+            validate_share_type(share_type)
+        except ValueError as e:
+            results.append(f"  - {identifier}: Failed - {e}")
+            failure_count += 1
+            continue
+
+        permission_body = {
+            "type": share_type,
+            "role": role,
+        }
+
+        if share_type == "domain":
+            permission_body["domain"] = identifier
+        else:
+            permission_body["emailAddress"] = identifier
+
+        if recipient.get("expiration_time"):
+            try:
+                validate_expiration_time(recipient["expiration_time"])
+                permission_body["expirationTime"] = recipient["expiration_time"]
+            except ValueError as e:
+                results.append(f"  - {identifier}: Failed - {e}")
+                failure_count += 1
+                continue
+
+        create_params = {
+            "fileId": file_id,
+            "body": permission_body,
+            "supportsAllDrives": True,
+            "fields": "id, type, role, emailAddress, domain, expirationTime",
+        }
+
+        if share_type in ("user", "group"):
+            create_params["sendNotificationEmail"] = send_notification
+            if email_message:
+                create_params["emailMessage"] = email_message
+
+        try:
+            created_permission = await asyncio.to_thread(
+                service.permissions().create(**create_params).execute
+            )
+            results.append(f"  - {format_permission_info(created_permission)}")
+            success_count += 1
+        except HttpError as e:
+            results.append(f"  - {identifier}: Failed - {str(e)}")
+            failure_count += 1
+
+    output_parts = [
+        f"Batch share results for '{file_metadata.get('name', 'Unknown')}'",
+        "",
+        f"Summary: {success_count} succeeded, {failure_count} failed",
+        "",
+        "Results:",
+    ]
+    output_parts.extend(results)
+    output_parts.extend(
+        [
+            "",
+            f"View link: {file_metadata.get('webViewLink', 'N/A')}",
+        ]
+    )
+
+    return "\n".join(output_parts)
+
+
+@server.tool()
+@handle_http_errors("update_drive_permission", is_read_only=False, service_type="drive")
+@require_google_service("drive", "drive_file")
+async def update_drive_permission(
+    service,
+    user_google_email: str,
+    file_id: str,
+    permission_id: str,
+    role: Optional[str] = None,
+    expiration_time: Optional[str] = None,
+) -> str:
+    """
+    Updates an existing permission on a Google Drive file or folder.
+
+    Args:
+        user_google_email (str): The user's Google email address. Required.
+        file_id (str): The ID of the file or folder. Required.
+        permission_id (str): The ID of the permission to update (from get_drive_file_permissions). Required.
+        role (Optional[str]): New role - 'reader', 'commenter', or 'writer'. If not provided, role unchanged.
+        expiration_time (Optional[str]): Expiration time in RFC 3339 format (e.g., "2025-01-15T00:00:00Z"). Set or update when permission expires.
+
+    Returns:
+        str: Confirmation with updated permission details.
+    """
+    logger.info(
+        f"[update_drive_permission] Invoked. Email: '{user_google_email}', File ID: '{file_id}', Permission ID: '{permission_id}', Role: '{role}'"
+    )
+
+    if not role and not expiration_time:
+        raise ValueError("Must provide at least one of: role, expiration_time")
+
+    if role:
+        validate_share_role(role)
+    if expiration_time:
+        validate_expiration_time(expiration_time)
+
+    resolved_file_id, file_metadata = await resolve_drive_item(
+        service, file_id, extra_fields="name"
+    )
+    file_id = resolved_file_id
+
+    # Google API requires role in update body, so fetch current if not provided
+    if not role:
+        current_permission = await asyncio.to_thread(
+            service.permissions()
+            .get(
+                fileId=file_id,
+                permissionId=permission_id,
+                supportsAllDrives=True,
+                fields="role",
+            )
+            .execute
+        )
+        role = current_permission.get("role")
+
+    update_body = {"role": role}
+    if expiration_time:
+        update_body["expirationTime"] = expiration_time
+
+    updated_permission = await asyncio.to_thread(
+        service.permissions()
+        .update(
+            fileId=file_id,
+            permissionId=permission_id,
+            body=update_body,
+            supportsAllDrives=True,
+            fields="id, type, role, emailAddress, domain, expirationTime",
+        )
+        .execute
+    )
+
+    output_parts = [
+        f"Successfully updated permission on '{file_metadata.get('name', 'Unknown')}'",
+        "",
+        "Updated permission:",
+        f"  - {format_permission_info(updated_permission)}",
+    ]
+
+    return "\n".join(output_parts)
+
+
+@server.tool()
+@handle_http_errors("remove_drive_permission", is_read_only=False, service_type="drive")
+@require_google_service("drive", "drive_file")
+async def remove_drive_permission(
+    service,
+    user_google_email: str,
+    file_id: str,
+    permission_id: str,
+) -> str:
+    """
+    Removes a permission from a Google Drive file or folder, revoking access.
+
+    Args:
+        user_google_email (str): The user's Google email address. Required.
+        file_id (str): The ID of the file or folder. Required.
+        permission_id (str): The ID of the permission to remove (from get_drive_file_permissions). Required.
+
+    Returns:
+        str: Confirmation of the removed permission.
+    """
+    logger.info(
+        f"[remove_drive_permission] Invoked. Email: '{user_google_email}', File ID: '{file_id}', Permission ID: '{permission_id}'"
+    )
+
+    resolved_file_id, file_metadata = await resolve_drive_item(
+        service, file_id, extra_fields="name"
+    )
+    file_id = resolved_file_id
+
+    await asyncio.to_thread(
+        service.permissions()
+        .delete(fileId=file_id, permissionId=permission_id, supportsAllDrives=True)
+        .execute
+    )
+
+    output_parts = [
+        f"Successfully removed permission from '{file_metadata.get('name', 'Unknown')}'",
+        "",
+        f"Permission ID '{permission_id}' has been revoked.",
+    ]
+
+    return "\n".join(output_parts)
+
+
+@server.tool()
+@handle_http_errors("copy_drive_file", is_read_only=False, service_type="drive")
+@require_google_service("drive", "drive_file")
+async def copy_drive_file(
+    service,
+    user_google_email: str,
+    file_id: str,
+    new_name: Optional[str] = None,
+    parent_folder_id: str = "root",
+) -> str:
+    """
+    Creates a copy of an existing Google Drive file.
+
+    This tool copies the template document to a new location with an optional new name.
+    The copy maintains all formatting and content from the original file.
+
+    Args:
+        user_google_email (str): The user's Google email address. Required.
+        file_id (str): The ID of the file to copy. Required.
+        new_name (Optional[str]): New name for the copied file. If not provided, uses "Copy of [original name]".
+        parent_folder_id (str): The ID of the folder where the copy should be created. Defaults to 'root' (My Drive).
+
+    Returns:
+        str: Confirmation message with details of the copied file and its link.
+    """
+    logger.info(
+        f"[copy_drive_file] Invoked. Email: '{user_google_email}', File ID: '{file_id}', New name: '{new_name}', Parent folder: '{parent_folder_id}'"
+    )
+
+    resolved_file_id, file_metadata = await resolve_drive_item(
+        service, file_id, extra_fields="name, webViewLink, mimeType"
+    )
+    file_id = resolved_file_id
+    original_name = file_metadata.get("name", "Unknown File")
+
+    resolved_folder_id = await resolve_folder_id(service, parent_folder_id)
+
+    copy_body = {}
+    if new_name:
+        copy_body["name"] = new_name
+    else:
+        copy_body["name"] = f"Copy of {original_name}"
+
+    if resolved_folder_id != "root":
+        copy_body["parents"] = [resolved_folder_id]
+
+    copied_file = await asyncio.to_thread(
+        service.files()
+        .copy(
+            fileId=file_id,
+            body=copy_body,
+            supportsAllDrives=True,
+            fields="id, name, webViewLink, mimeType, parents",
+        )
+        .execute
+    )
+
+    output_parts = [
+        f"Successfully copied '{original_name}'",
+        "",
+        f"Original file ID: {file_id}",
+        f"New file ID: {copied_file.get('id', 'N/A')}",
+        f"New file name: {copied_file.get('name', 'Unknown')}",
+        f"File type: {copied_file.get('mimeType', 'Unknown')}",
+        f"Location: {parent_folder_id}",
+        "",
+        f"View copied file: {copied_file.get('webViewLink', 'N/A')}",
+    ]
+
+    return "\n".join(output_parts)
+
+
+@server.tool()
+@handle_http_errors(
+    "transfer_drive_ownership", is_read_only=False, service_type="drive"
+)
+@require_google_service("drive", "drive_file")
+async def transfer_drive_ownership(
+    service,
+    user_google_email: str,
+    file_id: str,
+    new_owner_email: str,
+    move_to_new_owners_root: bool = False,
+) -> str:
+    """
+    Transfers ownership of a Google Drive file or folder to another user.
+
+    This is an irreversible operation. The current owner will become an editor.
+    Only works within the same Google Workspace domain or for personal accounts.
+
+    Args:
+        user_google_email (str): The user's Google email address. Required.
+        file_id (str): The ID of the file or folder to transfer. Required.
+        new_owner_email (str): Email address of the new owner. Required.
+        move_to_new_owners_root (bool): If True, moves the file to the new owner's My Drive root. Defaults to False.
+
+    Returns:
+        str: Confirmation of the ownership transfer.
+    """
+    logger.info(
+        f"[transfer_drive_ownership] Invoked. Email: '{user_google_email}', File ID: '{file_id}', New owner: '{new_owner_email}'"
+    )
+
+    resolved_file_id, file_metadata = await resolve_drive_item(
+        service, file_id, extra_fields="name, owners"
+    )
+    file_id = resolved_file_id
+
+    current_owners = file_metadata.get("owners", [])
+    current_owner_emails = [o.get("emailAddress", "") for o in current_owners]
+
+    permission_body = {
+        "type": "user",
+        "role": "owner",
+        "emailAddress": new_owner_email,
+    }
+
+    await asyncio.to_thread(
+        service.permissions()
+        .create(
+            fileId=file_id,
+            body=permission_body,
+            transferOwnership=True,
+            moveToNewOwnersRoot=move_to_new_owners_root,
+            supportsAllDrives=True,
+            fields="id, type, role, emailAddress",
+        )
+        .execute
+    )
+
+    output_parts = [
+        f"Successfully transferred ownership of '{file_metadata.get('name', 'Unknown')}'",
+        "",
+        f"New owner: {new_owner_email}",
+        f"Previous owner(s): {', '.join(current_owner_emails) or 'Unknown'}",
+    ]
+
+    if move_to_new_owners_root:
+        output_parts.append(f"File moved to {new_owner_email}'s My Drive root.")
+
+    output_parts.extend(["", "Note: Previous owner now has editor access."])
 
     return "\n".join(output_parts)

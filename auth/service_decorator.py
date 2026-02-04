@@ -3,6 +3,7 @@ import logging
 
 from functools import wraps
 from typing import Dict, List, Optional, Any, Callable, Union, Tuple
+from contextlib import ExitStack
 
 from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
@@ -13,7 +14,11 @@ from auth.oauth21_session_store import (
     get_oauth21_session_store,
     ensure_session_from_access_token,
 )
-from auth.oauth_config import is_oauth21_enabled, get_oauth_config
+from auth.oauth_config import (
+    is_oauth21_enabled,
+    get_oauth_config,
+    is_external_oauth21_provider,
+)
 from core.context import set_fastmcp_session_id
 from auth.scopes import (
     GMAIL_READONLY_SCOPE,
@@ -40,7 +45,13 @@ from auth.scopes import (
     SLIDES_READONLY_SCOPE,
     TASKS_SCOPE,
     TASKS_READONLY_SCOPE,
+    CONTACTS_SCOPE,
+    CONTACTS_READONLY_SCOPE,
     CUSTOM_SEARCH_SCOPE,
+    SCRIPT_PROJECTS_SCOPE,
+    SCRIPT_PROJECTS_READONLY_SCOPE,
+    SCRIPT_DEPLOYMENTS_SCOPE,
+    SCRIPT_DEPLOYMENTS_READONLY_SCOPE,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,8 +79,8 @@ def _get_auth_context(
         if mcp_session_id:
             set_fastmcp_session_id(mcp_session_id)
 
-        logger.debug(
-            f"[{tool_name}] Auth from middleware: {authenticated_user} via {auth_method}"
+        logger.info(
+            f"[{tool_name}] Auth from middleware: authenticated_user={authenticated_user}, auth_method={auth_method}, session_id={mcp_session_id}"
         )
         return authenticated_user, auth_method, mcp_session_id
 
@@ -96,6 +107,19 @@ def _detect_oauth_version(
             f"[{tool_name}] OAuth 2.1 mode: Using OAuth 2.1 for authenticated user '{authenticated_user}'"
         )
         return True
+
+    # If FastMCP protocol-level auth is enabled, a validated access token should
+    # be available even if middleware state wasn't populated.
+    try:
+        if get_access_token() is not None:
+            logger.info(
+                f"[{tool_name}] OAuth 2.1 mode: Using OAuth 2.1 based on validated access token"
+            )
+            return True
+    except Exception as e:
+        logger.debug(
+            f"[{tool_name}] Could not inspect access token for OAuth mode: {e}"
+        )
 
     # Only use version detection for unauthenticated requests
     config = get_oauth_config()
@@ -256,7 +280,9 @@ SERVICE_CONFIGS = {
     "forms": {"service": "forms", "version": "v1"},
     "slides": {"service": "slides", "version": "v1"},
     "tasks": {"service": "tasks", "version": "v1"},
+    "people": {"service": "people", "version": "v1"},
     "customsearch": {"service": "customsearch", "version": "v1"},
+    "script": {"service": "script", "version": "v1"},
 }
 
 
@@ -295,8 +321,16 @@ SCOPE_GROUPS = {
     # Tasks scopes
     "tasks": TASKS_SCOPE,
     "tasks_read": TASKS_READONLY_SCOPE,
+    # Contacts scopes
+    "contacts": CONTACTS_SCOPE,
+    "contacts_read": CONTACTS_READONLY_SCOPE,
     # Custom Search scope
     "customsearch": CUSTOM_SEARCH_SCOPE,
+    # Apps Script scopes
+    "script_readonly": SCRIPT_PROJECTS_READONLY_SCOPE,
+    "script_projects": SCRIPT_PROJECTS_SCOPE,
+    "script_deployments": SCRIPT_DEPLOYMENTS_SCOPE,
+    "script_deployments_readonly": SCRIPT_DEPLOYMENTS_READONLY_SCOPE,
 }
 
 
@@ -469,6 +503,9 @@ def require_google_service(
         # Set the wrapper's signature to the one without 'service'
         wrapper.__signature__ = wrapper_sig
 
+        # Attach required scopes to the wrapper for tool filtering
+        wrapper._required_google_scopes = _resolve_scopes(scopes)
+
         return wrapper
 
     return decorator
@@ -570,6 +607,12 @@ def require_multiple_services(service_configs: List[Dict[str, Any]]):
 
         # Set the wrapper's signature
         wrapper.__signature__ = wrapper_sig
+
+        # Attach all required scopes to the wrapper for tool filtering
+        all_scopes = []
+        for config in service_configs:
+            all_scopes.extend(_resolve_scopes(config["scopes"]))
+        wrapper._required_google_scopes = all_scopes
 
         return wrapper
 
