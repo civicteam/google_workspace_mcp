@@ -306,9 +306,13 @@ class AuthInfoMiddleware(Middleware):
                     try:
                         credentials_dir = os.getenv("GOOGLE_MCP_CREDENTIALS_DIR")
                         if credentials_dir:
-                            user_creds_path = os.path.join(credentials_dir, "user_credentials.json")
+                            user_creds_path = os.path.join(
+                                credentials_dir, "user_credentials.json"
+                            )
                             if os.path.exists(user_creds_path):
-                                logger.info(f"Found file-based credentials at {user_creds_path}, using single-user mode")
+                                logger.info(
+                                    f"Found file-based credentials at {user_creds_path}, using single-user mode"
+                                )
                                 # Use a placeholder - actual credentials are loaded by get_credentials()
                                 # in single-user mode via _find_any_credentials()
                                 placeholder_user = "single-user-mode"

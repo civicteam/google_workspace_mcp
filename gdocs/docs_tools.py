@@ -115,9 +115,7 @@ async def get_doc_content(
     Returns:
         str: The document content with metadata header.
     """
-    logger.info(
-        f"[get_doc_content] Invoked. Document/File ID: '{document_id}'"
-    )
+    logger.info(f"[get_doc_content] Invoked. Document/File ID: '{document_id}'")
 
     # Step 2: Get file metadata from Drive
     file_metadata = await asyncio.to_thread(
@@ -286,9 +284,7 @@ async def list_docs_in_folder(
     Returns:
         str: A formatted list of Google Docs in the specified folder.
     """
-    logger.info(
-        f"[list_docs_in_folder] Invoked. Folder ID: '{folder_id}'"
-    )
+    logger.info(f"[list_docs_in_folder] Invoked. Folder ID: '{folder_id}'")
 
     rsp = await asyncio.to_thread(
         service.files()

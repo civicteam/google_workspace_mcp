@@ -302,9 +302,7 @@ def handle_http_errors(
                         )
 
                         if enablement_msg:
-                            message = (
-                                f"API error in {tool_name}: {enablement_msg}"
-                            )
+                            message = f"API error in {tool_name}: {enablement_msg}"
                         else:
                             message = (
                                 f"API error in {tool_name}: {error}. "
@@ -325,9 +323,7 @@ def handle_http_errors(
                                     "client's OAuth 2.1 flow and retry."
                                 )
                         else:
-                            auth_hint = (
-                                "LLM: Try 'start_google_auth' with the appropriate service_name."
-                            )
+                            auth_hint = "LLM: Try 'start_google_auth' with the appropriate service_name."
                         message = (
                             f"API error in {tool_name}: {error}. "
                             f"You might need to re-authenticate. "

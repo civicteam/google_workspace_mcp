@@ -51,7 +51,7 @@ async def list_spreadsheets(
     Returns:
         str: A formatted list of spreadsheet files (name, ID, modified time).
     """
-    logger.info(f"[list_spreadsheets] Invoked.")
+    logger.info("[list_spreadsheets] Invoked.")
 
     files_response = await asyncio.to_thread(
         service.files()
@@ -68,21 +68,18 @@ async def list_spreadsheets(
 
     files = files_response.get("files", [])
     if not files:
-        return f"No spreadsheets found."
+        return "No spreadsheets found."
 
     spreadsheets_list = [
         f'- "{file["name"]}" (ID: {file["id"]}) | Modified: {file.get("modifiedTime", "Unknown")} | Link: {file.get("webViewLink", "No link")}'
         for file in files
     ]
 
-    text_output = (
-        f"Successfully listed {len(files)} spreadsheets:\n"
-        + "\n".join(spreadsheets_list)
+    text_output = f"Successfully listed {len(files)} spreadsheets:\n" + "\n".join(
+        spreadsheets_list
     )
 
-    logger.info(
-        f"Successfully listed {len(files)} spreadsheets."
-    )
+    logger.info(f"Successfully listed {len(files)} spreadsheets.")
     return text_output
 
 
@@ -102,9 +99,7 @@ async def get_spreadsheet_info(
     Returns:
         str: Formatted spreadsheet information including title, locale, and sheets list.
     """
-    logger.info(
-        f"[get_spreadsheet_info] Invoked. Spreadsheet ID: {spreadsheet_id}"
-    )
+    logger.info(f"[get_spreadsheet_info] Invoked. Spreadsheet ID: {spreadsheet_id}")
 
     spreadsheet = await asyncio.to_thread(
         service.spreadsheets()
@@ -156,9 +151,7 @@ async def get_spreadsheet_info(
         ]
     )
 
-    logger.info(
-        f"Successfully retrieved info for spreadsheet {spreadsheet_id}."
-    )
+    logger.info(f"Successfully retrieved info for spreadsheet {spreadsheet_id}.")
     return text_output
 
 
@@ -297,9 +290,7 @@ async def modify_sheet_values(
 
         cleared_range = result.get("clearedRange", range_name)
         text_output = f"Successfully cleared range '{cleared_range}' in spreadsheet {spreadsheet_id}."
-        logger.info(
-            f"Successfully cleared range '{cleared_range}'."
-        )
+        logger.info(f"Successfully cleared range '{cleared_range}'.")
     else:
         body = {"values": values}
 
@@ -350,9 +341,7 @@ async def modify_sheet_values(
             f"Updated: {updated_cells} cells, {updated_rows} rows, {updated_columns} columns."
         )
         text_output += detailed_errors_section
-        logger.info(
-            f"Successfully updated {updated_cells} cells."
-        )
+        logger.info(f"Successfully updated {updated_cells} cells.")
 
     return text_output
 
@@ -482,9 +471,7 @@ async def format_sheet_range(
         applied_parts.append(f"format {nf_desc}")
 
     summary = ", ".join(applied_parts)
-    return (
-        f"Applied formatting to range '{range_name}' in spreadsheet {spreadsheet_id}: {summary}."
-    )
+    return f"Applied formatting to range '{range_name}' in spreadsheet {spreadsheet_id}: {summary}."
 
 
 @server.tool()
@@ -896,9 +883,7 @@ async def create_spreadsheet(
     Returns:
         str: Information about the newly created spreadsheet including ID, URL, and locale.
     """
-    logger.info(
-        f"[create_spreadsheet] Invoked. Title: {title}"
-    )
+    logger.info(f"[create_spreadsheet] Invoked. Title: {title}")
 
     spreadsheet_body = {"properties": {"title": title}}
 
@@ -926,9 +911,7 @@ async def create_spreadsheet(
         f"ID: {spreadsheet_id} | URL: {spreadsheet_url} | Locale: {locale}"
     )
 
-    logger.info(
-        f"Successfully created spreadsheet. ID: {spreadsheet_id}"
-    )
+    logger.info(f"Successfully created spreadsheet. ID: {spreadsheet_id}")
     return text_output
 
 
@@ -966,9 +949,7 @@ async def create_sheet(
 
     text_output = f"Successfully created sheet '{sheet_name}' (ID: {sheet_id}) in spreadsheet {spreadsheet_id}."
 
-    logger.info(
-        f"Successfully created sheet. Sheet ID: {sheet_id}"
-    )
+    logger.info(f"Successfully created sheet. Sheet ID: {sheet_id}")
     return text_output
 
 

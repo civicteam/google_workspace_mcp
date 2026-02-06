@@ -145,9 +145,7 @@ async def list_task_lists(
 @server.tool()  # type: ignore
 @require_google_service("tasks", "tasks_read")  # type: ignore
 @handle_http_errors("get_task_list", service_type="tasks")  # type: ignore
-async def get_task_list(
-    service: Resource, task_list_id: str
-) -> str:
+async def get_task_list(service: Resource, task_list_id: str) -> str:
     """
     Get details of a specific task list.
 
@@ -186,9 +184,7 @@ async def get_task_list(
 @server.tool()  # type: ignore
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("create_task_list", service_type="tasks")  # type: ignore
-async def create_task_list(
-    service: Resource, title: str
-) -> str:
+async def create_task_list(service: Resource, title: str) -> str:
     """
     Create a new task list.
 
@@ -227,9 +223,7 @@ async def create_task_list(
 @server.tool()  # type: ignore
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("update_task_list", service_type="tasks")  # type: ignore
-async def update_task_list(
-    service: Resource, task_list_id: str, title: str
-) -> str:
+async def update_task_list(service: Resource, task_list_id: str, title: str) -> str:
     """
     Update an existing task list.
 
@@ -272,9 +266,7 @@ async def update_task_list(
 @server.tool()  # type: ignore
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("delete_task_list", service_type="tasks")  # type: ignore
-async def delete_task_list(
-    service: Resource, task_list_id: str
-) -> str:
+async def delete_task_list(service: Resource, task_list_id: str) -> str:
     """
     Delete a task list. Note: This will also delete all tasks in the list.
 
@@ -545,9 +537,7 @@ This can also occur due to filtering that excludes parent tasks while including 
 @server.tool()  # type: ignore
 @require_google_service("tasks", "tasks_read")  # type: ignore
 @handle_http_errors("get_task", service_type="tasks")  # type: ignore
-async def get_task(
-    service: Resource, task_list_id: str, task_id: str
-) -> str:
+async def get_task(service: Resource, task_list_id: str, task_id: str) -> str:
     """
     Get details of a specific task.
 
@@ -625,7 +615,9 @@ async def create_task(
     Returns:
         str: Confirmation message with the new task ID and details.
     """
-    logger.info(f"[create_task] Invoked. Task List ID: {task_list_id}, Title: '{title}'")
+    logger.info(
+        f"[create_task] Invoked. Task List ID: {task_list_id}, Title: '{title}'"
+    )
 
     try:
         body = {"title": title}
@@ -694,7 +686,9 @@ async def update_task(
     Returns:
         str: Confirmation message with updated task details.
     """
-    logger.info(f"[update_task] Invoked. Task List ID: {task_list_id}, Task ID: {task_id}")
+    logger.info(
+        f"[update_task] Invoked. Task List ID: {task_list_id}, Task ID: {task_id}"
+    )
 
     try:
         # First get the current task to build the update body
@@ -755,9 +749,7 @@ async def update_task(
 @server.tool()  # type: ignore
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("delete_task", service_type="tasks")  # type: ignore
-async def delete_task(
-    service: Resource, task_list_id: str, task_id: str
-) -> str:
+async def delete_task(service: Resource, task_list_id: str, task_id: str) -> str:
     """
     Delete a task from a task list.
 
@@ -768,7 +760,9 @@ async def delete_task(
     Returns:
         str: Confirmation message.
     """
-    logger.info(f"[delete_task] Invoked. Task List ID: {task_list_id}, Task ID: {task_id}")
+    logger.info(
+        f"[delete_task] Invoked. Task List ID: {task_list_id}, Task ID: {task_id}"
+    )
 
     try:
         await asyncio.to_thread(
@@ -814,7 +808,9 @@ async def move_task(
     Returns:
         str: Confirmation message with updated task details.
     """
-    logger.info(f"[move_task] Invoked. Task List ID: {task_list_id}, Task ID: {task_id}")
+    logger.info(
+        f"[move_task] Invoked. Task List ID: {task_list_id}, Task ID: {task_id}"
+    )
 
     try:
         params = {"tasklist": task_list_id, "task": task_id}
@@ -865,9 +861,7 @@ async def move_task(
 @server.tool()  # type: ignore
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("clear_completed_tasks", service_type="tasks")  # type: ignore
-async def clear_completed_tasks(
-    service: Resource, task_list_id: str
-) -> str:
+async def clear_completed_tasks(service: Resource, task_list_id: str) -> str:
     """
     Clear all completed tasks from a task list. The tasks will be marked as hidden.
 

@@ -392,7 +392,7 @@ async def start_auth_flow(
             "**LLM, after presenting the link, instruct the user as follows:**",
             "1. Click the link and complete the authorization in their browser.",
             "2. After successful authorization, **retry their original command**.",
-            "\nThe application will use the new credentials."
+            "\nThe application will use the new credentials.",
         ]
         return "\n".join(message_lines)
 
@@ -840,12 +840,8 @@ async def get_authenticated_google_service(
     )
 
     if not credentials or not credentials.valid:
-        logger.warning(
-            f"[{tool_name}] No valid credentials."
-        )
-        logger.info(
-            f"[{tool_name}] Initiating auth flow."
-        )
+        logger.warning(f"[{tool_name}] No valid credentials.")
+        logger.info(f"[{tool_name}] Initiating auth flow.")
 
         # Ensure OAuth callback is available
         from auth.oauth_callback_server import ensure_oauth_callback_available

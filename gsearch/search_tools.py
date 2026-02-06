@@ -65,9 +65,7 @@ async def search_custom(
             "GOOGLE_PSE_ENGINE_ID environment variable not set. Please set it to your Programmable Search Engine ID."
         )
 
-    logger.info(
-        f"[search_custom] Invoked. Query: '{q}', CX: '{cx}'"
-    )
+    logger.info(f"[search_custom] Invoked. Query: '{q}', CX: '{cx}'")
 
     # Build the request parameters
     params = {
@@ -178,9 +176,7 @@ async def get_search_engine_info(service) -> str:
             "GOOGLE_PSE_ENGINE_ID environment variable not set. Please set it to your Programmable Search Engine ID."
         )
 
-    logger.info(
-        f"[get_search_engine_info] Invoked. CX: '{cx}'"
-    )
+    logger.info(f"[get_search_engine_info] Invoked. CX: '{cx}'")
 
     # Perform a minimal search to get the search engine context
     params = {
@@ -247,9 +243,7 @@ async def search_custom_siterestrict(
     Returns:
         str: Formatted search results from the specified sites.
     """
-    logger.info(
-        f"[search_custom_siterestrict] Invoked. Query: '{q}', Sites: {sites}"
-    )
+    logger.info(f"[search_custom_siterestrict] Invoked. Query: '{q}', Sites: {sites}")
 
     # Build site restriction query
     site_query = " OR ".join([f"site:{site}" for site in sites])

@@ -72,9 +72,7 @@ async def search_drive_files(
     Returns:
         str: A formatted list of found files/folders with their details (ID, name, type, size, modified time, link).
     """
-    logger.info(
-        f"[search_drive_files] Invoked. Query: '{query}'"
-    )
+    logger.info(f"[search_drive_files] Invoked. Query: '{query}'")
 
     # Check if the query looks like a structured Drive query or free text
     # Look for Drive API operators and structured query patterns
@@ -106,9 +104,7 @@ async def search_drive_files(
     if not files:
         return f"No files found for '{query}'."
 
-    formatted_files_text_parts = [
-        f"Found {len(files)} files matching '{query}':"
-    ]
+    formatted_files_text_parts = [f"Found {len(files)} files matching '{query}':"]
     for item in files:
         size_str = f", Size: {item.get('size', 'N/A')}" if "size" in item else ""
         formatted_files_text_parts.append(
@@ -413,9 +409,7 @@ async def list_drive_items(
     Returns:
         str: A formatted list of files/folders in the specified folder.
     """
-    logger.info(
-        f"[list_drive_items] Invoked. Folder ID: '{folder_id}'"
-    )
+    logger.info(f"[list_drive_items] Invoked. Folder ID: '{folder_id}'")
 
     resolved_folder_id = await resolve_folder_id(service, folder_id)
     final_query = f"'{resolved_folder_id}' in parents and trashed=false"
@@ -433,9 +427,7 @@ async def list_drive_items(
     if not files:
         return f"No items found in folder '{folder_id}'."
 
-    formatted_items_text_parts = [
-        f"Found {len(files)} items in folder '{folder_id}':"
-    ]
+    formatted_items_text_parts = [f"Found {len(files)} items in folder '{folder_id}':"]
     for item in files:
         size_str = f", Size: {item.get('size', 'N/A')}" if "size" in item else ""
         formatted_items_text_parts.append(
@@ -960,9 +952,7 @@ async def get_drive_file_permissions(
     Returns:
         str: Detailed file metadata including sharing status and URLs.
     """
-    logger.info(
-        f"[get_drive_file_permissions] Checking file {file_id}"
-    )
+    logger.info(f"[get_drive_file_permissions] Checking file {file_id}")
 
     resolved_file_id, _ = await resolve_drive_item(service, file_id)
     file_id = resolved_file_id
