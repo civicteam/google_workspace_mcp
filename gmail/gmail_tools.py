@@ -40,6 +40,9 @@ from gmail.gmail_models import (
     GmailMessageContent,
     GmailAttachment,
     GmailSendResult,
+    GMAIL_SEARCH_RESULT_SCHEMA,
+    GMAIL_MESSAGE_CONTENT_SCHEMA,
+    GMAIL_SEND_RESULT_SCHEMA,
 )
 
 logger = logging.getLogger(__name__)
@@ -483,7 +486,7 @@ def _format_gmail_results_plain(
     return "\n".join(lines)
 
 
-@server.tool()
+@server.tool(output_schema=GMAIL_SEARCH_RESULT_SCHEMA)
 @handle_http_errors("search_gmail_messages", is_read_only=True, service_type="gmail")
 @require_google_service("gmail", "gmail_read")
 async def search_gmail_messages(
@@ -574,7 +577,7 @@ async def search_gmail_messages(
     return create_tool_result(text=formatted_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=GMAIL_MESSAGE_CONTENT_SCHEMA)
 @handle_http_errors(
     "get_gmail_message_content", is_read_only=True, service_type="gmail"
 )
@@ -1032,7 +1035,7 @@ async def get_gmail_attachment_content(
         return "\n".join(result_lines)
 
 
-@server.tool()
+@server.tool(output_schema=GMAIL_SEND_RESULT_SCHEMA)
 @handle_http_errors("send_gmail_message", service_type="gmail")
 @require_google_service("gmail", GMAIL_SEND_SCOPE)
 async def send_gmail_message(
