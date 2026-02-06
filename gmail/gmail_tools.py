@@ -25,11 +25,21 @@ from pydantic import Field
 from auth.service_decorator import require_google_service
 from core.utils import handle_http_errors
 from core.server import server
+from fastmcp.tools.tool import ToolResult
+
 from auth.scopes import (
     GMAIL_SEND_SCOPE,
     GMAIL_COMPOSE_SCOPE,
     GMAIL_MODIFY_SCOPE,
     GMAIL_LABELS_SCOPE,
+)
+from core.structured_output import create_tool_result
+from gmail.gmail_models import (
+    GmailMessageSummary,
+    GmailSearchResult,
+    GmailMessageContent,
+    GmailAttachment,
+    GmailSendResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -481,7 +491,7 @@ async def search_gmail_messages(
     query: str,
     page_size: int = 10,
     page_token: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Searches messages in a user's Gmail account based on a query.
     Returns both Message IDs and Thread IDs for each found message, along with Gmail web interface links for manual verification.
@@ -493,12 +503,10 @@ async def search_gmail_messages(
         page_token (Optional[str]): Token for retrieving the next page of results. Use the next_page_token from a previous response.
 
     Returns:
-        str: LLM-friendly structured results with Message IDs, Thread IDs, and clickable Gmail web interface URLs for each found message.
-        Includes pagination token if more results are available.
+        ToolResult: LLM-friendly structured results with Message IDs, Thread IDs, and clickable Gmail web interface URLs for each found message.
+        Includes pagination token if more results are available. Also includes structured_content for machine parsing.
     """
-    logger.info(
-        f"[search_gmail_messages] Query: '{query}', Page size: {page_size}"
-    )
+    logger.info(f"[search_gmail_messages] Query: '{query}', Page size: {page_size}")
 
     # Build the API request parameters
     request_params = {"userId": "me", "q": query, "maxResults": page_size}
@@ -515,7 +523,10 @@ async def search_gmail_messages(
     # Handle potential null response (but empty dict {} is valid)
     if response is None:
         logger.warning("[search_gmail_messages] Null response from Gmail API")
-        return f"No response received from Gmail API for query: '{query}'"
+        return create_tool_result(
+            text=f"No response received from Gmail API for query: '{query}'",
+            data=GmailSearchResult(query=query, total_found=0, messages=[]),
+        )
 
     messages = response.get("messages", [])
     # Additional safety check for null messages array
@@ -525,6 +536,33 @@ async def search_gmail_messages(
     # Extract next page token for pagination
     next_page_token = response.get("nextPageToken")
 
+    # Build structured output
+    message_summaries = []
+    for msg in messages:
+        if not msg or not isinstance(msg, dict):
+            continue
+        message_id = msg.get("id") or "unknown"
+        thread_id = msg.get("threadId") or "unknown"
+        message_summaries.append(
+            GmailMessageSummary(
+                message_id=message_id,
+                thread_id=thread_id,
+                web_link=_generate_gmail_web_url(message_id)
+                if message_id != "unknown"
+                else "N/A",
+                thread_link=_generate_gmail_web_url(thread_id)
+                if thread_id != "unknown"
+                else "N/A",
+            )
+        )
+
+    structured_result = GmailSearchResult(
+        query=query,
+        total_found=len(message_summaries),
+        messages=message_summaries,
+        next_page_token=next_page_token,
+    )
+
     formatted_output = _format_gmail_results_plain(messages, query, next_page_token)
 
     logger.info(f"[search_gmail_messages] Found {len(messages)} messages")
@@ -532,7 +570,8 @@ async def search_gmail_messages(
         logger.info(
             "[search_gmail_messages] More results available (next_page_token present)"
         )
-    return formatted_output
+
+    return create_tool_result(text=formatted_output, data=structured_result)
 
 
 @server.tool()
@@ -540,9 +579,7 @@ async def search_gmail_messages(
     "get_gmail_message_content", is_read_only=True, service_type="gmail"
 )
 @require_google_service("gmail", "gmail_read")
-async def get_gmail_message_content(
-    service, message_id: str
-) -> str:
+async def get_gmail_message_content(service, message_id: str) -> ToolResult:
     """
     Retrieves the full content (subject, sender, recipients, plain text body) of a specific Gmail message.
 
@@ -550,11 +587,10 @@ async def get_gmail_message_content(
         message_id (str): The unique ID of the Gmail message to retrieve.
 
     Returns:
-        str: The message details including subject, sender, date, Message-ID, recipients (To, Cc), and body content.
+        ToolResult: The message details including subject, sender, date, Message-ID, recipients (To, Cc), and body content.
+        Also includes structured_content for machine parsing.
     """
-    logger.info(
-        f"[get_gmail_message_content] Invoked. Message ID: '{message_id}'"
-    )
+    logger.info(f"[get_gmail_message_content] Invoked. Message ID: '{message_id}'")
 
     # Fetch message metadata first to get headers
     message_metadata = await asyncio.to_thread(
@@ -576,6 +612,7 @@ async def get_gmail_message_content(
     sender = headers.get("From", "(unknown sender)")
     to = headers.get("To", "")
     cc = headers.get("Cc", "")
+    date = headers.get("Date", "(unknown date)")
     rfc822_msg_id = headers.get("Message-ID", "")
 
     # Now fetch the full message to get the body parts
@@ -605,7 +642,7 @@ async def get_gmail_message_content(
     content_lines = [
         f"Subject: {subject}",
         f"From:    {sender}",
-        f"Date:    {headers.get('Date', '(unknown date)')}",
+        f"Date:    {date}",
     ]
 
     if rfc822_msg_id:
@@ -629,7 +666,30 @@ async def get_gmail_message_content(
                 f"   Use get_gmail_attachment_content(message_id='{message_id}', attachment_id='{att['attachmentId']}') to download"
             )
 
-    return "\n".join(content_lines)
+    # Build structured output
+    structured_attachments = [
+        GmailAttachment(
+            filename=att["filename"],
+            mime_type=att["mimeType"],
+            size_bytes=att["size"],
+            attachment_id=att["attachmentId"],
+        )
+        for att in attachments
+    ]
+
+    structured_result = GmailMessageContent(
+        message_id=message_id,
+        subject=subject,
+        sender=sender,
+        date=date,
+        to=to if to else None,
+        cc=cc if cc else None,
+        rfc822_message_id=rfc822_msg_id if rfc822_msg_id else None,
+        body=body_data or "",
+        attachments=structured_attachments,
+    )
+
+    return create_tool_result(text="\n".join(content_lines), data=structured_result)
 
 
 @server.tool()
@@ -849,9 +909,7 @@ async def get_gmail_attachment_content(
     Returns:
         str: Attachment metadata and base64-encoded content that can be decoded and saved.
     """
-    logger.info(
-        f"[get_gmail_attachment_content] Invoked. Message ID: '{message_id}'"
-    )
+    logger.info(f"[get_gmail_attachment_content] Invoked. Message ID: '{message_id}'")
 
     # Download attachment directly without refetching message metadata.
     #
@@ -1009,7 +1067,7 @@ async def send_gmail_message(
         None,
         description='Optional list of attachments. Each can have: "path" (file path, auto-encodes), OR "content" (standard base64, not urlsafe) + "filename". Optional "mime_type". Example: [{"path": "/path/to/file.pdf"}] or [{"filename": "doc.pdf", "content": "base64data", "mime_type": "application/pdf"}]',
     ),
-) -> str:
+) -> ToolResult:
     """
     Sends an email using the user's Gmail account. Supports both new emails and replies with optional attachments.
     Supports Gmail's "Send As" feature to send from configured alias addresses.
@@ -1039,7 +1097,8 @@ async def send_gmail_message(
         references (Optional[str]): Optional chain of Message-IDs for proper threading. Should include all previous Message-IDs.
 
     Returns:
-        str: Confirmation message with the sent email's message ID.
+        ToolResult: Confirmation message with the sent email's message ID.
+        Also includes structured_content for machine parsing.
 
     Examples:
         # Send a new email
@@ -1136,10 +1195,23 @@ async def send_gmail_message(
         service.users().messages().send(userId="me", body=send_body).execute
     )
     message_id = sent_message.get("id")
+    result_thread_id = sent_message.get("threadId")
+    attachment_count = len(attachments) if attachments else 0
 
-    if attachments:
-        return f"Email sent with {len(attachments)} attachment(s)! Message ID: {message_id}"
-    return f"Email sent! Message ID: {message_id}"
+    # Build text output
+    if attachment_count > 0:
+        text_output = f"Email sent with {attachment_count} attachment(s)! Message ID: {message_id}"
+    else:
+        text_output = f"Email sent! Message ID: {message_id}"
+
+    # Build structured output
+    structured_result = GmailSendResult(
+        message_id=message_id,
+        thread_id=result_thread_id,
+        attachment_count=attachment_count,
+    )
+
+    return create_tool_result(text=text_output, data=structured_result)
 
 
 @server.tool()
@@ -1261,9 +1333,7 @@ async def draft_gmail_message(
             references="<original@gmail.com> <message123@gmail.com>"
         )
     """
-    logger.info(
-        f"[draft_gmail_message] Invoked. Subject: '{subject}'"
-    )
+    logger.info(f"[draft_gmail_message] Invoked. Subject: '{subject}'")
 
     # Prepare the email message
     raw_message, thread_id_final = _prepare_gmail_message(
@@ -1375,9 +1445,7 @@ def _format_thread_content(thread_data: dict, thread_id: str) -> str:
 @server.tool()
 @require_google_service("gmail", "gmail_read")
 @handle_http_errors("get_gmail_thread_content", is_read_only=True, service_type="gmail")
-async def get_gmail_thread_content(
-    service, thread_id: str
-) -> str:
+async def get_gmail_thread_content(service, thread_id: str) -> str:
     """
     Retrieves the complete content of a Gmail conversation thread, including all messages.
 
@@ -1387,9 +1455,7 @@ async def get_gmail_thread_content(
     Returns:
         str: The complete thread content with all messages formatted for reading.
     """
-    logger.info(
-        f"[get_gmail_thread_content] Invoked. Thread ID: '{thread_id}'"
-    )
+    logger.info(f"[get_gmail_thread_content] Invoked. Thread ID: '{thread_id}'")
 
     # Fetch the complete thread with all messages
     thread_response = await asyncio.to_thread(
@@ -1518,9 +1584,7 @@ async def get_gmail_user_email(service) -> str:
     """
     logger.info("[get_gmail_user_email] Invoked")
 
-    profile = await asyncio.to_thread(
-        service.users().getProfile(userId="me").execute
-    )
+    profile = await asyncio.to_thread(service.users().getProfile(userId="me").execute)
 
     email = profile.get("emailAddress", "")
     if not email:
@@ -1539,7 +1603,7 @@ async def list_gmail_labels(service) -> str:
     Returns:
         str: A formatted list of all labels with their IDs, names, and types.
     """
-    logger.info(f"[list_gmail_labels] Invoked")
+    logger.info("[list_gmail_labels] Invoked")
 
     response = await asyncio.to_thread(
         service.users().labels().list(userId="me").execute
@@ -1598,9 +1662,7 @@ async def manage_gmail_label(
     Returns:
         str: Confirmation message of the label operation.
     """
-    logger.info(
-        f"[manage_gmail_label] Invoked. Action: '{action}'"
-    )
+    logger.info(f"[manage_gmail_label] Invoked. Action: '{action}'")
 
     if action == "create" and not name:
         raise Exception("Label name is required for create action.")
@@ -1661,7 +1723,7 @@ async def list_gmail_filters(service) -> str:
     Returns:
         str: A formatted list of filters with their criteria and actions.
     """
-    logger.info(f"[list_gmail_filters] Invoked")
+    logger.info("[list_gmail_filters] Invoked")
 
     response = await asyncio.to_thread(
         service.users().settings().filters().list(userId="me").execute
@@ -1827,9 +1889,7 @@ async def modify_gmail_message_labels(
     Returns:
         str: Confirmation message of the label changes applied to the message.
     """
-    logger.info(
-        f"[modify_gmail_message_labels] Invoked. Message ID: '{message_id}'"
-    )
+    logger.info(f"[modify_gmail_message_labels] Invoked. Message ID: '{message_id}'")
 
     if not add_label_ids and not remove_label_ids:
         raise Exception(
