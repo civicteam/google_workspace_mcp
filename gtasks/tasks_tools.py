@@ -81,6 +81,10 @@ class StructuredTask:
         self.notes = task.get("notes", None)
         self.updated = task.get("updated", None)
         self.completed = task.get("completed", None)
+        self.parent = task.get("parent", None)
+        self.position = task.get("position", None)
+        self.self_link = task.get("selfLink", None)
+        self.web_view_link = task.get("webViewLink", None)
         self.is_placeholder_parent = is_placeholder_parent
         self.subtasks: List["StructuredTask"] = []
 
@@ -392,6 +396,10 @@ def _convert_structured_task_to_task_summary(task: StructuredTask) -> TaskSummar
         notes=task.notes,
         updated=task.updated,
         completed=task.completed,
+        parent=task.parent,
+        position=task.position,
+        self_link=task.self_link,
+        web_view_link=task.web_view_link,
         subtasks=[_convert_structured_task_to_task_summary(st) for st in task.subtasks],
     )
 
