@@ -8,9 +8,55 @@ import logging
 import asyncio
 from typing import List, Dict, Any, Optional
 
+from fastmcp.tools.tool import ToolResult
+
 from auth.service_decorator import require_google_service
 from core.server import server
+from core.structured_output import create_tool_result
 from core.utils import handle_http_errors
+from gappsscript.apps_script_models import (
+    ScriptProjectSummary,
+    ListScriptProjectsResult,
+    ScriptFile,
+    GetScriptProjectResult,
+    GetScriptContentResult,
+    CreateScriptProjectResult,
+    UpdatedFile,
+    UpdateScriptContentResult,
+    RunScriptFunctionResult,
+    CreateDeploymentResult,
+    DeploymentSummary,
+    ListDeploymentsResult,
+    UpdateDeploymentResult,
+    DeleteDeploymentResult,
+    ProcessSummary,
+    ListScriptProcessesResult,
+    DeleteScriptProjectResult,
+    VersionSummary,
+    ListVersionsResult,
+    CreateVersionResult,
+    GetVersionResult,
+    MetricDataPoint,
+    GetScriptMetricsResult,
+    GenerateTriggerCodeResult,
+    LIST_SCRIPT_PROJECTS_SCHEMA,
+    GET_SCRIPT_PROJECT_SCHEMA,
+    GET_SCRIPT_CONTENT_SCHEMA,
+    CREATE_SCRIPT_PROJECT_SCHEMA,
+    UPDATE_SCRIPT_CONTENT_SCHEMA,
+    RUN_SCRIPT_FUNCTION_SCHEMA,
+    CREATE_DEPLOYMENT_SCHEMA,
+    LIST_DEPLOYMENTS_SCHEMA,
+    UPDATE_DEPLOYMENT_SCHEMA,
+    DELETE_DEPLOYMENT_SCHEMA,
+    LIST_SCRIPT_PROCESSES_SCHEMA,
+    DELETE_SCRIPT_PROJECT_SCHEMA,
+    LIST_VERSIONS_SCHEMA,
+    CREATE_VERSION_SCHEMA,
+    GET_VERSION_SCHEMA,
+    GET_SCRIPT_METRICS_SCHEMA,
+    GENERATE_TRIGGER_CODE_SCHEMA,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +67,7 @@ async def _list_script_projects_impl(
     user_google_email: str,
     page_size: int = 50,
     page_token: Optional[str] = None,
-) -> str:
+) -> tuple[str, ListScriptProjectsResult]:
     """Internal implementation for list_script_projects.
 
     Uses Drive API to find Apps Script files since the Script API
@@ -45,11 +91,16 @@ async def _list_script_projects_impl(
     response = await asyncio.to_thread(service.files().list(**request_params).execute)
 
     files = response.get("files", [])
+    next_page_token = response.get("nextPageToken")
 
     if not files:
-        return "No Apps Script projects found."
+        structured = ListScriptProjectsResult(
+            total_found=0, projects=[], next_page_token=next_page_token
+        )
+        return "No Apps Script projects found.", structured
 
     output = [f"Found {len(files)} Apps Script projects:"]
+    project_summaries = []
     for file in files:
         title = file.get("name", "Untitled")
         script_id = file.get("id", "Unknown ID")
@@ -59,17 +110,31 @@ async def _list_script_projects_impl(
         output.append(
             f"- {title} (ID: {script_id}) Created: {create_time} Modified: {update_time}"
         )
+        project_summaries.append(
+            ScriptProjectSummary(
+                script_id=script_id,
+                title=title,
+                created_time=create_time,
+                modified_time=update_time,
+            )
+        )
 
-    if "nextPageToken" in response:
-        output.append(f"\nNext page token: {response['nextPageToken']}")
+    if next_page_token:
+        output.append(f"\nNext page token: {next_page_token}")
 
     logger.info(
         f"[list_script_projects] Found {len(files)} projects for {user_google_email}"
     )
-    return "\n".join(output)
+
+    structured = ListScriptProjectsResult(
+        total_found=len(project_summaries),
+        projects=project_summaries,
+        next_page_token=next_page_token,
+    )
+    return "\n".join(output), structured
 
 
-@server.tool()
+@server.tool(output_schema=LIST_SCRIPT_PROJECTS_SCHEMA)
 @handle_http_errors("list_script_projects", is_read_only=True, service_type="drive")
 @require_google_service("drive", "drive_read")
 async def list_script_projects(
@@ -77,7 +142,7 @@ async def list_script_projects(
     user_google_email: str,
     page_size: int = 50,
     page_token: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Lists Google Apps Script projects accessible to the user.
 
@@ -90,18 +155,19 @@ async def list_script_projects(
         page_token: Token for pagination (optional)
 
     Returns:
-        str: Formatted list of script projects
+        ToolResult: Formatted list of script projects with structured data
     """
-    return await _list_script_projects_impl(
+    text, structured = await _list_script_projects_impl(
         service, user_google_email, page_size, page_token
     )
+    return create_tool_result(text=text, data=structured)
 
 
 async def _get_script_project_impl(
     service: Any,
     user_google_email: str,
     script_id: str,
-) -> str:
+) -> tuple[str, GetScriptProjectResult]:
     """Internal implementation for get_script_project."""
     logger.info(f"[get_script_project] Email: {user_google_email}, ID: {script_id}")
 
@@ -125,28 +191,46 @@ async def _get_script_project_impl(
     ]
 
     files = project.get("files", [])
+    script_files = []
     for i, file in enumerate(files, 1):
         file_name = file.get("name", "Untitled")
         file_type = file.get("type", "Unknown")
         source = file.get("source", "")
 
         output.append(f"{i}. {file_name} ({file_type})")
+        source_preview = None
         if source:
-            output.append(f"   {source[:200]}{'...' if len(source) > 200 else ''}")
+            source_preview = source[:200] + ("..." if len(source) > 200 else "")
+            output.append(f"   {source_preview}")
             output.append("")
 
+        script_files.append(
+            ScriptFile(
+                name=file_name, file_type=file_type, source_preview=source_preview
+            )
+        )
+
     logger.info(f"[get_script_project] Retrieved project {script_id}")
-    return "\n".join(output)
+
+    structured = GetScriptProjectResult(
+        script_id=project_script_id,
+        title=title,
+        creator=creator,
+        created_time=create_time,
+        modified_time=update_time,
+        files=script_files,
+    )
+    return "\n".join(output), structured
 
 
-@server.tool()
+@server.tool(output_schema=GET_SCRIPT_PROJECT_SCHEMA)
 @handle_http_errors("get_script_project", is_read_only=True, service_type="script")
 @require_google_service("script", "script_readonly")
 async def get_script_project(
     service: Any,
     user_google_email: str,
     script_id: str,
-) -> str:
+) -> ToolResult:
     """
     Retrieves complete project details including all source files.
 
@@ -156,9 +240,12 @@ async def get_script_project(
         script_id: The script project ID
 
     Returns:
-        str: Formatted project details with all file contents
+        ToolResult: Formatted project details with all file contents and structured data
     """
-    return await _get_script_project_impl(service, user_google_email, script_id)
+    text, structured = await _get_script_project_impl(
+        service, user_google_email, script_id
+    )
+    return create_tool_result(text=text, data=structured)
 
 
 async def _get_script_content_impl(
@@ -166,7 +253,7 @@ async def _get_script_content_impl(
     user_google_email: str,
     script_id: str,
     file_name: str,
-) -> str:
+) -> tuple[str, GetScriptContentResult]:
     """Internal implementation for get_script_content."""
     logger.info(
         f"[get_script_content] Email: {user_google_email}, ID: {script_id}, File: {file_name}"
@@ -185,7 +272,15 @@ async def _get_script_content_impl(
             break
 
     if not target_file:
-        return f"File '{file_name}' not found in project {script_id}"
+        text = f"File '{file_name}' not found in project {script_id}"
+        structured = GetScriptContentResult(
+            script_id=script_id,
+            file_name=file_name,
+            file_type="Unknown",
+            source="",
+            found=False,
+        )
+        return text, structured
 
     source = target_file.get("source", "")
     file_type = target_file.get("type", "Unknown")
@@ -193,10 +288,18 @@ async def _get_script_content_impl(
     output = [f"File: {file_name} ({file_type})", "", source]
 
     logger.info(f"[get_script_content] Retrieved file {file_name} from {script_id}")
-    return "\n".join(output)
+
+    structured = GetScriptContentResult(
+        script_id=script_id,
+        file_name=file_name,
+        file_type=file_type,
+        source=source,
+        found=True,
+    )
+    return "\n".join(output), structured
 
 
-@server.tool()
+@server.tool(output_schema=GET_SCRIPT_CONTENT_SCHEMA)
 @handle_http_errors("get_script_content", is_read_only=True, service_type="script")
 @require_google_service("script", "script_readonly")
 async def get_script_content(
@@ -204,7 +307,7 @@ async def get_script_content(
     user_google_email: str,
     script_id: str,
     file_name: str,
-) -> str:
+) -> ToolResult:
     """
     Retrieves content of a specific file within a project.
 
@@ -215,11 +318,12 @@ async def get_script_content(
         file_name: Name of the file to retrieve
 
     Returns:
-        str: File content as string
+        ToolResult: File content with structured data
     """
-    return await _get_script_content_impl(
+    text, structured = await _get_script_content_impl(
         service, user_google_email, script_id, file_name
     )
+    return create_tool_result(text=text, data=structured)
 
 
 async def _create_script_project_impl(
@@ -227,7 +331,7 @@ async def _create_script_project_impl(
     user_google_email: str,
     title: str,
     parent_id: Optional[str] = None,
-) -> str:
+) -> tuple[str, CreateScriptProjectResult]:
     """Internal implementation for create_script_project."""
     logger.info(f"[create_script_project] Email: {user_google_email}, Title: {title}")
 
@@ -250,10 +354,16 @@ async def _create_script_project_impl(
     ]
 
     logger.info(f"[create_script_project] Created project {script_id}")
-    return "\n".join(output)
+
+    structured = CreateScriptProjectResult(
+        script_id=script_id,
+        title=title,
+        edit_url=edit_url,
+    )
+    return "\n".join(output), structured
 
 
-@server.tool()
+@server.tool(output_schema=CREATE_SCRIPT_PROJECT_SCHEMA)
 @handle_http_errors("create_script_project", service_type="script")
 @require_google_service("script", "script_projects")
 async def create_script_project(
@@ -261,7 +371,7 @@ async def create_script_project(
     user_google_email: str,
     title: str,
     parent_id: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Creates a new Apps Script project.
 
@@ -272,11 +382,12 @@ async def create_script_project(
         parent_id: Optional Drive folder ID or bound container ID
 
     Returns:
-        str: Formatted string with new project details
+        ToolResult: Formatted string with new project details and structured data
     """
-    return await _create_script_project_impl(
+    text, structured = await _create_script_project_impl(
         service, user_google_email, title, parent_id
     )
+    return create_tool_result(text=text, data=structured)
 
 
 async def _update_script_content_impl(
@@ -284,7 +395,7 @@ async def _update_script_content_impl(
     user_google_email: str,
     script_id: str,
     files: List[Dict[str, str]],
-) -> str:
+) -> tuple[str, UpdateScriptContentResult]:
     """Internal implementation for update_script_content."""
     logger.info(
         f"[update_script_content] Email: {user_google_email}, ID: {script_id}, Files: {len(files)}"
@@ -298,16 +409,24 @@ async def _update_script_content_impl(
 
     output = [f"Updated script project: {script_id}", "", "Modified files:"]
 
+    updated_files = []
     for file in updated_content.get("files", []):
         file_name = file.get("name", "Untitled")
         file_type = file.get("type", "Unknown")
         output.append(f"- {file_name} ({file_type})")
+        updated_files.append(UpdatedFile(name=file_name, file_type=file_type))
 
     logger.info(f"[update_script_content] Updated {len(files)} files in {script_id}")
-    return "\n".join(output)
+
+    structured = UpdateScriptContentResult(
+        script_id=script_id,
+        files_updated=len(updated_files),
+        files=updated_files,
+    )
+    return "\n".join(output), structured
 
 
-@server.tool()
+@server.tool(output_schema=UPDATE_SCRIPT_CONTENT_SCHEMA)
 @handle_http_errors("update_script_content", service_type="script")
 @require_google_service("script", "script_projects")
 async def update_script_content(
@@ -315,7 +434,7 @@ async def update_script_content(
     user_google_email: str,
     script_id: str,
     files: List[Dict[str, str]],
-) -> str:
+) -> ToolResult:
     """
     Updates or creates files in a script project.
 
@@ -326,11 +445,12 @@ async def update_script_content(
         files: List of file objects with name, type, and source
 
     Returns:
-        str: Formatted string confirming update with file list
+        ToolResult: Formatted string confirming update with file list and structured data
     """
-    return await _update_script_content_impl(
+    text, structured = await _update_script_content_impl(
         service, user_google_email, script_id, files
     )
+    return create_tool_result(text=text, data=structured)
 
 
 async def _run_script_function_impl(
@@ -340,7 +460,7 @@ async def _run_script_function_impl(
     function_name: str,
     parameters: Optional[List[Any]] = None,
     dev_mode: bool = False,
-) -> str:
+) -> tuple[str, RunScriptFunctionResult]:
     """Internal implementation for run_script_function."""
     logger.info(
         f"[run_script_function] Email: {user_google_email}, ID: {script_id}, Function: {function_name}"
@@ -359,9 +479,15 @@ async def _run_script_function_impl(
         if "error" in response:
             error_details = response["error"]
             error_message = error_details.get("message", "Unknown error")
-            return (
+            text = (
                 f"Execution failed\nFunction: {function_name}\nError: {error_message}"
             )
+            structured = RunScriptFunctionResult(
+                function_name=function_name,
+                success=False,
+                error_message=error_message,
+            )
+            return text, structured
 
         result = response.get("response", {}).get("result")
         output = [
@@ -371,14 +497,26 @@ async def _run_script_function_impl(
         ]
 
         logger.info(f"[run_script_function] Successfully executed {function_name}")
-        return "\n".join(output)
+
+        structured = RunScriptFunctionResult(
+            function_name=function_name,
+            success=True,
+            result=result,
+        )
+        return "\n".join(output), structured
 
     except Exception as e:
         logger.error(f"[run_script_function] Execution error: {str(e)}")
-        return f"Execution failed\nFunction: {function_name}\nError: {str(e)}"
+        text = f"Execution failed\nFunction: {function_name}\nError: {str(e)}"
+        structured = RunScriptFunctionResult(
+            function_name=function_name,
+            success=False,
+            error_message=str(e),
+        )
+        return text, structured
 
 
-@server.tool()
+@server.tool(output_schema=RUN_SCRIPT_FUNCTION_SCHEMA)
 @handle_http_errors("run_script_function", service_type="script")
 @require_google_service("script", "script_projects")
 async def run_script_function(
@@ -388,7 +526,7 @@ async def run_script_function(
     function_name: str,
     parameters: Optional[List[Any]] = None,
     dev_mode: bool = False,
-) -> str:
+) -> ToolResult:
     """
     Executes a function in a deployed script.
 
@@ -401,11 +539,12 @@ async def run_script_function(
         dev_mode: Whether to run latest code vs deployed version
 
     Returns:
-        str: Formatted string with execution result or error
+        ToolResult: Formatted string with execution result or error and structured data
     """
-    return await _run_script_function_impl(
+    text, structured = await _run_script_function_impl(
         service, user_google_email, script_id, function_name, parameters, dev_mode
     )
+    return create_tool_result(text=text, data=structured)
 
 
 async def _create_deployment_impl(
@@ -414,7 +553,7 @@ async def _create_deployment_impl(
     script_id: str,
     description: str,
     version_description: Optional[str] = None,
-) -> str:
+) -> tuple[str, CreateDeploymentResult]:
     """Internal implementation for create_deployment.
 
     Creates a new version first, then creates a deployment using that version.
@@ -457,10 +596,17 @@ async def _create_deployment_impl(
     ]
 
     logger.info(f"[create_deployment] Created deployment {deployment_id}")
-    return "\n".join(output)
+
+    structured = CreateDeploymentResult(
+        script_id=script_id,
+        deployment_id=deployment_id,
+        version_number=version_number,
+        description=description,
+    )
+    return "\n".join(output), structured
 
 
-@server.tool()
+@server.tool(output_schema=CREATE_DEPLOYMENT_SCHEMA)
 @handle_http_errors("create_deployment", service_type="script")
 @require_google_service("script", "script_deployments")
 async def create_deployment(
@@ -469,7 +615,7 @@ async def create_deployment(
     script_id: str,
     description: str,
     version_description: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Creates a new deployment of the script.
 
@@ -481,18 +627,19 @@ async def create_deployment(
         version_description: Optional version description
 
     Returns:
-        str: Formatted string with deployment details
+        ToolResult: Formatted string with deployment details and structured data
     """
-    return await _create_deployment_impl(
+    text, structured = await _create_deployment_impl(
         service, user_google_email, script_id, description, version_description
     )
+    return create_tool_result(text=text, data=structured)
 
 
 async def _list_deployments_impl(
     service: Any,
     user_google_email: str,
     script_id: str,
-) -> str:
+) -> tuple[str, ListDeploymentsResult]:
     """Internal implementation for list_deployments."""
     logger.info(f"[list_deployments] Email: {user_google_email}, ID: {script_id}")
 
@@ -503,10 +650,14 @@ async def _list_deployments_impl(
     deployments = response.get("deployments", [])
 
     if not deployments:
-        return f"No deployments found for script: {script_id}"
+        structured = ListDeploymentsResult(
+            script_id=script_id, total_found=0, deployments=[]
+        )
+        return f"No deployments found for script: {script_id}", structured
 
     output = [f"Deployments for script: {script_id}", ""]
 
+    deployment_summaries = []
     for i, deployment in enumerate(deployments, 1):
         deployment_id = deployment.get("deploymentId", "Unknown")
         description = deployment.get("description", "No description")
@@ -516,18 +667,32 @@ async def _list_deployments_impl(
         output.append(f"   Updated: {update_time}")
         output.append("")
 
+        deployment_summaries.append(
+            DeploymentSummary(
+                deployment_id=deployment_id,
+                description=description,
+                update_time=update_time,
+            )
+        )
+
     logger.info(f"[list_deployments] Found {len(deployments)} deployments")
-    return "\n".join(output)
+
+    structured = ListDeploymentsResult(
+        script_id=script_id,
+        total_found=len(deployment_summaries),
+        deployments=deployment_summaries,
+    )
+    return "\n".join(output), structured
 
 
-@server.tool()
+@server.tool(output_schema=LIST_DEPLOYMENTS_SCHEMA)
 @handle_http_errors("list_deployments", is_read_only=True, service_type="script")
 @require_google_service("script", "script_deployments_readonly")
 async def list_deployments(
     service: Any,
     user_google_email: str,
     script_id: str,
-) -> str:
+) -> ToolResult:
     """
     Lists all deployments for a script project.
 
@@ -537,9 +702,12 @@ async def list_deployments(
         script_id: The script project ID
 
     Returns:
-        str: Formatted string with deployment list
+        ToolResult: Formatted string with deployment list and structured data
     """
-    return await _list_deployments_impl(service, user_google_email, script_id)
+    text, structured = await _list_deployments_impl(
+        service, user_google_email, script_id
+    )
+    return create_tool_result(text=text, data=structured)
 
 
 async def _update_deployment_impl(
@@ -548,7 +716,7 @@ async def _update_deployment_impl(
     script_id: str,
     deployment_id: str,
     description: Optional[str] = None,
-) -> str:
+) -> tuple[str, UpdateDeploymentResult]:
     """Internal implementation for update_deployment."""
     logger.info(
         f"[update_deployment] Email: {user_google_email}, Script: {script_id}, Deployment: {deployment_id}"
@@ -565,17 +733,25 @@ async def _update_deployment_impl(
         .execute
     )
 
+    final_description = deployment.get("description", "No description")
+
     output = [
         f"Updated deployment: {deployment_id}",
         f"Script: {script_id}",
-        f"Description: {deployment.get('description', 'No description')}",
+        f"Description: {final_description}",
     ]
 
     logger.info(f"[update_deployment] Updated deployment {deployment_id}")
-    return "\n".join(output)
+
+    structured = UpdateDeploymentResult(
+        script_id=script_id,
+        deployment_id=deployment_id,
+        description=final_description,
+    )
+    return "\n".join(output), structured
 
 
-@server.tool()
+@server.tool(output_schema=UPDATE_DEPLOYMENT_SCHEMA)
 @handle_http_errors("update_deployment", service_type="script")
 @require_google_service("script", "script_deployments")
 async def update_deployment(
@@ -584,7 +760,7 @@ async def update_deployment(
     script_id: str,
     deployment_id: str,
     description: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Updates an existing deployment configuration.
 
@@ -596,11 +772,12 @@ async def update_deployment(
         description: Optional new description
 
     Returns:
-        str: Formatted string confirming update
+        ToolResult: Formatted string confirming update with structured data
     """
-    return await _update_deployment_impl(
+    text, structured = await _update_deployment_impl(
         service, user_google_email, script_id, deployment_id, description
     )
+    return create_tool_result(text=text, data=structured)
 
 
 async def _delete_deployment_impl(
@@ -608,7 +785,7 @@ async def _delete_deployment_impl(
     user_google_email: str,
     script_id: str,
     deployment_id: str,
-) -> str:
+) -> tuple[str, DeleteDeploymentResult]:
     """Internal implementation for delete_deployment."""
     logger.info(
         f"[delete_deployment] Email: {user_google_email}, Script: {script_id}, Deployment: {deployment_id}"
@@ -624,10 +801,16 @@ async def _delete_deployment_impl(
     output = f"Deleted deployment: {deployment_id} from script: {script_id}"
 
     logger.info(f"[delete_deployment] Deleted deployment {deployment_id}")
-    return output
+
+    structured = DeleteDeploymentResult(
+        script_id=script_id,
+        deployment_id=deployment_id,
+        deleted=True,
+    )
+    return output, structured
 
 
-@server.tool()
+@server.tool(output_schema=DELETE_DEPLOYMENT_SCHEMA)
 @handle_http_errors("delete_deployment", service_type="script")
 @require_google_service("script", "script_deployments")
 async def delete_deployment(
@@ -635,7 +818,7 @@ async def delete_deployment(
     user_google_email: str,
     script_id: str,
     deployment_id: str,
-) -> str:
+) -> ToolResult:
     """
     Deletes a deployment.
 
@@ -646,11 +829,12 @@ async def delete_deployment(
         deployment_id: The deployment ID to delete
 
     Returns:
-        str: Confirmation message
+        ToolResult: Confirmation message with structured data
     """
-    return await _delete_deployment_impl(
+    text, structured = await _delete_deployment_impl(
         service, user_google_email, script_id, deployment_id
     )
+    return create_tool_result(text=text, data=structured)
 
 
 async def _list_script_processes_impl(
@@ -658,7 +842,7 @@ async def _list_script_processes_impl(
     user_google_email: str,
     page_size: int = 50,
     script_id: Optional[str] = None,
-) -> str:
+) -> tuple[str, ListScriptProcessesResult]:
     """Internal implementation for list_script_processes."""
     logger.info(
         f"[list_script_processes] Email: {user_google_email}, PageSize: {page_size}"
@@ -675,10 +859,14 @@ async def _list_script_processes_impl(
     processes = response.get("processes", [])
 
     if not processes:
-        return "No recent script executions found."
+        structured = ListScriptProcessesResult(
+            total_found=0, script_id=script_id, processes=[]
+        )
+        return "No recent script executions found.", structured
 
     output = ["Recent script executions:", ""]
 
+    process_summaries = []
     for i, process in enumerate(processes, 1):
         function_name = process.get("functionName", "Unknown")
         process_status = process.get("processStatus", "Unknown")
@@ -691,11 +879,26 @@ async def _list_script_processes_impl(
         output.append(f"   Duration: {duration}")
         output.append("")
 
+        process_summaries.append(
+            ProcessSummary(
+                function_name=function_name,
+                process_status=process_status,
+                start_time=start_time,
+                duration=duration,
+            )
+        )
+
     logger.info(f"[list_script_processes] Found {len(processes)} processes")
-    return "\n".join(output)
+
+    structured = ListScriptProcessesResult(
+        total_found=len(process_summaries),
+        script_id=script_id,
+        processes=process_summaries,
+    )
+    return "\n".join(output), structured
 
 
-@server.tool()
+@server.tool(output_schema=LIST_SCRIPT_PROCESSES_SCHEMA)
 @handle_http_errors("list_script_processes", is_read_only=True, service_type="script")
 @require_google_service("script", "script_readonly")
 async def list_script_processes(
@@ -703,7 +906,7 @@ async def list_script_processes(
     user_google_email: str,
     page_size: int = 50,
     script_id: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Lists recent execution processes for user's scripts.
 
@@ -714,11 +917,12 @@ async def list_script_processes(
         script_id: Optional filter by script ID
 
     Returns:
-        str: Formatted string with process list
+        ToolResult: Formatted string with process list and structured data
     """
-    return await _list_script_processes_impl(
+    text, structured = await _list_script_processes_impl(
         service, user_google_email, page_size, script_id
     )
+    return create_tool_result(text=text, data=structured)
 
 
 # ============================================================================
@@ -730,7 +934,7 @@ async def _delete_script_project_impl(
     service: Any,
     user_google_email: str,
     script_id: str,
-) -> str:
+) -> tuple[str, DeleteScriptProjectResult]:
     """Internal implementation for delete_script_project."""
     logger.info(
         f"[delete_script_project] Email: {user_google_email}, ScriptID: {script_id}"
@@ -740,17 +944,19 @@ async def _delete_script_project_impl(
     await asyncio.to_thread(service.files().delete(fileId=script_id).execute)
 
     logger.info(f"[delete_script_project] Deleted script {script_id}")
-    return f"Deleted Apps Script project: {script_id}"
+
+    structured = DeleteScriptProjectResult(script_id=script_id, deleted=True)
+    return f"Deleted Apps Script project: {script_id}", structured
 
 
-@server.tool()
+@server.tool(output_schema=DELETE_SCRIPT_PROJECT_SCHEMA)
 @handle_http_errors("delete_script_project", is_read_only=False, service_type="drive")
 @require_google_service("drive", "drive_full")
 async def delete_script_project(
     service: Any,
     user_google_email: str,
     script_id: str,
-) -> str:
+) -> ToolResult:
     """
     Deletes an Apps Script project.
 
@@ -762,9 +968,12 @@ async def delete_script_project(
         script_id: The script project ID to delete
 
     Returns:
-        str: Confirmation message
+        ToolResult: Confirmation message with structured data
     """
-    return await _delete_script_project_impl(service, user_google_email, script_id)
+    text, structured = await _delete_script_project_impl(
+        service, user_google_email, script_id
+    )
+    return create_tool_result(text=text, data=structured)
 
 
 # ============================================================================
@@ -776,7 +985,7 @@ async def _list_versions_impl(
     service: Any,
     user_google_email: str,
     script_id: str,
-) -> str:
+) -> tuple[str, ListVersionsResult]:
     """Internal implementation for list_versions."""
     logger.info(f"[list_versions] Email: {user_google_email}, ScriptID: {script_id}")
 
@@ -787,10 +996,12 @@ async def _list_versions_impl(
     versions = response.get("versions", [])
 
     if not versions:
-        return f"No versions found for script: {script_id}"
+        structured = ListVersionsResult(script_id=script_id, total_found=0, versions=[])
+        return f"No versions found for script: {script_id}", structured
 
     output = [f"Versions for script: {script_id}", ""]
 
+    version_summaries = []
     for version in versions:
         version_number = version.get("versionNumber", "Unknown")
         description = version.get("description", "No description")
@@ -800,18 +1011,32 @@ async def _list_versions_impl(
         output.append(f"   Created: {create_time}")
         output.append("")
 
+        version_summaries.append(
+            VersionSummary(
+                version_number=version_number,
+                description=description,
+                create_time=create_time,
+            )
+        )
+
     logger.info(f"[list_versions] Found {len(versions)} versions")
-    return "\n".join(output)
+
+    structured = ListVersionsResult(
+        script_id=script_id,
+        total_found=len(version_summaries),
+        versions=version_summaries,
+    )
+    return "\n".join(output), structured
 
 
-@server.tool()
+@server.tool(output_schema=LIST_VERSIONS_SCHEMA)
 @handle_http_errors("list_versions", is_read_only=True, service_type="script")
 @require_google_service("script", "script_readonly")
 async def list_versions(
     service: Any,
     user_google_email: str,
     script_id: str,
-) -> str:
+) -> ToolResult:
     """
     Lists all versions of a script project.
 
@@ -824,9 +1049,10 @@ async def list_versions(
         script_id: The script project ID
 
     Returns:
-        str: Formatted string with version list
+        ToolResult: Formatted string with version list and structured data
     """
-    return await _list_versions_impl(service, user_google_email, script_id)
+    text, structured = await _list_versions_impl(service, user_google_email, script_id)
+    return create_tool_result(text=text, data=structured)
 
 
 async def _create_version_impl(
@@ -834,7 +1060,7 @@ async def _create_version_impl(
     user_google_email: str,
     script_id: str,
     description: Optional[str] = None,
-) -> str:
+) -> tuple[str, CreateVersionResult]:
     """Internal implementation for create_version."""
     logger.info(f"[create_version] Email: {user_google_email}, ScriptID: {script_id}")
 
@@ -851,18 +1077,26 @@ async def _create_version_impl(
 
     version_number = version.get("versionNumber", "Unknown")
     create_time = version.get("createTime", "Unknown")
+    final_description = description or "No description"
 
     output = [
         f"Created version {version_number} for script: {script_id}",
-        f"Description: {description or 'No description'}",
+        f"Description: {final_description}",
         f"Created: {create_time}",
     ]
 
     logger.info(f"[create_version] Created version {version_number}")
-    return "\n".join(output)
+
+    structured = CreateVersionResult(
+        script_id=script_id,
+        version_number=version_number,
+        description=final_description,
+        create_time=create_time,
+    )
+    return "\n".join(output), structured
 
 
-@server.tool()
+@server.tool(output_schema=CREATE_VERSION_SCHEMA)
 @handle_http_errors("create_version", is_read_only=False, service_type="script")
 @require_google_service("script", "script_full")
 async def create_version(
@@ -870,7 +1104,7 @@ async def create_version(
     user_google_email: str,
     script_id: str,
     description: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Creates a new immutable version of a script project.
 
@@ -884,11 +1118,12 @@ async def create_version(
         description: Optional description for this version
 
     Returns:
-        str: Formatted string with new version details
+        ToolResult: Formatted string with new version details and structured data
     """
-    return await _create_version_impl(
+    text, structured = await _create_version_impl(
         service, user_google_email, script_id, description
     )
+    return create_tool_result(text=text, data=structured)
 
 
 async def _get_version_impl(
@@ -896,7 +1131,7 @@ async def _get_version_impl(
     user_google_email: str,
     script_id: str,
     version_number: int,
-) -> str:
+) -> tuple[str, GetVersionResult]:
     """Internal implementation for get_version."""
     logger.info(
         f"[get_version] Email: {user_google_email}, ScriptID: {script_id}, Version: {version_number}"
@@ -920,10 +1155,17 @@ async def _get_version_impl(
     ]
 
     logger.info(f"[get_version] Retrieved version {ver_num}")
-    return "\n".join(output)
+
+    structured = GetVersionResult(
+        script_id=script_id,
+        version_number=ver_num,
+        description=description,
+        create_time=create_time,
+    )
+    return "\n".join(output), structured
 
 
-@server.tool()
+@server.tool(output_schema=GET_VERSION_SCHEMA)
 @handle_http_errors("get_version", is_read_only=True, service_type="script")
 @require_google_service("script", "script_readonly")
 async def get_version(
@@ -931,7 +1173,7 @@ async def get_version(
     user_google_email: str,
     script_id: str,
     version_number: int,
-) -> str:
+) -> ToolResult:
     """
     Gets details of a specific version.
 
@@ -942,11 +1184,12 @@ async def get_version(
         version_number: The version number to retrieve (1, 2, 3, etc.)
 
     Returns:
-        str: Formatted string with version details
+        ToolResult: Formatted string with version details and structured data
     """
-    return await _get_version_impl(
+    text, structured = await _get_version_impl(
         service, user_google_email, script_id, version_number
     )
+    return create_tool_result(text=text, data=structured)
 
 
 # ============================================================================
@@ -959,7 +1202,7 @@ async def _get_script_metrics_impl(
     user_google_email: str,
     script_id: str,
     metrics_granularity: str = "DAILY",
-) -> str:
+) -> tuple[str, GetScriptMetricsResult]:
     """Internal implementation for get_script_metrics."""
     logger.info(
         f"[get_script_metrics] Email: {user_google_email}, ScriptID: {script_id}, Granularity: {metrics_granularity}"
@@ -982,6 +1225,7 @@ async def _get_script_metrics_impl(
 
     # Active users
     active_users = response.get("activeUsers", [])
+    active_users_data = []
     if active_users:
         output.append("Active Users:")
         for metric in active_users:
@@ -989,10 +1233,14 @@ async def _get_script_metrics_impl(
             end_time = metric.get("endTime", "Unknown")
             value = metric.get("value", "0")
             output.append(f"  {start_time} to {end_time}: {value} users")
+            active_users_data.append(
+                MetricDataPoint(start_time=start_time, end_time=end_time, value=value)
+            )
         output.append("")
 
     # Total executions
     total_executions = response.get("totalExecutions", [])
+    total_executions_data = []
     if total_executions:
         output.append("Total Executions:")
         for metric in total_executions:
@@ -1000,10 +1248,14 @@ async def _get_script_metrics_impl(
             end_time = metric.get("endTime", "Unknown")
             value = metric.get("value", "0")
             output.append(f"  {start_time} to {end_time}: {value} executions")
+            total_executions_data.append(
+                MetricDataPoint(start_time=start_time, end_time=end_time, value=value)
+            )
         output.append("")
 
     # Failed executions
     failed_executions = response.get("failedExecutions", [])
+    failed_executions_data = []
     if failed_executions:
         output.append("Failed Executions:")
         for metric in failed_executions:
@@ -1011,16 +1263,27 @@ async def _get_script_metrics_impl(
             end_time = metric.get("endTime", "Unknown")
             value = metric.get("value", "0")
             output.append(f"  {start_time} to {end_time}: {value} failures")
+            failed_executions_data.append(
+                MetricDataPoint(start_time=start_time, end_time=end_time, value=value)
+            )
         output.append("")
 
     if not active_users and not total_executions and not failed_executions:
         output.append("No metrics data available for this script.")
 
     logger.info(f"[get_script_metrics] Retrieved metrics for {script_id}")
-    return "\n".join(output)
+
+    structured = GetScriptMetricsResult(
+        script_id=script_id,
+        granularity=metrics_granularity,
+        active_users=active_users_data,
+        total_executions=total_executions_data,
+        failed_executions=failed_executions_data,
+    )
+    return "\n".join(output), structured
 
 
-@server.tool()
+@server.tool(output_schema=GET_SCRIPT_METRICS_SCHEMA)
 @handle_http_errors("get_script_metrics", is_read_only=True, service_type="script")
 @require_google_service("script", "script_readonly")
 async def get_script_metrics(
@@ -1028,7 +1291,7 @@ async def get_script_metrics(
     user_google_email: str,
     script_id: str,
     metrics_granularity: str = "DAILY",
-) -> str:
+) -> ToolResult:
     """
     Gets execution metrics for a script project.
 
@@ -1042,11 +1305,12 @@ async def get_script_metrics(
         metrics_granularity: Granularity of metrics - "DAILY" or "WEEKLY"
 
     Returns:
-        str: Formatted string with metrics data
+        ToolResult: Formatted string with metrics data and structured data
     """
-    return await _get_script_metrics_impl(
+    text, structured = await _get_script_metrics_impl(
         service, user_google_email, script_id, metrics_granularity
     )
+    return create_tool_result(text=text, data=structured)
 
 
 # ============================================================================
@@ -1058,11 +1322,13 @@ def _generate_trigger_code_impl(
     trigger_type: str,
     function_name: str,
     schedule: str = "",
-) -> str:
+) -> tuple[str, GenerateTriggerCodeResult]:
     """Internal implementation for generate_trigger_code."""
     code_lines = []
+    is_simple_trigger = False
 
     if trigger_type == "on_open":
+        is_simple_trigger = True
         code_lines = [
             "// Simple trigger - just rename your function to 'onOpen'",
             "// This runs automatically when the document is opened",
@@ -1071,6 +1337,7 @@ def _generate_trigger_code_impl(
             "}",
         ]
     elif trigger_type == "on_edit":
+        is_simple_trigger = True
         code_lines = [
             "// Simple trigger - just rename your function to 'onEdit'",
             "// This runs automatically when a user edits the spreadsheet",
@@ -1213,11 +1480,19 @@ def _generate_trigger_code_impl(
             "}",
         ]
     else:
-        return (
+        error_text = (
             f"Unknown trigger type: {trigger_type}\n\n"
             "Valid types: time_minutes, time_hours, time_daily, time_weekly, "
             "on_open, on_edit, on_form_submit, on_change"
         )
+        structured = GenerateTriggerCodeResult(
+            trigger_type=trigger_type,
+            function_name=function_name,
+            schedule=schedule,
+            code="",
+            is_simple_trigger=False,
+        )
+        return error_text, structured
 
     code = "\n".join(code_lines)
 
@@ -1268,15 +1543,23 @@ def _generate_trigger_code_impl(
             "-" * 50,
         ]
 
-    return "\n".join(instructions) + "\n\n" + code
+    text = "\n".join(instructions) + "\n\n" + code
+    structured = GenerateTriggerCodeResult(
+        trigger_type=trigger_type,
+        function_name=function_name,
+        schedule=schedule,
+        code=code,
+        is_simple_trigger=is_simple_trigger,
+    )
+    return text, structured
 
 
-@server.tool()
+@server.tool(output_schema=GENERATE_TRIGGER_CODE_SCHEMA)
 async def generate_trigger_code(
     trigger_type: str,
     function_name: str,
     schedule: str = "",
-) -> str:
+) -> ToolResult:
     """
     Generates Apps Script code for creating triggers.
 
@@ -1304,6 +1587,9 @@ async def generate_trigger_code(
                   - For simple triggers (on_open, on_edit): not needed
 
     Returns:
-        str: Apps Script code to create the trigger
+        ToolResult: Apps Script code to create the trigger with structured data
     """
-    return _generate_trigger_code_impl(trigger_type, function_name, schedule)
+    text, structured = _generate_trigger_code_impl(
+        trigger_type, function_name, schedule
+    )
+    return create_tool_result(text=text, data=structured)

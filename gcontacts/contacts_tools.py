@@ -13,7 +13,46 @@ from mcp import Resource
 
 from auth.service_decorator import require_google_service
 from core.server import server
+from core.structured_output import create_tool_result
 from core.utils import handle_http_errors
+from fastmcp.tools.tool import ToolResult
+from gcontacts.contacts_models import (
+    BatchCreateContactsResult,
+    BatchDeleteContactsResult,
+    BatchUpdateContactsResult,
+    ContactDetails,
+    ContactGroupDetails,
+    ContactGroupSummary,
+    ContactOrganization,
+    ContactSummary,
+    CreateContactGroupResult,
+    CreateContactResult,
+    DeleteContactGroupResult,
+    DeleteContactResult,
+    GetContactGroupResult,
+    GetContactResult,
+    ListContactGroupsResult,
+    ListContactsResult,
+    ModifyContactGroupMembersResult,
+    SearchContactsResult,
+    UpdateContactGroupResult,
+    UpdateContactResult,
+    BATCH_CREATE_CONTACTS_RESULT_SCHEMA,
+    BATCH_DELETE_CONTACTS_RESULT_SCHEMA,
+    BATCH_UPDATE_CONTACTS_RESULT_SCHEMA,
+    CREATE_CONTACT_GROUP_RESULT_SCHEMA,
+    CREATE_CONTACT_RESULT_SCHEMA,
+    DELETE_CONTACT_GROUP_RESULT_SCHEMA,
+    DELETE_CONTACT_RESULT_SCHEMA,
+    GET_CONTACT_GROUP_RESULT_SCHEMA,
+    GET_CONTACT_RESULT_SCHEMA,
+    LIST_CONTACT_GROUPS_RESULT_SCHEMA,
+    LIST_CONTACTS_RESULT_SCHEMA,
+    MODIFY_CONTACT_GROUP_MEMBERS_RESULT_SCHEMA,
+    SEARCH_CONTACTS_RESULT_SCHEMA,
+    UPDATE_CONTACT_GROUP_RESULT_SCHEMA,
+    UPDATE_CONTACT_RESULT_SCHEMA,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -190,6 +229,127 @@ def _build_person_body(
     return body
 
 
+def _extract_contact_summary(person: Dict[str, Any]) -> ContactSummary:
+    """
+    Extract a ContactSummary from a Person resource.
+
+    Args:
+        person: The Person resource from the People API.
+
+    Returns:
+        ContactSummary dataclass instance.
+    """
+    resource_name = person.get("resourceName", "Unknown")
+    contact_id = resource_name.replace("people/", "") if resource_name else "Unknown"
+
+    # Name
+    names = person.get("names", [])
+    name = names[0].get("displayName", "") if names else None
+
+    # Emails
+    emails = person.get("emailAddresses", [])
+    email_list = [e.get("value", "") for e in emails if e.get("value")]
+
+    # Phones
+    phones = person.get("phoneNumbers", [])
+    phone_list = [p.get("value", "") for p in phones if p.get("value")]
+
+    # Organization
+    orgs = person.get("organizations", [])
+    organization = None
+    if orgs:
+        org = orgs[0]
+        organization = ContactOrganization(
+            name=org.get("name"),
+            title=org.get("title"),
+        )
+
+    return ContactSummary(
+        contact_id=contact_id,
+        name=name,
+        emails=email_list,
+        phones=phone_list,
+        organization=organization,
+    )
+
+
+def _extract_contact_details(person: Dict[str, Any]) -> ContactDetails:
+    """
+    Extract ContactDetails from a Person resource.
+
+    Args:
+        person: The Person resource from the People API.
+
+    Returns:
+        ContactDetails dataclass instance.
+    """
+    resource_name = person.get("resourceName", "Unknown")
+    contact_id = resource_name.replace("people/", "") if resource_name else "Unknown"
+
+    # Name
+    names = person.get("names", [])
+    name = names[0].get("displayName", "") if names else None
+
+    # Emails
+    emails = person.get("emailAddresses", [])
+    email_list = [e.get("value", "") for e in emails if e.get("value")]
+
+    # Phones
+    phones = person.get("phoneNumbers", [])
+    phone_list = [p.get("value", "") for p in phones if p.get("value")]
+
+    # Organization
+    orgs = person.get("organizations", [])
+    organization = None
+    if orgs:
+        org = orgs[0]
+        organization = ContactOrganization(
+            name=org.get("name"),
+            title=org.get("title"),
+        )
+
+    # Address
+    addresses = person.get("addresses", [])
+    address = addresses[0].get("formattedValue", "") if addresses else None
+
+    # Birthday
+    birthdays = person.get("birthdays", [])
+    birthday = None
+    if birthdays:
+        bday = birthdays[0].get("date", {})
+        if bday:
+            bday_str = f"{bday.get('month', '?')}/{bday.get('day', '?')}"
+            if bday.get("year"):
+                bday_str = f"{bday.get('year')}/{bday_str}"
+            birthday = bday_str
+
+    # URLs
+    urls = person.get("urls", [])
+    url_list = [u.get("value", "") for u in urls if u.get("value")]
+
+    # Notes/Biography
+    bios = person.get("biographies", [])
+    notes = bios[0].get("value", "") if bios else None
+
+    # Sources
+    metadata = person.get("metadata", {})
+    sources = metadata.get("sources", [])
+    source_types = [s.get("type", "") for s in sources if s.get("type")]
+
+    return ContactDetails(
+        contact_id=contact_id,
+        name=name,
+        emails=email_list,
+        phones=phone_list,
+        organization=organization,
+        address=address,
+        birthday=birthday,
+        urls=url_list,
+        notes=notes,
+        sources=source_types,
+    )
+
+
 async def _warmup_search_cache(service: Resource, user_google_email: str) -> None:
     """
     Warm up the People API search cache.
@@ -225,7 +385,7 @@ async def _warmup_search_cache(service: Resource, user_google_email: str) -> Non
 # =============================================================================
 
 
-@server.tool()
+@server.tool(output_schema=LIST_CONTACTS_RESULT_SCHEMA)
 @require_google_service("people", "contacts_read")
 @handle_http_errors("list_contacts", service_type="people")
 async def list_contacts(
@@ -234,7 +394,7 @@ async def list_contacts(
     page_size: int = 100,
     page_token: Optional[str] = None,
     sort_order: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     List contacts for the authenticated user.
 
@@ -245,7 +405,7 @@ async def list_contacts(
         sort_order (Optional[str]): Sort order: "LAST_MODIFIED_ASCENDING", "LAST_MODIFIED_DESCENDING", "FIRST_NAME_ASCENDING", or "LAST_NAME_ASCENDING".
 
     Returns:
-        str: List of contacts with their basic information.
+        ToolResult: List of contacts with their basic information.
     """
     logger.info(f"[list_contacts] Invoked. Email: '{user_google_email}'")
 
@@ -270,18 +430,36 @@ async def list_contacts(
         total_people = result.get("totalPeople", len(connections))
 
         if not connections:
-            return f"No contacts found for {user_google_email}."
+            text = f"No contacts found for {user_google_email}."
+            structured = ListContactsResult(
+                user_email=user_google_email,
+                total_count=0,
+                returned_count=0,
+                contacts=[],
+                next_page_token=None,
+            )
+            return create_tool_result(text=text, data=structured)
 
         response = f"Contacts for {user_google_email} ({len(connections)} of {total_people}):\n\n"
 
+        contact_summaries = []
         for person in connections:
             response += _format_contact(person) + "\n\n"
+            contact_summaries.append(_extract_contact_summary(person))
 
         if next_page_token:
             response += f"Next page token: {next_page_token}"
 
+        structured = ListContactsResult(
+            user_email=user_google_email,
+            total_count=total_people,
+            returned_count=len(connections),
+            contacts=contact_summaries,
+            next_page_token=next_page_token,
+        )
+
         logger.info(f"Found {len(connections)} contacts for {user_google_email}")
-        return response
+        return create_tool_result(text=response, data=structured)
 
     except HttpError as error:
         message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Contacts'."
@@ -293,14 +471,14 @@ async def list_contacts(
         raise Exception(message)
 
 
-@server.tool()
+@server.tool(output_schema=GET_CONTACT_RESULT_SCHEMA)
 @require_google_service("people", "contacts_read")
 @handle_http_errors("get_contact", service_type="people")
 async def get_contact(
     service: Resource,
     user_google_email: str,
     contact_id: str,
-) -> str:
+) -> ToolResult:
     """
     Get detailed information about a specific contact.
 
@@ -309,7 +487,7 @@ async def get_contact(
         contact_id (str): The contact ID (e.g., "c1234567890" or full resource name "people/c1234567890").
 
     Returns:
-        str: Detailed contact information.
+        ToolResult: Detailed contact information.
     """
     # Normalize resource name
     if not contact_id.startswith("people/"):
@@ -331,8 +509,13 @@ async def get_contact(
         response = f"Contact Details for {user_google_email}:\n\n"
         response += _format_contact(person, detailed=True)
 
+        structured = GetContactResult(
+            user_email=user_google_email,
+            contact=_extract_contact_details(person),
+        )
+
         logger.info(f"Retrieved contact {resource_name} for {user_google_email}")
-        return response
+        return create_tool_result(text=response, data=structured)
 
     except HttpError as error:
         if error.resp.status == 404:
@@ -348,7 +531,7 @@ async def get_contact(
         raise Exception(message)
 
 
-@server.tool()
+@server.tool(output_schema=SEARCH_CONTACTS_RESULT_SCHEMA)
 @require_google_service("people", "contacts_read")
 @handle_http_errors("search_contacts", service_type="people")
 async def search_contacts(
@@ -356,7 +539,7 @@ async def search_contacts(
     user_google_email: str,
     query: str,
     page_size: int = 30,
-) -> str:
+) -> ToolResult:
     """
     Search contacts by name, email, phone number, or other fields.
 
@@ -366,7 +549,7 @@ async def search_contacts(
         page_size (int): Maximum number of results to return (default: 30, max: 30).
 
     Returns:
-        str: Matching contacts with their basic information.
+        ToolResult: Matching contacts with their basic information.
     """
     logger.info(
         f"[search_contacts] Invoked. Email: '{user_google_email}', Query: '{query}'"
@@ -389,18 +572,34 @@ async def search_contacts(
         results = result.get("results", [])
 
         if not results:
-            return f"No contacts found matching '{query}' for {user_google_email}."
+            text = f"No contacts found matching '{query}' for {user_google_email}."
+            structured = SearchContactsResult(
+                user_email=user_google_email,
+                query=query,
+                result_count=0,
+                contacts=[],
+            )
+            return create_tool_result(text=text, data=structured)
 
         response = f"Search Results for '{query}' ({len(results)} found):\n\n"
 
+        contact_summaries = []
         for item in results:
             person = item.get("person", {})
             response += _format_contact(person) + "\n\n"
+            contact_summaries.append(_extract_contact_summary(person))
+
+        structured = SearchContactsResult(
+            user_email=user_google_email,
+            query=query,
+            result_count=len(results),
+            contacts=contact_summaries,
+        )
 
         logger.info(
             f"Found {len(results)} contacts matching '{query}' for {user_google_email}"
         )
-        return response
+        return create_tool_result(text=response, data=structured)
 
     except HttpError as error:
         message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Contacts'."
@@ -412,7 +611,7 @@ async def search_contacts(
         raise Exception(message)
 
 
-@server.tool()
+@server.tool(output_schema=CREATE_CONTACT_RESULT_SCHEMA)
 @require_google_service("people", "contacts")
 @handle_http_errors("create_contact", service_type="people")
 async def create_contact(
@@ -425,7 +624,7 @@ async def create_contact(
     organization: Optional[str] = None,
     job_title: Optional[str] = None,
     notes: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Create a new contact.
 
@@ -440,7 +639,7 @@ async def create_contact(
         notes (Optional[str]): Additional notes.
 
     Returns:
-        str: Confirmation with the new contact's details.
+        ToolResult: Confirmation with the new contact's details.
     """
     logger.info(
         f"[create_contact] Invoked. Email: '{user_google_email}', Name: '{given_name} {family_name}'"
@@ -471,9 +670,14 @@ async def create_contact(
         response = f"Contact Created for {user_google_email}:\n\n"
         response += _format_contact(result, detailed=True)
 
+        structured = CreateContactResult(
+            user_email=user_google_email,
+            contact=_extract_contact_details(result),
+        )
+
         contact_id = result.get("resourceName", "").replace("people/", "")
         logger.info(f"Created contact {contact_id} for {user_google_email}")
-        return response
+        return create_tool_result(text=response, data=structured)
 
     except HttpError as error:
         message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Contacts'."
@@ -490,7 +694,7 @@ async def create_contact(
 # =============================================================================
 
 
-@server.tool()
+@server.tool(output_schema=UPDATE_CONTACT_RESULT_SCHEMA)
 @require_google_service("people", "contacts")
 @handle_http_errors("update_contact", service_type="people")
 async def update_contact(
@@ -504,7 +708,7 @@ async def update_contact(
     organization: Optional[str] = None,
     job_title: Optional[str] = None,
     notes: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Update an existing contact. Note: This replaces fields, not merges them.
 
@@ -520,7 +724,7 @@ async def update_contact(
         notes (Optional[str]): New notes.
 
     Returns:
-        str: Confirmation with updated contact details.
+        ToolResult: Confirmation with updated contact details.
     """
     # Normalize resource name
     if not contact_id.startswith("people/"):
@@ -591,8 +795,13 @@ async def update_contact(
         response = f"Contact Updated for {user_google_email}:\n\n"
         response += _format_contact(result, detailed=True)
 
+        structured = UpdateContactResult(
+            user_email=user_google_email,
+            contact=_extract_contact_details(result),
+        )
+
         logger.info(f"Updated contact {resource_name} for {user_google_email}")
-        return response
+        return create_tool_result(text=response, data=structured)
 
     except HttpError as error:
         if error.resp.status == 404:
@@ -608,14 +817,14 @@ async def update_contact(
         raise Exception(message)
 
 
-@server.tool()
+@server.tool(output_schema=DELETE_CONTACT_RESULT_SCHEMA)
 @require_google_service("people", "contacts")
 @handle_http_errors("delete_contact", service_type="people")
 async def delete_contact(
     service: Resource,
     user_google_email: str,
     contact_id: str,
-) -> str:
+) -> ToolResult:
     """
     Delete a contact.
 
@@ -624,13 +833,20 @@ async def delete_contact(
         contact_id (str): The contact ID to delete.
 
     Returns:
-        str: Confirmation message.
+        ToolResult: Confirmation message.
     """
     # Normalize resource name
     if not contact_id.startswith("people/"):
         resource_name = f"people/{contact_id}"
     else:
         resource_name = contact_id
+
+    # Extract the clean contact_id for the response
+    clean_contact_id = (
+        contact_id.replace("people/", "")
+        if contact_id.startswith("people/")
+        else contact_id
+    )
 
     logger.info(
         f"[delete_contact] Invoked. Email: '{user_google_email}', Contact: {resource_name}"
@@ -641,10 +857,18 @@ async def delete_contact(
             service.people().deleteContact(resourceName=resource_name).execute
         )
 
-        response = f"Contact {contact_id} has been deleted for {user_google_email}."
+        response = (
+            f"Contact {clean_contact_id} has been deleted for {user_google_email}."
+        )
+
+        structured = DeleteContactResult(
+            user_email=user_google_email,
+            contact_id=clean_contact_id,
+            deleted=True,
+        )
 
         logger.info(f"Deleted contact {resource_name} for {user_google_email}")
-        return response
+        return create_tool_result(text=response, data=structured)
 
     except HttpError as error:
         if error.resp.status == 404:
@@ -660,7 +884,7 @@ async def delete_contact(
         raise Exception(message)
 
 
-@server.tool()
+@server.tool(output_schema=LIST_CONTACT_GROUPS_RESULT_SCHEMA)
 @require_google_service("people", "contacts_read")
 @handle_http_errors("list_contact_groups", service_type="people")
 async def list_contact_groups(
@@ -668,7 +892,7 @@ async def list_contact_groups(
     user_google_email: str,
     page_size: int = 100,
     page_token: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     List contact groups (labels) for the user.
 
@@ -678,7 +902,7 @@ async def list_contact_groups(
         page_token (Optional[str]): Token for pagination.
 
     Returns:
-        str: List of contact groups with their details.
+        ToolResult: List of contact groups with their details.
     """
     logger.info(f"[list_contact_groups] Invoked. Email: '{user_google_email}'")
 
@@ -697,10 +921,18 @@ async def list_contact_groups(
         next_page_token = result.get("nextPageToken")
 
         if not groups:
-            return f"No contact groups found for {user_google_email}."
+            text = f"No contact groups found for {user_google_email}."
+            structured = ListContactGroupsResult(
+                user_email=user_google_email,
+                group_count=0,
+                groups=[],
+                next_page_token=None,
+            )
+            return create_tool_result(text=text, data=structured)
 
         response = f"Contact Groups for {user_google_email}:\n\n"
 
+        group_summaries = []
         for group in groups:
             resource_name = group.get("resourceName", "")
             group_id = resource_name.replace("contactGroups/", "")
@@ -713,11 +945,27 @@ async def list_contact_groups(
             response += f"  Type: {group_type}\n"
             response += f"  Members: {member_count}\n\n"
 
+            group_summaries.append(
+                ContactGroupSummary(
+                    group_id=group_id,
+                    name=name,
+                    group_type=group_type,
+                    member_count=member_count,
+                )
+            )
+
         if next_page_token:
             response += f"Next page token: {next_page_token}"
 
+        structured = ListContactGroupsResult(
+            user_email=user_google_email,
+            group_count=len(groups),
+            groups=group_summaries,
+            next_page_token=next_page_token,
+        )
+
         logger.info(f"Found {len(groups)} contact groups for {user_google_email}")
-        return response
+        return create_tool_result(text=response, data=structured)
 
     except HttpError as error:
         message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Contacts'."
@@ -729,7 +977,7 @@ async def list_contact_groups(
         raise Exception(message)
 
 
-@server.tool()
+@server.tool(output_schema=GET_CONTACT_GROUP_RESULT_SCHEMA)
 @require_google_service("people", "contacts_read")
 @handle_http_errors("get_contact_group", service_type="people")
 async def get_contact_group(
@@ -737,7 +985,7 @@ async def get_contact_group(
     user_google_email: str,
     group_id: str,
     max_members: int = 100,
-) -> str:
+) -> ToolResult:
     """
     Get details of a specific contact group including its members.
 
@@ -747,7 +995,7 @@ async def get_contact_group(
         max_members (int): Maximum number of members to return (default: 100, max: 1000).
 
     Returns:
-        str: Contact group details including members.
+        ToolResult: Contact group details including members.
     """
     # Normalize resource name
     if not group_id.startswith("contactGroups/"):
@@ -775,20 +1023,40 @@ async def get_contact_group(
         member_count = result.get("memberCount", 0)
         member_resource_names = result.get("memberResourceNames", [])
 
+        # Extract clean group_id
+        clean_group_id = (
+            group_id.replace("contactGroups/", "")
+            if group_id.startswith("contactGroups/")
+            else group_id
+        )
+
         response = f"Contact Group Details for {user_google_email}:\n\n"
         response += f"Name: {name}\n"
-        response += f"ID: {group_id}\n"
+        response += f"ID: {clean_group_id}\n"
         response += f"Type: {group_type}\n"
         response += f"Total Members: {member_count}\n"
 
+        member_ids = []
         if member_resource_names:
             response += f"\nMembers ({len(member_resource_names)} shown):\n"
             for member in member_resource_names:
                 contact_id = member.replace("people/", "")
                 response += f"  - {contact_id}\n"
+                member_ids.append(contact_id)
+
+        structured = GetContactGroupResult(
+            user_email=user_google_email,
+            group=ContactGroupDetails(
+                group_id=clean_group_id,
+                name=name,
+                group_type=group_type,
+                member_count=member_count,
+                member_ids=member_ids,
+            ),
+        )
 
         logger.info(f"Retrieved contact group {resource_name} for {user_google_email}")
-        return response
+        return create_tool_result(text=response, data=structured)
 
     except HttpError as error:
         if error.resp.status == 404:
@@ -809,14 +1077,14 @@ async def get_contact_group(
 # =============================================================================
 
 
-@server.tool()
+@server.tool(output_schema=BATCH_CREATE_CONTACTS_RESULT_SCHEMA)
 @require_google_service("people", "contacts")
 @handle_http_errors("batch_create_contacts", service_type="people")
 async def batch_create_contacts(
     service: Resource,
     user_google_email: str,
     contacts: List[Dict[str, str]],
-) -> str:
+) -> ToolResult:
     """
     Create multiple contacts in a batch operation.
 
@@ -831,7 +1099,7 @@ async def batch_create_contacts(
             - job_title: Job title
 
     Returns:
-        str: Confirmation with created contacts.
+        ToolResult: Confirmation with created contacts.
     """
     logger.info(
         f"[batch_create_contacts] Invoked. Email: '{user_google_email}', Count: {len(contacts)}"
@@ -875,14 +1143,22 @@ async def batch_create_contacts(
         response = f"Batch Create Results for {user_google_email}:\n\n"
         response += f"Created {len(created_people)} contacts:\n\n"
 
+        contact_summaries = []
         for item in created_people:
             person = item.get("person", {})
             response += _format_contact(person) + "\n\n"
+            contact_summaries.append(_extract_contact_summary(person))
+
+        structured = BatchCreateContactsResult(
+            user_email=user_google_email,
+            created_count=len(created_people),
+            contacts=contact_summaries,
+        )
 
         logger.info(
             f"Batch created {len(created_people)} contacts for {user_google_email}"
         )
-        return response
+        return create_tool_result(text=response, data=structured)
 
     except HttpError as error:
         message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Contacts'."
@@ -894,14 +1170,14 @@ async def batch_create_contacts(
         raise Exception(message)
 
 
-@server.tool()
+@server.tool(output_schema=BATCH_UPDATE_CONTACTS_RESULT_SCHEMA)
 @require_google_service("people", "contacts")
 @handle_http_errors("batch_update_contacts", service_type="people")
 async def batch_update_contacts(
     service: Resource,
     user_google_email: str,
     updates: List[Dict[str, str]],
-) -> str:
+) -> ToolResult:
     """
     Update multiple contacts in a batch operation.
 
@@ -917,7 +1193,7 @@ async def batch_update_contacts(
             - job_title: New job title
 
     Returns:
-        str: Confirmation with updated contacts.
+        ToolResult: Confirmation with updated contacts.
     """
     logger.info(
         f"[batch_update_contacts] Invoked. Email: '{user_google_email}', Count: {len(updates)}"
@@ -1014,14 +1290,22 @@ async def batch_update_contacts(
         response = f"Batch Update Results for {user_google_email}:\n\n"
         response += f"Updated {len(update_results)} contacts:\n\n"
 
+        contact_summaries = []
         for resource_name, update_result in update_results.items():
             person = update_result.get("person", {})
             response += _format_contact(person) + "\n\n"
+            contact_summaries.append(_extract_contact_summary(person))
+
+        structured = BatchUpdateContactsResult(
+            user_email=user_google_email,
+            updated_count=len(update_results),
+            contacts=contact_summaries,
+        )
 
         logger.info(
             f"Batch updated {len(update_results)} contacts for {user_google_email}"
         )
-        return response
+        return create_tool_result(text=response, data=structured)
 
     except HttpError as error:
         message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Contacts'."
@@ -1033,14 +1317,14 @@ async def batch_update_contacts(
         raise Exception(message)
 
 
-@server.tool()
+@server.tool(output_schema=BATCH_DELETE_CONTACTS_RESULT_SCHEMA)
 @require_google_service("people", "contacts")
 @handle_http_errors("batch_delete_contacts", service_type="people")
 async def batch_delete_contacts(
     service: Resource,
     user_google_email: str,
     contact_ids: List[str],
-) -> str:
+) -> ToolResult:
     """
     Delete multiple contacts in a batch operation.
 
@@ -1049,7 +1333,7 @@ async def batch_delete_contacts(
         contact_ids (List[str]): List of contact IDs to delete.
 
     Returns:
-        str: Confirmation message.
+        ToolResult: Confirmation message.
     """
     logger.info(
         f"[batch_delete_contacts] Invoked. Email: '{user_google_email}', Count: {len(contact_ids)}"
@@ -1078,10 +1362,16 @@ async def batch_delete_contacts(
 
         response = f"Batch deleted {len(contact_ids)} contacts for {user_google_email}."
 
+        structured = BatchDeleteContactsResult(
+            user_email=user_google_email,
+            deleted_count=len(contact_ids),
+            deleted=True,
+        )
+
         logger.info(
             f"Batch deleted {len(contact_ids)} contacts for {user_google_email}"
         )
-        return response
+        return create_tool_result(text=response, data=structured)
 
     except HttpError as error:
         message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Contacts'."
@@ -1093,14 +1383,14 @@ async def batch_delete_contacts(
         raise Exception(message)
 
 
-@server.tool()
+@server.tool(output_schema=CREATE_CONTACT_GROUP_RESULT_SCHEMA)
 @require_google_service("people", "contacts")
 @handle_http_errors("create_contact_group", service_type="people")
 async def create_contact_group(
     service: Resource,
     user_google_email: str,
     name: str,
-) -> str:
+) -> ToolResult:
     """
     Create a new contact group (label).
 
@@ -1109,7 +1399,7 @@ async def create_contact_group(
         name (str): The name of the new contact group.
 
     Returns:
-        str: Confirmation with the new group details.
+        ToolResult: Confirmation with the new group details.
     """
     logger.info(
         f"[create_contact_group] Invoked. Email: '{user_google_email}', Name: '{name}'"
@@ -1125,14 +1415,25 @@ async def create_contact_group(
         resource_name = result.get("resourceName", "")
         group_id = resource_name.replace("contactGroups/", "")
         created_name = result.get("name", name)
+        group_type = result.get("groupType", "USER_CONTACT_GROUP")
 
         response = f"Contact Group Created for {user_google_email}:\n\n"
         response += f"Name: {created_name}\n"
         response += f"ID: {group_id}\n"
-        response += f"Type: {result.get('groupType', 'USER_CONTACT_GROUP')}\n"
+        response += f"Type: {group_type}\n"
+
+        structured = CreateContactGroupResult(
+            user_email=user_google_email,
+            group=ContactGroupSummary(
+                group_id=group_id,
+                name=created_name,
+                group_type=group_type,
+                member_count=0,
+            ),
+        )
 
         logger.info(f"Created contact group '{name}' for {user_google_email}")
-        return response
+        return create_tool_result(text=response, data=structured)
 
     except HttpError as error:
         message = f"API error: {error}. You might need to re-authenticate. LLM: Try 'start_google_auth' with the user's email ({user_google_email}) and service_name='Google Contacts'."
@@ -1144,7 +1445,7 @@ async def create_contact_group(
         raise Exception(message)
 
 
-@server.tool()
+@server.tool(output_schema=UPDATE_CONTACT_GROUP_RESULT_SCHEMA)
 @require_google_service("people", "contacts")
 @handle_http_errors("update_contact_group", service_type="people")
 async def update_contact_group(
@@ -1152,7 +1453,7 @@ async def update_contact_group(
     user_google_email: str,
     group_id: str,
     name: str,
-) -> str:
+) -> ToolResult:
     """
     Update a contact group's name.
 
@@ -1162,7 +1463,7 @@ async def update_contact_group(
         name (str): The new name for the contact group.
 
     Returns:
-        str: Confirmation with updated group details.
+        ToolResult: Confirmation with updated group details.
     """
     # Normalize resource name
     if not group_id.startswith("contactGroups/"):
@@ -1185,12 +1486,25 @@ async def update_contact_group(
 
         updated_name = result.get("name", name)
 
+        # Extract clean group_id
+        clean_group_id = (
+            group_id.replace("contactGroups/", "")
+            if group_id.startswith("contactGroups/")
+            else group_id
+        )
+
         response = f"Contact Group Updated for {user_google_email}:\n\n"
         response += f"Name: {updated_name}\n"
-        response += f"ID: {group_id}\n"
+        response += f"ID: {clean_group_id}\n"
+
+        structured = UpdateContactGroupResult(
+            user_email=user_google_email,
+            group_id=clean_group_id,
+            name=updated_name,
+        )
 
         logger.info(f"Updated contact group {resource_name} for {user_google_email}")
-        return response
+        return create_tool_result(text=response, data=structured)
 
     except HttpError as error:
         if error.resp.status == 404:
@@ -1206,7 +1520,7 @@ async def update_contact_group(
         raise Exception(message)
 
 
-@server.tool()
+@server.tool(output_schema=DELETE_CONTACT_GROUP_RESULT_SCHEMA)
 @require_google_service("people", "contacts")
 @handle_http_errors("delete_contact_group", service_type="people")
 async def delete_contact_group(
@@ -1214,7 +1528,7 @@ async def delete_contact_group(
     user_google_email: str,
     group_id: str,
     delete_contacts: bool = False,
-) -> str:
+) -> ToolResult:
     """
     Delete a contact group.
 
@@ -1224,7 +1538,7 @@ async def delete_contact_group(
         delete_contacts (bool): If True, also delete contacts in the group (default: False).
 
     Returns:
-        str: Confirmation message.
+        ToolResult: Confirmation message.
     """
     # Normalize resource name
     if not group_id.startswith("contactGroups/"):
@@ -1236,6 +1550,13 @@ async def delete_contact_group(
         f"[delete_contact_group] Invoked. Email: '{user_google_email}', Group: {resource_name}"
     )
 
+    # Extract clean group_id
+    clean_group_id = (
+        group_id.replace("contactGroups/", "")
+        if group_id.startswith("contactGroups/")
+        else group_id
+    )
+
     try:
         await asyncio.to_thread(
             service.contactGroups()
@@ -1243,14 +1564,23 @@ async def delete_contact_group(
             .execute
         )
 
-        response = f"Contact group {group_id} has been deleted for {user_google_email}."
+        response = (
+            f"Contact group {clean_group_id} has been deleted for {user_google_email}."
+        )
         if delete_contacts:
             response += " Contacts in the group were also deleted."
         else:
             response += " Contacts in the group were preserved."
 
+        structured = DeleteContactGroupResult(
+            user_email=user_google_email,
+            group_id=clean_group_id,
+            deleted=True,
+            contacts_deleted=delete_contacts,
+        )
+
         logger.info(f"Deleted contact group {resource_name} for {user_google_email}")
-        return response
+        return create_tool_result(text=response, data=structured)
 
     except HttpError as error:
         if error.resp.status == 404:
@@ -1266,7 +1596,7 @@ async def delete_contact_group(
         raise Exception(message)
 
 
-@server.tool()
+@server.tool(output_schema=MODIFY_CONTACT_GROUP_MEMBERS_RESULT_SCHEMA)
 @require_google_service("people", "contacts")
 @handle_http_errors("modify_contact_group_members", service_type="people")
 async def modify_contact_group_members(
@@ -1275,7 +1605,7 @@ async def modify_contact_group_members(
     group_id: str,
     add_contact_ids: Optional[List[str]] = None,
     remove_contact_ids: Optional[List[str]] = None,
-) -> str:
+) -> ToolResult:
     """
     Add or remove contacts from a contact group.
 
@@ -1286,7 +1616,7 @@ async def modify_contact_group_members(
         remove_contact_ids (Optional[List[str]]): Contact IDs to remove from the group.
 
     Returns:
-        str: Confirmation with results.
+        ToolResult: Confirmation with results.
     """
     # Normalize resource name
     if not group_id.startswith("contactGroups/"):
@@ -1336,23 +1666,46 @@ async def modify_contact_group_members(
         not_found = result.get("notFoundResourceNames", [])
         cannot_remove = result.get("canNotRemoveLastContactGroupResourceNames", [])
 
+        # Extract clean group_id
+        clean_group_id = (
+            group_id.replace("contactGroups/", "")
+            if group_id.startswith("contactGroups/")
+            else group_id
+        )
+
         response = f"Contact Group Members Modified for {user_google_email}:\n\n"
-        response += f"Group: {group_id}\n"
+        response += f"Group: {clean_group_id}\n"
+
+        added_count = len(add_contact_ids) if add_contact_ids else 0
+        removed_count = len(remove_contact_ids) if remove_contact_ids else 0
 
         if add_contact_ids:
-            response += f"Added: {len(add_contact_ids)} contacts\n"
+            response += f"Added: {added_count} contacts\n"
         if remove_contact_ids:
-            response += f"Removed: {len(remove_contact_ids)} contacts\n"
+            response += f"Removed: {removed_count} contacts\n"
+
+        # Clean up IDs for structured output
+        not_found_clean = [nf.replace("people/", "") for nf in not_found]
+        cannot_remove_clean = [cr.replace("people/", "") for cr in cannot_remove]
 
         if not_found:
             response += f"\nNot found: {', '.join(not_found)}\n"
         if cannot_remove:
             response += f"\nCannot remove (last group): {', '.join(cannot_remove)}\n"
 
+        structured = ModifyContactGroupMembersResult(
+            user_email=user_google_email,
+            group_id=clean_group_id,
+            added_count=added_count,
+            removed_count=removed_count,
+            not_found_ids=not_found_clean,
+            cannot_remove_ids=cannot_remove_clean,
+        )
+
         logger.info(
             f"Modified contact group members for {resource_name} for {user_google_email}"
         )
-        return response
+        return create_tool_result(text=response, data=structured)
 
     except HttpError as error:
         if error.resp.status == 404:

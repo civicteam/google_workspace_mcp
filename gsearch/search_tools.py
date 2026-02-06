@@ -4,19 +4,30 @@ Google Custom Search (PSE) MCP Tools
 This module provides MCP tools for interacting with Google Programmable Search Engine.
 """
 
-import logging
 import asyncio
+import logging
 import os
-from typing import Optional, List, Literal
+from typing import List, Literal, Optional
+
+from fastmcp.tools.tool import ToolResult
 
 from auth.service_decorator import require_google_service
 from core.server import server
+from core.structured_output import create_tool_result
 from core.utils import handle_http_errors
+from gsearch.search_models import (
+    SEARCH_ENGINE_INFO_SCHEMA,
+    SEARCH_RESULT_SCHEMA,
+    SearchEngineFacet,
+    SearchEngineInfo,
+    SearchResult,
+    SearchResultItem,
+)
 
 logger = logging.getLogger(__name__)
 
 
-@server.tool()
+@server.tool(output_schema=SEARCH_RESULT_SCHEMA)
 @handle_http_errors("search_custom", is_read_only=True, service_type="customsearch")
 @require_google_service("customsearch", "customsearch")
 async def search_custom(
@@ -32,7 +43,7 @@ async def search_custom(
     file_type: Optional[str] = None,
     language: Optional[str] = None,
     country: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Performs a search using Google Custom Search JSON API.
 
@@ -50,7 +61,7 @@ async def search_custom(
         country (Optional[str]): Country code for results (e.g., "countryUS").
 
     Returns:
-        str: Formatted search results including title, link, and snippet for each result.
+        ToolResult: Formatted search results including title, link, and snippet for each result.
     """
     # Get API key and search engine ID from environment
     api_key = os.environ.get("GOOGLE_PSE_API_KEY")
@@ -104,6 +115,9 @@ async def search_custom(
     # Extract search results
     items = result.get("items", [])
 
+    # Build structured result items
+    structured_items: list[SearchResultItem] = []
+
     # Format the response
     confirmation_message = f"""Search Results:
 - Query: "{q}"
@@ -121,47 +135,78 @@ async def search_custom(
             link = item.get("link", "No link")
             snippet = item.get("snippet", "No description available").replace("\n", " ")
 
+            # Extract optional metadata
+            content_type: Optional[str] = None
+            published_date: Optional[str] = None
+            if "pagemap" in item:
+                pagemap = item["pagemap"]
+                if "metatags" in pagemap and pagemap["metatags"]:
+                    metatag = pagemap["metatags"][0]
+                    content_type = metatag.get("og:type")
+                    if "article:published_time" in metatag:
+                        published_date = metatag["article:published_time"][:10]
+
+            # Build structured item
+            structured_items.append(
+                SearchResultItem(
+                    position=i,
+                    title=title,
+                    link=link,
+                    snippet=snippet,
+                    content_type=content_type,
+                    published_date=published_date,
+                )
+            )
+
             confirmation_message += f"\n{i}. {title}\n"
             confirmation_message += f"   URL: {link}\n"
             confirmation_message += f"   Snippet: {snippet}\n"
 
             # Add additional metadata if available
-            if "pagemap" in item:
-                pagemap = item["pagemap"]
-                if "metatags" in pagemap and pagemap["metatags"]:
-                    metatag = pagemap["metatags"][0]
-                    if "og:type" in metatag:
-                        confirmation_message += f"   Type: {metatag['og:type']}\n"
-                    if "article:published_time" in metatag:
-                        confirmation_message += (
-                            f"   Published: {metatag['article:published_time'][:10]}\n"
-                        )
+            if content_type:
+                confirmation_message += f"   Type: {content_type}\n"
+            if published_date:
+                confirmation_message += f"   Published: {published_date}\n"
     else:
         confirmation_message += "\nNo results found."
 
     # Add information about pagination
     queries = result.get("queries", {})
+    next_page_start: Optional[int] = None
     if "nextPage" in queries:
-        next_start = queries["nextPage"][0].get("startIndex", 0)
-        confirmation_message += (
-            f"\n\nTo see more results, search again with start={next_start}"
-        )
+        next_page_start = queries["nextPage"][0].get("startIndex")
+        if next_page_start:
+            confirmation_message += (
+                f"\n\nTo see more results, search again with start={next_page_start}"
+            )
+
+    # Build structured result
+    structured_result = SearchResult(
+        query=q,
+        search_engine_id=cx,
+        total_results=total_results,
+        search_time_seconds=search_time,
+        results_returned=len(items),
+        start_index=start,
+        items=structured_items,
+        next_page_start=next_page_start,
+    )
 
     logger.info("Search completed successfully")
-    return confirmation_message
+    return create_tool_result(text=confirmation_message, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=SEARCH_ENGINE_INFO_SCHEMA)
 @handle_http_errors(
     "get_search_engine_info", is_read_only=True, service_type="customsearch"
 )
 @require_google_service("customsearch", "customsearch")
-async def get_search_engine_info(service) -> str:
+async def get_search_engine_info(service) -> ToolResult:
     """
     Retrieves metadata about a Programmable Search Engine.
 
     Returns:
-        str: Information about the search engine including its configuration and available refinements.
+        ToolResult: Information about the search engine including its configuration and available refinements.
     """
     # Get API key and search engine ID from environment
     api_key = os.environ.get("GOOGLE_PSE_API_KEY")
@@ -192,6 +237,9 @@ async def get_search_engine_info(service) -> str:
     context = result.get("context", {})
     title = context.get("title", "Unknown")
 
+    # Build structured facets list
+    structured_facets: list[SearchEngineFacet] = []
+
     confirmation_message = f"""Search Engine Information:
 - Search Engine ID: {cx}
 - Title: {title}
@@ -204,20 +252,32 @@ async def get_search_engine_info(service) -> str:
             for item in facet:
                 label = item.get("label", "Unknown")
                 anchor = item.get("anchor", "Unknown")
+                structured_facets.append(SearchEngineFacet(label=label, anchor=anchor))
                 confirmation_message += f"  - {label} (anchor: {anchor})\n"
 
     # Add search information
     search_info = result.get("searchInformation", {})
+    total_indexed: Optional[str] = None
     if search_info:
-        total_results = search_info.get("totalResults", "Unknown")
+        total_indexed = search_info.get("totalResults")
         confirmation_message += "\nSearch Statistics:\n"
-        confirmation_message += f"  - Total indexed results: {total_results}\n"
+        confirmation_message += (
+            f"  - Total indexed results: {total_indexed or 'Unknown'}\n"
+        )
+
+    # Build structured result
+    structured_result = SearchEngineInfo(
+        search_engine_id=cx,
+        title=title,
+        total_indexed_results=total_indexed,
+        facets=structured_facets,
+    )
 
     logger.info("Search engine info retrieved successfully")
-    return confirmation_message
+    return create_tool_result(text=confirmation_message, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=SEARCH_RESULT_SCHEMA)
 @handle_http_errors(
     "search_custom_siterestrict", is_read_only=True, service_type="customsearch"
 )
@@ -229,7 +289,7 @@ async def search_custom_siterestrict(
     num: int = 10,
     start: int = 1,
     safe: Literal["active", "moderate", "off"] = "off",
-) -> str:
+) -> ToolResult:
     """
     Performs a search restricted to specific sites using Google Custom Search.
 
@@ -241,7 +301,7 @@ async def search_custom_siterestrict(
         safe (Literal["active", "moderate", "off"]): Safe search level. Defaults to "off".
 
     Returns:
-        str: Formatted search results from the specified sites.
+        ToolResult: Formatted search results from the specified sites.
     """
     logger.info(f"[search_custom_siterestrict] Invoked. Query: '{q}', Sites: {sites}")
 

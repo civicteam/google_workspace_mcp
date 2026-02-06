@@ -12,8 +12,30 @@ from typing import List, Optional, Union
 
 from auth.service_decorator import require_google_service
 from core.server import server
+from core.structured_output import create_tool_result
 from core.utils import handle_http_errors, UserInputError
 from core.comments import create_comment_tools
+from fastmcp.tools.tool import ToolResult
+from gsheets.sheets_models import (
+    ConditionalFormatResult,
+    CONDITIONAL_FORMAT_SCHEMA,
+    CreateSheetResult,
+    CREATE_SHEET_SCHEMA,
+    CreateSpreadsheetResult,
+    CREATE_SPREADSHEET_SCHEMA,
+    FormatSheetRangeResult,
+    FORMAT_SHEET_RANGE_SCHEMA,
+    ListSpreadsheetsResult,
+    LIST_SPREADSHEETS_SCHEMA,
+    ModifySheetValuesResult,
+    MODIFY_SHEET_VALUES_SCHEMA,
+    ReadSheetValuesResult,
+    READ_SHEET_VALUES_SCHEMA,
+    SheetInfo,
+    SpreadsheetInfoResult,
+    SpreadsheetItem,
+    SPREADSHEET_INFO_SCHEMA,
+)
 from gsheets.sheets_helpers import (
     CONDITION_TYPES,
     _a1_range_for_values,
@@ -35,13 +57,13 @@ from gsheets.sheets_helpers import (
 logger = logging.getLogger(__name__)
 
 
-@server.tool()
+@server.tool(output_schema=LIST_SPREADSHEETS_SCHEMA)
 @handle_http_errors("list_spreadsheets", is_read_only=True, service_type="sheets")
 @require_google_service("drive", "drive_read")
 async def list_spreadsheets(
     service,
     max_results: int = 25,
-) -> str:
+) -> ToolResult:
     """
     Lists spreadsheets from Google Drive that the user has access to.
 
@@ -68,7 +90,20 @@ async def list_spreadsheets(
 
     files = files_response.get("files", [])
     if not files:
-        return "No spreadsheets found."
+        return create_tool_result(
+            text="No spreadsheets found.",
+            data=ListSpreadsheetsResult(total_found=0, spreadsheets=[]),
+        )
+
+    spreadsheet_items = [
+        SpreadsheetItem(
+            spreadsheet_id=file["id"],
+            name=file["name"],
+            modified_time=file.get("modifiedTime", "Unknown"),
+            web_link=file.get("webViewLink", "No link"),
+        )
+        for file in files
+    ]
 
     spreadsheets_list = [
         f'- "{file["name"]}" (ID: {file["id"]}) | Modified: {file.get("modifiedTime", "Unknown")} | Link: {file.get("webViewLink", "No link")}'
@@ -79,17 +114,22 @@ async def list_spreadsheets(
         spreadsheets_list
     )
 
+    structured_result = ListSpreadsheetsResult(
+        total_found=len(files),
+        spreadsheets=spreadsheet_items,
+    )
+
     logger.info(f"Successfully listed {len(files)} spreadsheets.")
-    return text_output
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=SPREADSHEET_INFO_SCHEMA)
 @handle_http_errors("get_spreadsheet_info", is_read_only=True, service_type="sheets")
 @require_google_service("sheets", "sheets_read")
 async def get_spreadsheet_info(
     service,
     spreadsheet_id: str,
-) -> str:
+) -> ToolResult:
     """
     Gets information about a specific spreadsheet including its sheets.
 
@@ -123,14 +163,25 @@ async def get_spreadsheet_info(
             sheet_titles[sid] = sheet_props.get("title", f"Sheet {sid}")
 
     sheets_info = []
+    sheet_info_items = []
     for sheet in sheets:
         sheet_props = sheet.get("properties", {})
         sheet_name = sheet_props.get("title", "Unknown")
-        sheet_id = sheet_props.get("sheetId", "Unknown")
+        sheet_id = sheet_props.get("sheetId", 0)
         grid_props = sheet_props.get("gridProperties", {})
-        rows = grid_props.get("rowCount", "Unknown")
-        cols = grid_props.get("columnCount", "Unknown")
+        rows = grid_props.get("rowCount", 0)
+        cols = grid_props.get("columnCount", 0)
         rules = sheet.get("conditionalFormats", []) or []
+
+        sheet_info_items.append(
+            SheetInfo(
+                sheet_id=sheet_id if isinstance(sheet_id, int) else 0,
+                title=sheet_name,
+                row_count=rows if isinstance(rows, int) else 0,
+                column_count=cols if isinstance(cols, int) else 0,
+                conditional_format_count=len(rules),
+            )
+        )
 
         sheets_info.append(
             f'  - "{sheet_name}" (ID: {sheet_id}) | Size: {rows}x{cols} | Conditional formats: {len(rules)}'
@@ -151,18 +202,25 @@ async def get_spreadsheet_info(
         ]
     )
 
+    structured_result = SpreadsheetInfoResult(
+        spreadsheet_id=spreadsheet_id,
+        title=title,
+        locale=locale,
+        sheets=sheet_info_items,
+    )
+
     logger.info(f"Successfully retrieved info for spreadsheet {spreadsheet_id}.")
-    return text_output
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=READ_SHEET_VALUES_SCHEMA)
 @handle_http_errors("read_sheet_values", is_read_only=True, service_type="sheets")
 @require_google_service("sheets", "sheets_read")
 async def read_sheet_values(
     service,
     spreadsheet_id: str,
     range_name: str = "A1:Z1000",
-) -> str:
+) -> ToolResult:
     """
     Reads values from a specific range in a Google Sheet.
 
@@ -186,10 +244,21 @@ async def read_sheet_values(
 
     values = result.get("values", [])
     if not values:
-        return f"No data found in range '{range_name}'."
+        return create_tool_result(
+            text=f"No data found in range '{range_name}'.",
+            data=ReadSheetValuesResult(
+                spreadsheet_id=spreadsheet_id,
+                range_name=range_name,
+                row_count=0,
+                values=[],
+                has_errors=False,
+            ),
+        )
 
     detailed_errors_section = ""
+    has_errors = False
     if _values_contain_sheets_errors(values):
+        has_errors = True
         resolved_range = result.get("range", range_name)
         detailed_range = _a1_range_for_values(resolved_range, values) or resolved_range
         try:
@@ -219,11 +288,24 @@ async def read_sheet_values(
         + (f"\n... and {len(values) - 50} more rows" if len(values) > 50 else "")
     )
 
+    # Convert values to list of list of strings for structured output
+    string_values = [[str(cell) for cell in row] for row in values]
+
+    structured_result = ReadSheetValuesResult(
+        spreadsheet_id=spreadsheet_id,
+        range_name=range_name,
+        row_count=len(values),
+        values=string_values,
+        has_errors=has_errors,
+    )
+
     logger.info(f"Successfully read {len(values)} rows.")
-    return text_output + detailed_errors_section
+    return create_tool_result(
+        text=text_output + detailed_errors_section, data=structured_result
+    )
 
 
-@server.tool()
+@server.tool(output_schema=MODIFY_SHEET_VALUES_SCHEMA)
 @handle_http_errors("modify_sheet_values", service_type="sheets")
 @require_google_service("sheets", "sheets_write")
 async def modify_sheet_values(
@@ -233,7 +315,7 @@ async def modify_sheet_values(
     values: Optional[Union[str, List[List[str]]]] = None,
     value_input_option: str = "USER_ENTERED",
     clear_values: bool = False,
-) -> str:
+) -> ToolResult:
     """
     Modifies values in a specific range of a Google Sheet - can write, update, or clear values.
 
@@ -291,6 +373,16 @@ async def modify_sheet_values(
         cleared_range = result.get("clearedRange", range_name)
         text_output = f"Successfully cleared range '{cleared_range}' in spreadsheet {spreadsheet_id}."
         logger.info(f"Successfully cleared range '{cleared_range}'.")
+
+        structured_result = ModifySheetValuesResult(
+            spreadsheet_id=spreadsheet_id,
+            range_name=cleared_range,
+            operation="clear",
+            updated_cells=0,
+            updated_rows=0,
+            updated_columns=0,
+            has_errors=False,
+        )
     else:
         body = {"values": values}
 
@@ -315,9 +407,11 @@ async def modify_sheet_values(
         updated_columns = result.get("updatedColumns", 0)
 
         detailed_errors_section = ""
+        has_errors = False
         updated_data = result.get("updatedData") or {}
         updated_values = updated_data.get("values", []) or []
         if updated_values and _values_contain_sheets_errors(updated_values):
+            has_errors = True
             updated_range = result.get("updatedRange", range_name)
             detailed_range = (
                 _a1_range_for_values(updated_range, updated_values) or updated_range
@@ -343,10 +437,20 @@ async def modify_sheet_values(
         text_output += detailed_errors_section
         logger.info(f"Successfully updated {updated_cells} cells.")
 
-    return text_output
+        structured_result = ModifySheetValuesResult(
+            spreadsheet_id=spreadsheet_id,
+            range_name=range_name,
+            operation="update",
+            updated_cells=updated_cells,
+            updated_rows=updated_rows,
+            updated_columns=updated_columns,
+            has_errors=has_errors,
+        )
+
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=FORMAT_SHEET_RANGE_SCHEMA)
 @handle_http_errors("format_sheet_range", service_type="sheets")
 @require_google_service("sheets", "sheets_write")
 async def format_sheet_range(
@@ -357,7 +461,7 @@ async def format_sheet_range(
     text_color: Optional[str] = None,
     number_format_type: Optional[str] = None,
     number_format_pattern: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Applies formatting to a range: background/text color and number/date formats.
 
@@ -471,10 +575,18 @@ async def format_sheet_range(
         applied_parts.append(f"format {nf_desc}")
 
     summary = ", ".join(applied_parts)
-    return f"Applied formatting to range '{range_name}' in spreadsheet {spreadsheet_id}: {summary}."
+    text_output = f"Applied formatting to range '{range_name}' in spreadsheet {spreadsheet_id}: {summary}."
+
+    structured_result = FormatSheetRangeResult(
+        spreadsheet_id=spreadsheet_id,
+        range_name=range_name,
+        applied_formats=applied_parts,
+    )
+
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=CONDITIONAL_FORMAT_SCHEMA)
 @handle_http_errors("add_conditional_formatting", service_type="sheets")
 @require_google_service("sheets", "sheets_write")
 async def add_conditional_formatting(
@@ -487,7 +599,7 @@ async def add_conditional_formatting(
     text_color: Optional[str] = None,
     rule_index: Optional[int] = None,
     gradient_points: Optional[Union[str, List[dict]]] = None,
-) -> str:
+) -> ToolResult:
     """
     Adds a conditional formatting rule to a range.
 
@@ -586,15 +698,25 @@ async def add_conditional_formatting(
         sheet_title, new_rules_state, sheet_titles, indent=""
     )
 
-    return "\n".join(
+    text_output = "\n".join(
         [
             f"Added conditional format on '{range_name}' in spreadsheet {spreadsheet_id}: {rule_desc}{values_desc}; format: {format_desc}.",
             state_text,
         ]
     )
 
+    structured_result = ConditionalFormatResult(
+        spreadsheet_id=spreadsheet_id,
+        sheet_name=sheet_title,
+        operation="add",
+        rule_index=insert_at,
+        rule_type=rule_desc,
+    )
 
-@server.tool()
+    return create_tool_result(text=text_output, data=structured_result)
+
+
+@server.tool(output_schema=CONDITIONAL_FORMAT_SCHEMA)
 @handle_http_errors("update_conditional_formatting", service_type="sheets")
 @require_google_service("sheets", "sheets_write")
 async def update_conditional_formatting(
@@ -608,7 +730,7 @@ async def update_conditional_formatting(
     text_color: Optional[str] = None,
     sheet_name: Optional[str] = None,
     gradient_points: Optional[Union[str, List[dict]]] = None,
-) -> str:
+) -> ToolResult:
     """
     Updates an existing conditional formatting rule by index on a sheet.
 
@@ -783,15 +905,25 @@ async def update_conditional_formatting(
         sheet_title, new_rules_state, sheet_titles, indent=""
     )
 
-    return "\n".join(
+    text_output = "\n".join(
         [
             f"Updated conditional format at index {rule_index} on sheet '{sheet_title}' in spreadsheet {spreadsheet_id}: {rule_desc}{values_desc}; format: {format_desc}.",
             state_text,
         ]
     )
 
+    structured_result = ConditionalFormatResult(
+        spreadsheet_id=spreadsheet_id,
+        sheet_name=sheet_title,
+        operation="update",
+        rule_index=rule_index,
+        rule_type=rule_desc,
+    )
 
-@server.tool()
+    return create_tool_result(text=text_output, data=structured_result)
+
+
+@server.tool(output_schema=CONDITIONAL_FORMAT_SCHEMA)
 @handle_http_errors("delete_conditional_formatting", service_type="sheets")
 @require_google_service("sheets", "sheets_write")
 async def delete_conditional_formatting(
@@ -799,7 +931,7 @@ async def delete_conditional_formatting(
     spreadsheet_id: str,
     rule_index: int,
     sheet_name: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Deletes an existing conditional formatting rule by index on a sheet.
 
@@ -857,22 +989,32 @@ async def delete_conditional_formatting(
         target_sheet_name, new_rules_state, sheet_titles, indent=""
     )
 
-    return "\n".join(
+    text_output = "\n".join(
         [
             f"Deleted conditional format at index {rule_index} on sheet '{target_sheet_name}' in spreadsheet {spreadsheet_id}.",
             state_text,
         ]
     )
 
+    structured_result = ConditionalFormatResult(
+        spreadsheet_id=spreadsheet_id,
+        sheet_name=target_sheet_name,
+        operation="delete",
+        rule_index=rule_index,
+        rule_type="deleted",
+    )
 
-@server.tool()
+    return create_tool_result(text=text_output, data=structured_result)
+
+
+@server.tool(output_schema=CREATE_SPREADSHEET_SCHEMA)
 @handle_http_errors("create_spreadsheet", service_type="sheets")
 @require_google_service("sheets", "sheets_write")
 async def create_spreadsheet(
     service,
     title: str,
     sheet_names: Optional[List[str]] = None,
-) -> str:
+) -> ToolResult:
     """
     Creates a new Google Spreadsheet.
 
@@ -911,18 +1053,25 @@ async def create_spreadsheet(
         f"ID: {spreadsheet_id} | URL: {spreadsheet_url} | Locale: {locale}"
     )
 
+    structured_result = CreateSpreadsheetResult(
+        spreadsheet_id=spreadsheet_id,
+        title=title,
+        spreadsheet_url=spreadsheet_url,
+        locale=locale,
+    )
+
     logger.info(f"Successfully created spreadsheet. ID: {spreadsheet_id}")
-    return text_output
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=CREATE_SHEET_SCHEMA)
 @handle_http_errors("create_sheet", service_type="sheets")
 @require_google_service("sheets", "sheets_write")
 async def create_sheet(
     service,
     spreadsheet_id: str,
     sheet_name: str,
-) -> str:
+) -> ToolResult:
     """
     Creates a new sheet within an existing spreadsheet.
 
@@ -949,8 +1098,14 @@ async def create_sheet(
 
     text_output = f"Successfully created sheet '{sheet_name}' (ID: {sheet_id}) in spreadsheet {spreadsheet_id}."
 
+    structured_result = CreateSheetResult(
+        spreadsheet_id=spreadsheet_id,
+        sheet_id=sheet_id,
+        sheet_name=sheet_name,
+    )
+
     logger.info(f"Successfully created sheet. Sheet ID: {sheet_id}")
-    return text_output
+    return create_tool_result(text=text_output, data=structured_result)
 
 
 # Create comment management tools for sheets

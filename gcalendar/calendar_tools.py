@@ -17,8 +17,30 @@ from googleapiclient.discovery import build
 
 from auth.service_decorator import require_google_service
 from core.utils import handle_http_errors
+from fastmcp.tools.tool import ToolResult
 
 from core.server import server
+from core.structured_output import create_tool_result
+from gcalendar.calendar_models import (
+    CalendarInfo,
+    CalendarListResult,
+    EventAttendee,
+    EventAttachment,
+    CalendarEvent,
+    GetEventsResult,
+    CreateEventResult,
+    ModifyEventResult,
+    DeleteEventResult,
+    BusyPeriod,
+    CalendarFreeBusy,
+    FreeBusyResult,
+    CALENDAR_LIST_RESULT_SCHEMA,
+    GET_EVENTS_RESULT_SCHEMA,
+    CREATE_EVENT_RESULT_SCHEMA,
+    MODIFY_EVENT_RESULT_SCHEMA,
+    DELETE_EVENT_RESULT_SCHEMA,
+    FREEBUSY_RESULT_SCHEMA,
+)
 
 
 # Configure module logger
@@ -301,15 +323,16 @@ def _correct_time_format_for_api(
     return time_str
 
 
-@server.tool()
+@server.tool(output_schema=CALENDAR_LIST_RESULT_SCHEMA)
 @handle_http_errors("list_calendars", is_read_only=True, service_type="calendar")
 @require_google_service("calendar", "calendar_read")
-async def list_calendars(service) -> str:
+async def list_calendars(service) -> ToolResult:
     """
     Retrieves a list of calendars accessible to the authenticated user.
 
     Returns:
-        str: A formatted list of the user's calendars (summary, ID, primary status).
+        ToolResult: A formatted list of the user's calendars (summary, ID, primary status).
+        Also includes structured_content for machine parsing.
     """
     logger.info("[list_calendars] Invoked.")
 
@@ -318,7 +341,10 @@ async def list_calendars(service) -> str:
     )
     items = calendar_list_response.get("items", [])
     if not items:
-        return "No calendars found."
+        return create_tool_result(
+            text="No calendars found.",
+            data=CalendarListResult(total_count=0, calendars=[]),
+        )
 
     calendars_summary_list = [
         f'- "{cal.get("summary", "No Summary")}"{" (Primary)" if cal.get("primary") else ""} (ID: {cal["id"]})'
@@ -327,11 +353,26 @@ async def list_calendars(service) -> str:
     text_output = f"Successfully listed {len(items)} calendars:\n" + "\n".join(
         calendars_summary_list
     )
+
+    # Build structured output
+    calendar_infos = [
+        CalendarInfo(
+            calendar_id=cal["id"],
+            summary=cal.get("summary", "No Summary"),
+            is_primary=cal.get("primary", False),
+        )
+        for cal in items
+    ]
+    structured_result = CalendarListResult(
+        total_count=len(items),
+        calendars=calendar_infos,
+    )
+
     logger.info(f"Successfully listed {len(items)} calendars.")
-    return text_output
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=GET_EVENTS_RESULT_SCHEMA)
 @handle_http_errors("get_events", is_read_only=True, service_type="calendar")
 @require_google_service("calendar", "calendar_read")
 async def get_events(
@@ -344,7 +385,7 @@ async def get_events(
     query: Optional[str] = None,
     detailed: bool = False,
     include_attachments: bool = False,
-) -> str:
+) -> ToolResult:
     """
     Retrieves events from a specified Google Calendar. Can retrieve a single event by ID or multiple events within a time range.
     You can also search for events by keyword by supplying the optional "query" param.
@@ -360,7 +401,8 @@ async def get_events(
         include_attachments (bool): Whether to include attachment information in detailed event output. When True, shows attachment details (fileId, fileUrl, mimeType, title) for events that have attachments. Only applies when detailed=True. Set this to True when you need to view or access files that have been attached to calendar events, such as meeting documents, presentations, or other shared files. Defaults to False.
 
     Returns:
-        str: A formatted list of events (summary, start and end times, link) within the specified range, or detailed information for a single event if event_id is provided.
+        ToolResult: A formatted list of events (summary, start and end times, link) within the specified range, or detailed information for a single event if event_id is provided.
+        Also includes structured_content for machine parsing.
     """
     logger.info(
         f"[get_events] Raw parameters - event_id: '{event_id}', time_min: '{time_min}', time_max: '{time_max}', query: '{query}', detailed: {detailed}, include_attachments: {include_attachments}"
@@ -421,10 +463,21 @@ async def get_events(
         )
         items = events_result.get("items", [])
     if not items:
+        empty_result = GetEventsResult(
+            calendar_id=calendar_id,
+            total_count=0,
+            events=[],
+        )
         if event_id:
-            return f"Event with ID '{event_id}' not found in calendar '{calendar_id}'."
+            return create_tool_result(
+                text=f"Event with ID '{event_id}' not found in calendar '{calendar_id}'.",
+                data=empty_result,
+            )
         else:
-            return f"No events found in calendar '{calendar_id}' for the specified time range."
+            return create_tool_result(
+                text=f"No events found in calendar '{calendar_id}' for the specified time range.",
+                data=empty_result,
+            )
 
     # Handle returning detailed output for a single event when requested
     if event_id and detailed:
@@ -455,15 +508,54 @@ async def get_events(
         )
 
         if include_attachments:
-            attachments = item.get("attachments", [])
+            attachments_data = item.get("attachments", [])
             attachment_details_str = _format_attachment_details(
-                attachments, indent="  "
+                attachments_data, indent="  "
             )
             event_details += f"- Attachments: {attachment_details_str}\n"
 
         event_details += f"- Event ID: {event_id}\n- Link: {link}"
         logger.info(f"[get_events] Successfully retrieved detailed event {event_id}.")
-        return event_details
+
+        # Build structured output for single detailed event
+        structured_attendees = [
+            EventAttendee(
+                email=a.get("email", "unknown"),
+                response_status=a.get("responseStatus", "unknown"),
+                is_organizer=a.get("organizer", False),
+                is_optional=a.get("optional", False),
+            )
+            for a in attendees
+        ]
+        structured_attachments = []
+        if include_attachments:
+            structured_attachments = [
+                EventAttachment(
+                    title=att.get("title", "Untitled"),
+                    file_url=att.get("fileUrl", "No URL"),
+                    file_id=att.get("fileId", "No ID"),
+                    mime_type=att.get("mimeType", "Unknown"),
+                )
+                for att in item.get("attachments", [])
+            ]
+        structured_event = CalendarEvent(
+            event_id=event_id,
+            summary=summary,
+            start=start,
+            end=end,
+            html_link=link,
+            description=description if description != "No Description" else None,
+            location=location if location != "No Location" else None,
+            color_id=color_id if color_id != "None" else None,
+            attendees=structured_attendees,
+            attachments=structured_attachments,
+        )
+        structured_result = GetEventsResult(
+            calendar_id=calendar_id,
+            total_count=1,
+            events=[structured_event],
+        )
+        return create_tool_result(text=event_details, data=structured_result)
 
     # Handle multiple events or single event with basic output
     event_details_list = []
@@ -522,11 +614,66 @@ async def get_events(
             + "\n".join(event_details_list)
         )
 
+    # Build structured output for all events
+    structured_events = []
+    for item in items:
+        item_attendees = item.get("attendees", [])
+        structured_attendees = [
+            EventAttendee(
+                email=a.get("email", "unknown"),
+                response_status=a.get("responseStatus", "unknown"),
+                is_organizer=a.get("organizer", False),
+                is_optional=a.get("optional", False),
+            )
+            for a in item_attendees
+        ]
+        structured_attachments = []
+        if include_attachments:
+            structured_attachments = [
+                EventAttachment(
+                    title=att.get("title", "Untitled"),
+                    file_url=att.get("fileUrl", "No URL"),
+                    file_id=att.get("fileId", "No ID"),
+                    mime_type=att.get("mimeType", "Unknown"),
+                )
+                for att in item.get("attachments", [])
+            ]
+
+        item_summary = item.get("summary", "No Title")
+        item_start = item["start"].get("dateTime", item["start"].get("date"))
+        item_end = item["end"].get("dateTime", item["end"].get("date"))
+        item_link = item.get("htmlLink", "No Link")
+        item_id = item.get("id", "No ID")
+        item_description = item.get("description")
+        item_location = item.get("location")
+        item_color_id = item.get("colorId")
+
+        structured_events.append(
+            CalendarEvent(
+                event_id=item_id,
+                summary=item_summary,
+                start=item_start,
+                end=item_end,
+                html_link=item_link,
+                description=item_description,
+                location=item_location,
+                color_id=item_color_id,
+                attendees=structured_attendees if detailed else [],
+                attachments=structured_attachments,
+            )
+        )
+
+    structured_result = GetEventsResult(
+        calendar_id=calendar_id,
+        total_count=len(items),
+        events=structured_events,
+    )
+
     logger.info(f"Successfully retrieved {len(items)} events.")
-    return text_output
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=CREATE_EVENT_RESULT_SCHEMA)
 @handle_http_errors("create_event", service_type="calendar")
 @require_google_service("calendar", "calendar_events")
 async def create_event(
@@ -548,7 +695,7 @@ async def create_event(
     guests_can_modify: Optional[bool] = None,
     guests_can_invite_others: Optional[bool] = None,
     guests_can_see_other_guests: Optional[bool] = None,
-) -> str:
+) -> ToolResult:
     """
     Creates a new event.
 
@@ -572,7 +719,8 @@ async def create_event(
         guests_can_see_other_guests (Optional[bool]): Whether attendees other than the organizer can see who the event's attendees are. Defaults to None (uses Google Calendar default of True).
 
     Returns:
-        str: Confirmation message of the successful event creation with event link.
+        ToolResult: Confirmation message of the successful event creation with event link.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[create_event] Invoked. Summary: {summary}")
     logger.info(f"[create_event] Incoming attachments param: {attachments}")
@@ -745,7 +893,8 @@ async def create_event(
     link = created_event.get("htmlLink", "No link available")
     confirmation_message = f"Successfully created event '{created_event.get('summary', summary)}'. Link: {link}"
 
-    # Add Google Meet information if conference was created
+    # Extract Google Meet link if conference was created
+    meet_link = None
     if add_google_meet and "conferenceData" in created_event:
         conference_data = created_event["conferenceData"]
         if "entryPoints" in conference_data:
@@ -759,7 +908,16 @@ async def create_event(
     logger.info(
         f"Event created successfully. ID: {created_event.get('id')}, Link: {link}"
     )
-    return confirmation_message
+
+    # Build structured output
+    structured_result = CreateEventResult(
+        event_id=created_event.get("id", ""),
+        summary=created_event.get("summary", summary),
+        html_link=link,
+        google_meet_link=meet_link,
+    )
+
+    return create_tool_result(text=confirmation_message, data=structured_result)
 
 
 def _normalize_attendees(
@@ -791,7 +949,7 @@ def _normalize_attendees(
     return normalized if normalized else None
 
 
-@server.tool()
+@server.tool(output_schema=MODIFY_EVENT_RESULT_SCHEMA)
 @handle_http_errors("modify_event", service_type="calendar")
 @require_google_service("calendar", "calendar_events")
 async def modify_event(
@@ -814,7 +972,7 @@ async def modify_event(
     guests_can_modify: Optional[bool] = None,
     guests_can_invite_others: Optional[bool] = None,
     guests_can_see_other_guests: Optional[bool] = None,
-) -> str:
+) -> ToolResult:
     """
     Modifies an existing event.
 
@@ -839,7 +997,8 @@ async def modify_event(
         guests_can_see_other_guests (Optional[bool]): Whether attendees other than the organizer can see who the event's attendees are. If None, preserves existing setting.
 
     Returns:
-        str: Confirmation message of the successful event modification with event link.
+        ToolResult: Confirmation message of the successful event modification with event link.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[modify_event] Invoked. Event ID: {event_id}")
 
@@ -1032,7 +1191,9 @@ async def modify_event(
     link = updated_event.get("htmlLink", "No link available")
     confirmation_message = f"Successfully modified event '{updated_event.get('summary', summary)}' (ID: {event_id}). Link: {link}"
 
-    # Add Google Meet information if conference was added
+    # Extract Google Meet link if conference was added
+    meet_link = None
+    google_meet_removed = False
     if add_google_meet is True and "conferenceData" in updated_event:
         conference_data = updated_event["conferenceData"]
         if "entryPoints" in conference_data:
@@ -1044,17 +1205,30 @@ async def modify_event(
                         break
     elif add_google_meet is False:
         confirmation_message += " (Google Meet removed)"
+        google_meet_removed = True
 
     logger.info(
         f"Event modified successfully. ID: {updated_event.get('id')}, Link: {link}"
     )
-    return confirmation_message
+
+    # Build structured output
+    structured_result = ModifyEventResult(
+        event_id=event_id,
+        summary=updated_event.get("summary", summary or ""),
+        html_link=link,
+        google_meet_link=meet_link,
+        google_meet_removed=google_meet_removed,
+    )
+
+    return create_tool_result(text=confirmation_message, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=DELETE_EVENT_RESULT_SCHEMA)
 @handle_http_errors("delete_event", service_type="calendar")
 @require_google_service("calendar", "calendar_events")
-async def delete_event(service, event_id: str, calendar_id: str = "primary") -> str:
+async def delete_event(
+    service, event_id: str, calendar_id: str = "primary"
+) -> ToolResult:
     """
     Deletes an existing event.
 
@@ -1063,7 +1237,8 @@ async def delete_event(service, event_id: str, calendar_id: str = "primary") -> 
         calendar_id (str): Calendar ID (default: 'primary').
 
     Returns:
-        str: Confirmation message of the successful event deletion.
+        ToolResult: Confirmation message of the successful event deletion.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[delete_event] Invoked. Event ID: {event_id}")
 
@@ -1103,10 +1278,17 @@ async def delete_event(service, event_id: str, calendar_id: str = "primary") -> 
         f"Successfully deleted event (ID: {event_id}) from calendar '{calendar_id}'."
     )
     logger.info(f"Event deleted successfully. ID: {event_id}")
-    return confirmation_message
+
+    # Build structured output
+    structured_result = DeleteEventResult(
+        event_id=event_id,
+        calendar_id=calendar_id,
+    )
+
+    return create_tool_result(text=confirmation_message, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=FREEBUSY_RESULT_SCHEMA)
 @handle_http_errors("query_freebusy", is_read_only=True, service_type="calendar")
 @require_google_service("calendar", "calendar_read")
 async def query_freebusy(
@@ -1117,7 +1299,7 @@ async def query_freebusy(
     calendar_ids: Optional[List[str]] = None,
     group_expansion_max: Optional[int] = None,
     calendar_expansion_max: Optional[int] = None,
-) -> str:
+) -> ToolResult:
     """
     Returns free/busy information for a set of calendars.
 
@@ -1130,7 +1312,8 @@ async def query_freebusy(
         calendar_expansion_max (Optional[int]): Maximum number of calendars for which FreeBusy information is to be provided. Optional. Maximum value is 50.
 
     Returns:
-        str: A formatted response showing free/busy information for each requested calendar, including busy time periods.
+        ToolResult: A formatted response showing free/busy information for each requested calendar, including busy time periods.
+        Also includes structured_content for machine parsing.
     """
     logger.info(
         f"[query_freebusy] Invoked. Email: '{user_google_email}', time_min: '{time_min}', time_max: '{time_max}'"
@@ -1171,7 +1354,16 @@ async def query_freebusy(
     time_max_result = freebusy_result.get("timeMax", formatted_time_max)
 
     if not calendars:
-        return f"No free/busy information found for the requested calendars for {user_google_email}."
+        empty_result = FreeBusyResult(
+            user_email=user_google_email,
+            time_min=time_min_result,
+            time_max=time_max_result,
+            calendars=[],
+        )
+        return create_tool_result(
+            text=f"No free/busy information found for the requested calendars for {user_google_email}.",
+            data=empty_result,
+        )
 
     # Format the output
     output_lines = [
@@ -1180,22 +1372,42 @@ async def query_freebusy(
         "",
     ]
 
+    # Build structured output
+    structured_calendars = []
+
     for cal_id, cal_data in calendars.items():
         output_lines.append(f"Calendar: {cal_id}")
 
         # Check for errors
         errors = cal_data.get("errors", [])
+        error_messages = []
         if errors:
             output_lines.append("  Errors:")
             for error in errors:
                 domain = error.get("domain", "unknown")
                 reason = error.get("reason", "unknown")
+                error_messages.append(f"{domain}: {reason}")
                 output_lines.append(f"    - {domain}: {reason}")
             output_lines.append("")
+            structured_calendars.append(
+                CalendarFreeBusy(
+                    calendar_id=cal_id,
+                    busy_periods=[],
+                    errors=error_messages,
+                )
+            )
             continue
 
         # Get busy periods
         busy_periods = cal_data.get("busy", [])
+        structured_busy_periods = [
+            BusyPeriod(
+                start=period.get("start", "Unknown"),
+                end=period.get("end", "Unknown"),
+            )
+            for period in busy_periods
+        ]
+
         if not busy_periods:
             output_lines.append("  Status: Free (no busy periods)")
         else:
@@ -1207,8 +1419,25 @@ async def query_freebusy(
 
         output_lines.append("")
 
+        structured_calendars.append(
+            CalendarFreeBusy(
+                calendar_id=cal_id,
+                busy_periods=structured_busy_periods,
+                errors=[],
+            )
+        )
+
     result_text = "\n".join(output_lines)
     logger.info(
         f"[query_freebusy] Successfully retrieved free/busy information for {len(calendars)} calendar(s)"
     )
-    return result_text
+
+    # Build final structured output
+    structured_result = FreeBusyResult(
+        user_email=user_google_email,
+        time_min=time_min_result,
+        time_max=time_max_result,
+        calendars=structured_calendars,
+    )
+
+    return create_tool_result(text=result_text, data=structured_result)

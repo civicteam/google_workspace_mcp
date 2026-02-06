@@ -9,28 +9,44 @@ import asyncio
 from typing import Optional
 
 from googleapiclient.errors import HttpError
+from fastmcp.tools.tool import ToolResult
 
 # Auth & server utilities
 from auth.service_decorator import require_google_service
 from core.server import server
 from core.utils import handle_http_errors
+from core.structured_output import create_tool_result
+from gchat.chat_models import (
+    ChatSpace,
+    ChatListSpacesResult,
+    ChatMessage,
+    ChatGetMessagesResult,
+    ChatSendMessageResult,
+    ChatSearchMessage,
+    ChatSearchMessagesResult,
+    CHAT_LIST_SPACES_RESULT_SCHEMA,
+    CHAT_GET_MESSAGES_RESULT_SCHEMA,
+    CHAT_SEND_MESSAGE_RESULT_SCHEMA,
+    CHAT_SEARCH_MESSAGES_RESULT_SCHEMA,
+)
 
 logger = logging.getLogger(__name__)
 
 
-@server.tool()
+@server.tool(output_schema=CHAT_LIST_SPACES_RESULT_SCHEMA)
 @require_google_service("chat", "chat_read")
 @handle_http_errors("list_spaces", service_type="chat")
 async def list_spaces(
     service,
     page_size: int = 100,
     space_type: str = "all",  # "all", "room", "dm"
-) -> str:
+) -> ToolResult:
     """
     Lists Google Chat spaces (rooms and direct messages) accessible to the user.
 
     Returns:
-        str: A formatted list of Google Chat spaces accessible to the user.
+        ToolResult: A formatted list of Google Chat spaces accessible to the user.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[list_spaces] Type={space_type}")
 
@@ -49,19 +65,41 @@ async def list_spaces(
 
     spaces = response.get("spaces", [])
     if not spaces:
-        return f"No Chat spaces found for type '{space_type}'."
+        structured_result = ChatListSpacesResult(
+            space_type_filter=space_type,
+            total_found=0,
+            spaces=[],
+        )
+        return create_tool_result(
+            text=f"No Chat spaces found for type '{space_type}'.",
+            data=structured_result,
+        )
 
     output = [f"Found {len(spaces)} Chat spaces (type: {space_type}):"]
+    space_list = []
     for space in spaces:
         space_name = space.get("displayName", "Unnamed Space")
         space_id = space.get("name", "")
         space_type_actual = space.get("spaceType", "UNKNOWN")
         output.append(f"- {space_name} (ID: {space_id}, Type: {space_type_actual})")
+        space_list.append(
+            ChatSpace(
+                space_id=space_id,
+                display_name=space_name,
+                space_type=space_type_actual,
+            )
+        )
 
-    return "\n".join(output)
+    structured_result = ChatListSpacesResult(
+        space_type_filter=space_type,
+        total_found=len(spaces),
+        spaces=space_list,
+    )
+
+    return create_tool_result(text="\n".join(output), data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=CHAT_GET_MESSAGES_RESULT_SCHEMA)
 @require_google_service("chat", "chat_read")
 @handle_http_errors("get_messages", service_type="chat")
 async def get_messages(
@@ -69,12 +107,13 @@ async def get_messages(
     space_id: str,
     page_size: int = 50,
     order_by: str = "createTime desc",
-) -> str:
+) -> ToolResult:
     """
     Retrieves messages from a Google Chat space.
 
     Returns:
-        str: Formatted messages from the specified space.
+        ToolResult: Formatted messages from the specified space.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[get_messages] Space ID: '{space_id}'")
 
@@ -92,9 +131,19 @@ async def get_messages(
 
     messages = response.get("messages", [])
     if not messages:
-        return f"No messages found in space '{space_name}' (ID: {space_id})."
+        structured_result = ChatGetMessagesResult(
+            space_id=space_id,
+            space_name=space_name,
+            total_messages=0,
+            messages=[],
+        )
+        return create_tool_result(
+            text=f"No messages found in space '{space_name}' (ID: {space_id}).",
+            data=structured_result,
+        )
 
     output = [f"Messages from '{space_name}' (ID: {space_id}):\n"]
+    message_list = []
     for msg in messages:
         sender = msg.get("sender", {}).get("displayName", "Unknown Sender")
         create_time = msg.get("createTime", "Unknown Time")
@@ -105,10 +154,26 @@ async def get_messages(
         output.append(f"  {text_content}")
         output.append(f"  (Message ID: {msg_name})\n")
 
-    return "\n".join(output)
+        message_list.append(
+            ChatMessage(
+                message_id=msg_name,
+                sender=sender,
+                create_time=create_time,
+                text=text_content,
+            )
+        )
+
+    structured_result = ChatGetMessagesResult(
+        space_id=space_id,
+        space_name=space_name,
+        total_messages=len(messages),
+        messages=message_list,
+    )
+
+    return create_tool_result(text="\n".join(output), data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=CHAT_SEND_MESSAGE_RESULT_SCHEMA)
 @require_google_service("chat", "chat_write")
 @handle_http_errors("send_message", service_type="chat")
 async def send_message(
@@ -116,12 +181,13 @@ async def send_message(
     space_id: str,
     message_text: str,
     thread_key: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Sends a message to a Google Chat space.
 
     Returns:
-        str: Confirmation message with sent message details.
+        ToolResult: Confirmation message with sent message details.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[send_message] Space: '{space_id}'")
 
@@ -141,10 +207,17 @@ async def send_message(
 
     msg = f"Message sent to space '{space_id}'. Message ID: {message_name}, Time: {create_time}"
     logger.info(f"Successfully sent message to space '{space_id}'")
-    return msg
+
+    structured_result = ChatSendMessageResult(
+        space_id=space_id,
+        message_id=message_name,
+        create_time=create_time,
+    )
+
+    return create_tool_result(text=msg, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=CHAT_SEARCH_MESSAGES_RESULT_SCHEMA)
 @require_google_service("chat", "chat_read")
 @handle_http_errors("search_messages", service_type="chat")
 async def search_messages(
@@ -152,12 +225,13 @@ async def search_messages(
     query: str,
     space_id: Optional[str] = None,
     page_size: int = 25,
-) -> str:
+) -> ToolResult:
     """
     Searches for messages in Google Chat spaces by text content.
 
     Returns:
-        str: A formatted list of messages matching the search query.
+        ToolResult: A formatted list of messages matching the search query.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[search_messages] Query='{query}'")
 
@@ -199,19 +273,46 @@ async def search_messages(
         context = "all accessible spaces"
 
     if not messages:
-        return f"No messages found matching '{query}' in {context}."
+        structured_result = ChatSearchMessagesResult(
+            query=query,
+            context=context,
+            total_found=0,
+            messages=[],
+        )
+        return create_tool_result(
+            text=f"No messages found matching '{query}' in {context}.",
+            data=structured_result,
+        )
 
     output = [f"Found {len(messages)} messages matching '{query}' in {context}:"]
+    message_list = []
     for msg in messages:
         sender = msg.get("sender", {}).get("displayName", "Unknown Sender")
         create_time = msg.get("createTime", "Unknown Time")
         text_content = msg.get("text", "No text content")
         space_name = msg.get("_space_name", "Unknown Space")
 
-        # Truncate long messages
-        if len(text_content) > 100:
-            text_content = text_content[:100] + "..."
+        # Truncate long messages for text output
+        display_text = text_content
+        if len(display_text) > 100:
+            display_text = display_text[:100] + "..."
 
-        output.append(f"- [{create_time}] {sender} in '{space_name}': {text_content}")
+        output.append(f"- [{create_time}] {sender} in '{space_name}': {display_text}")
 
-    return "\n".join(output)
+        message_list.append(
+            ChatSearchMessage(
+                sender=sender,
+                create_time=create_time,
+                text=text_content,  # Full text in structured output
+                space_name=space_name,
+            )
+        )
+
+    structured_result = ChatSearchMessagesResult(
+        query=query,
+        context=context,
+        total_found=len(messages),
+        messages=message_list,
+    )
+
+    return create_tool_result(text="\n".join(output), data=structured_result)

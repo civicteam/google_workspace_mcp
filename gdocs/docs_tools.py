@@ -10,12 +10,53 @@ import io
 from typing import List, Dict, Any
 
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
+from fastmcp.tools.tool import ToolResult
 
 # Auth & server utilities
 from auth.service_decorator import require_google_service, require_multiple_services
 from core.utils import extract_office_xml_text, handle_http_errors
 from core.server import server
 from core.comments import create_comment_tools
+from core.structured_output import create_tool_result
+from gdocs.docs_models import (
+    DocsSearchResultItem,
+    DocsSearchResult,
+    DocsContent,
+    DocsListResult,
+    DocsCreateResult,
+    DocsModifyTextResult,
+    DocsFindReplaceResult,
+    DocsInsertElementResult,
+    DocsInsertImageResult,
+    DocsHeaderFooterResult,
+    DocsBatchUpdateResult,
+    DocsStructureResult,
+    DocsStructureStatistics,
+    DocsElementSummary,
+    DocsTableSummary,
+    DocsTablePosition,
+    DocsTableDimensions,
+    DocsCreateTableResult,
+    DocsTableDebugResult,
+    DocsCellDebugInfo,
+    DocsExportPdfResult,
+    DocsParagraphStyleResult,
+    DOCS_SEARCH_RESULT_SCHEMA,
+    DOCS_CONTENT_SCHEMA,
+    DOCS_LIST_RESULT_SCHEMA,
+    DOCS_CREATE_RESULT_SCHEMA,
+    DOCS_MODIFY_TEXT_RESULT_SCHEMA,
+    DOCS_FIND_REPLACE_RESULT_SCHEMA,
+    DOCS_INSERT_ELEMENT_RESULT_SCHEMA,
+    DOCS_INSERT_IMAGE_RESULT_SCHEMA,
+    DOCS_HEADER_FOOTER_RESULT_SCHEMA,
+    DOCS_BATCH_UPDATE_RESULT_SCHEMA,
+    DOCS_STRUCTURE_RESULT_SCHEMA,
+    DOCS_CREATE_TABLE_RESULT_SCHEMA,
+    DOCS_TABLE_DEBUG_RESULT_SCHEMA,
+    DOCS_EXPORT_PDF_RESULT_SCHEMA,
+    DOCS_PARAGRAPH_STYLE_RESULT_SCHEMA,
+)
 
 # Import helper functions for document operations
 from gdocs.docs_helpers import (
@@ -49,19 +90,19 @@ import json
 logger = logging.getLogger(__name__)
 
 
-@server.tool()
+@server.tool(output_schema=DOCS_SEARCH_RESULT_SCHEMA)
 @handle_http_errors("search_docs", is_read_only=True, service_type="docs")
 @require_google_service("drive", "drive_read")
 async def search_docs(
     service: Any,
     query: str,
     page_size: int = 10,
-) -> str:
+) -> ToolResult:
     """
     Searches for Google Docs by name using Drive API (mimeType filter).
 
     Returns:
-        str: A formatted list of Google Docs matching the search query.
+        ToolResult: A formatted list of Google Docs matching the search query with structured data.
     """
     logger.info(f"[search_docs] Query='{query}'")
 
@@ -80,17 +121,32 @@ async def search_docs(
     )
     files = response.get("files", [])
     if not files:
-        return f"No Google Docs found matching '{query}'."
+        text_output = f"No Google Docs found matching '{query}'."
+        structured_result = DocsSearchResult(query=query, total_found=0, documents=[])
+        return create_tool_result(text=text_output, data=structured_result)
 
     output = [f"Found {len(files)} Google Docs matching '{query}':"]
+    documents = []
     for f in files:
         output.append(
             f"- {f['name']} (ID: {f['id']}) Modified: {f.get('modifiedTime')} Link: {f.get('webViewLink')}"
         )
-    return "\n".join(output)
+        documents.append(
+            DocsSearchResultItem(
+                doc_id=f["id"],
+                name=f["name"],
+                modified_time=f.get("modifiedTime"),
+                web_link=f.get("webViewLink"),
+            )
+        )
+
+    structured_result = DocsSearchResult(
+        query=query, total_found=len(files), documents=documents
+    )
+    return create_tool_result(text="\n".join(output), data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=DOCS_CONTENT_SCHEMA)
 @handle_http_errors("get_doc_content", is_read_only=True, service_type="docs")
 @require_multiple_services(
     [
@@ -106,14 +162,14 @@ async def get_doc_content(
     drive_service: Any,
     docs_service: Any,
     document_id: str,
-) -> str:
+) -> ToolResult:
     """
     Retrieves content of a Google Doc or a Drive file (like .docx) identified by document_id.
     - Native Google Docs: Fetches content via Docs API.
     - Office files (.docx, etc.) stored in Drive: Downloads via Drive API and extracts text.
 
     Returns:
-        str: The document content with metadata header.
+        ToolResult: The document content with metadata header and structured data.
     """
     logger.info(f"[get_doc_content] Invoked. Document/File ID: '{document_id}'")
 
@@ -269,20 +325,29 @@ async def get_doc_content(
         f'File: "{file_name}" (ID: {document_id}, Type: {mime_type})\n'
         f"Link: {web_view_link}\n\n--- CONTENT ---\n"
     )
-    return header + body_text
+    text_output = header + body_text
+
+    structured_result = DocsContent(
+        document_id=document_id,
+        name=file_name,
+        mime_type=mime_type,
+        web_link=web_view_link,
+        content=body_text,
+    )
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=DOCS_LIST_RESULT_SCHEMA)
 @handle_http_errors("list_docs_in_folder", is_read_only=True, service_type="docs")
 @require_google_service("drive", "drive_read")
 async def list_docs_in_folder(
     service: Any, folder_id: str = "root", page_size: int = 100
-) -> str:
+) -> ToolResult:
     """
     Lists Google Docs within a specific Drive folder.
 
     Returns:
-        str: A formatted list of Google Docs in the specified folder.
+        ToolResult: A formatted list of Google Docs in the specified folder with structured data.
     """
     logger.info(f"[list_docs_in_folder] Invoked. Folder ID: '{folder_id}'")
 
@@ -299,28 +364,46 @@ async def list_docs_in_folder(
     )
     items = rsp.get("files", [])
     if not items:
-        return f"No Google Docs found in folder '{folder_id}'."
+        text_output = f"No Google Docs found in folder '{folder_id}'."
+        structured_result = DocsListResult(
+            folder_id=folder_id, total_found=0, documents=[]
+        )
+        return create_tool_result(text=text_output, data=structured_result)
+
     out = [f"Found {len(items)} Docs in folder '{folder_id}':"]
+    documents = []
     for f in items:
         out.append(
             f"- {f['name']} (ID: {f['id']}) Modified: {f.get('modifiedTime')} Link: {f.get('webViewLink')}"
         )
-    return "\n".join(out)
+        documents.append(
+            DocsSearchResultItem(
+                doc_id=f["id"],
+                name=f["name"],
+                modified_time=f.get("modifiedTime"),
+                web_link=f.get("webViewLink"),
+            )
+        )
+
+    structured_result = DocsListResult(
+        folder_id=folder_id, total_found=len(items), documents=documents
+    )
+    return create_tool_result(text="\n".join(out), data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=DOCS_CREATE_RESULT_SCHEMA)
 @handle_http_errors("create_doc", service_type="docs")
 @require_google_service("docs", "docs_write")
 async def create_doc(
     service: Any,
     title: str,
     content: str = "",
-) -> str:
+) -> ToolResult:
     """
     Creates a new Google Doc and optionally inserts initial content.
 
     Returns:
-        str: Confirmation message with document ID and link.
+        ToolResult: Confirmation message with document ID and link, plus structured data.
     """
     logger.info(f"[create_doc] Invoked. Title='{title}'")
 
@@ -340,10 +423,16 @@ async def create_doc(
     logger.info(
         f"Successfully created Google Doc '{title}' (ID: {doc_id}). Link: {link}"
     )
-    return msg
+
+    structured_result = DocsCreateResult(
+        document_id=doc_id,
+        title=title,
+        web_link=link,
+    )
+    return create_tool_result(text=msg, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=DOCS_MODIFY_TEXT_RESULT_SCHEMA)
 @handle_http_errors("modify_doc_text", service_type="docs")
 @require_google_service("docs", "docs_write")
 async def modify_doc_text(
@@ -359,7 +448,7 @@ async def modify_doc_text(
     font_family: str = None,
     text_color: str = None,
     background_color: str = None,
-) -> str:
+) -> ToolResult:
     """
     Modifies text in a Google Doc - can insert/replace text and/or apply formatting in a single operation.
 
@@ -377,7 +466,7 @@ async def modify_doc_text(
         background_color: Background/highlight color (#RRGGBB)
 
     Returns:
-        str: Confirmation message with operation details
+        ToolResult: Confirmation message with operation details and structured data
     """
     logger.info(
         f"[modify_doc_text] Doc={document_id}, start={start_index}, end={end_index}, text={text is not None}, "
@@ -389,7 +478,7 @@ async def modify_doc_text(
 
     is_valid, error_msg = validator.validate_document_id(document_id)
     if not is_valid:
-        return f"Error: {error_msg}"
+        raise ValueError(f"Error: {error_msg}")
 
     # Validate that we have something to do
     if text is None and not any(
@@ -403,7 +492,9 @@ async def modify_doc_text(
             background_color,
         ]
     ):
-        return "Error: Must provide either 'text' to insert/replace, or formatting parameters (bold, italic, underline, font_size, font_family, text_color, background_color)."
+        raise ValueError(
+            "Error: Must provide either 'text' to insert/replace, or formatting parameters (bold, italic, underline, font_size, font_family, text_color, background_color)."
+        )
 
     # Validate text formatting params if provided
     if any(
@@ -427,15 +518,15 @@ async def modify_doc_text(
             background_color,
         )
         if not is_valid:
-            return f"Error: {error_msg}"
+            raise ValueError(f"Error: {error_msg}")
 
         # For formatting, we need end_index
         if end_index is None:
-            return "Error: 'end_index' is required when applying formatting."
+            raise ValueError("Error: 'end_index' is required when applying formatting.")
 
         is_valid, error_msg = validator.validate_index_range(start_index, end_index)
         if not is_valid:
-            return f"Error: {error_msg}"
+            raise ValueError(f"Error: {error_msg}")
 
     requests = []
     operations = []
@@ -547,10 +638,20 @@ async def modify_doc_text(
     link = f"https://docs.google.com/document/d/{document_id}/edit"
     operation_summary = "; ".join(operations)
     text_info = f" Text length: {len(text)} characters." if text else ""
-    return f"{operation_summary} in document {document_id}.{text_info} Link: {link}"
+    text_output = (
+        f"{operation_summary} in document {document_id}.{text_info} Link: {link}"
+    )
+
+    structured_result = DocsModifyTextResult(
+        document_id=document_id,
+        operations=operations,
+        text_length=len(text) if text else None,
+        web_link=link,
+    )
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=DOCS_FIND_REPLACE_RESULT_SCHEMA)
 @handle_http_errors("find_and_replace_doc", service_type="docs")
 @require_google_service("docs", "docs_write")
 async def find_and_replace_doc(
@@ -559,7 +660,7 @@ async def find_and_replace_doc(
     find_text: str,
     replace_text: str,
     match_case: bool = False,
-) -> str:
+) -> ToolResult:
     """
     Finds and replaces text throughout a Google Doc.
 
@@ -570,7 +671,7 @@ async def find_and_replace_doc(
         match_case: Whether to match case exactly
 
     Returns:
-        str: Confirmation message with replacement count
+        ToolResult: Confirmation message with replacement count and structured data
     """
     logger.info(
         f"[find_and_replace_doc] Doc={document_id}, find='{find_text}', replace='{replace_text}'"
@@ -592,10 +693,19 @@ async def find_and_replace_doc(
             replacements = reply["replaceAllText"].get("occurrencesChanged", 0)
 
     link = f"https://docs.google.com/document/d/{document_id}/edit"
-    return f"Replaced {replacements} occurrence(s) of '{find_text}' with '{replace_text}' in document {document_id}. Link: {link}"
+    text_output = f"Replaced {replacements} occurrence(s) of '{find_text}' with '{replace_text}' in document {document_id}. Link: {link}"
+
+    structured_result = DocsFindReplaceResult(
+        document_id=document_id,
+        find_text=find_text,
+        replace_text=replace_text,
+        occurrences_changed=replacements,
+        web_link=link,
+    )
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=DOCS_INSERT_ELEMENT_RESULT_SCHEMA)
 @handle_http_errors("insert_doc_elements", service_type="docs")
 @require_google_service("docs", "docs_write")
 async def insert_doc_elements(
@@ -607,7 +717,7 @@ async def insert_doc_elements(
     columns: int = None,
     list_type: str = None,
     text: str = None,
-) -> str:
+) -> ToolResult:
     """
     Inserts structural elements like tables, lists, or page breaks into a Google Doc.
 
@@ -621,7 +731,7 @@ async def insert_doc_elements(
         text: Initial text content for list items
 
     Returns:
-        str: Confirmation message with insertion details
+        ToolResult: Confirmation message with insertion details and structured data
     """
     logger.info(
         f"[insert_doc_elements] Doc={document_id}, type={element_type}, index={index}"
@@ -637,14 +747,18 @@ async def insert_doc_elements(
 
     if element_type == "table":
         if not rows or not columns:
-            return "Error: 'rows' and 'columns' parameters are required for table insertion."
+            raise ValueError(
+                "Error: 'rows' and 'columns' parameters are required for table insertion."
+            )
 
         requests.append(create_insert_table_request(index, rows, columns))
         description = f"table ({rows}x{columns})"
 
     elif element_type == "list":
         if not list_type:
-            return "Error: 'list_type' parameter is required for list insertion ('UNORDERED' or 'ORDERED')."
+            raise ValueError(
+                "Error: 'list_type' parameter is required for list insertion ('UNORDERED' or 'ORDERED')."
+            )
 
         if not text:
             text = "List item"
@@ -663,7 +777,9 @@ async def insert_doc_elements(
         description = "page break"
 
     else:
-        return f"Error: Unsupported element type '{element_type}'. Supported types: 'table', 'list', 'page_break'."
+        raise ValueError(
+            f"Error: Unsupported element type '{element_type}'. Supported types: 'table', 'list', 'page_break'."
+        )
 
     await asyncio.to_thread(
         service.documents()
@@ -672,10 +788,19 @@ async def insert_doc_elements(
     )
 
     link = f"https://docs.google.com/document/d/{document_id}/edit"
-    return f"Inserted {description} at index {index} in document {document_id}. Link: {link}"
+    text_output = f"Inserted {description} at index {index} in document {document_id}. Link: {link}"
+
+    structured_result = DocsInsertElementResult(
+        document_id=document_id,
+        element_type=element_type,
+        description=description,
+        index=index,
+        web_link=link,
+    )
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=DOCS_INSERT_IMAGE_RESULT_SCHEMA)
 @handle_http_errors("insert_doc_image", service_type="docs")
 @require_multiple_services(
     [
@@ -695,7 +820,7 @@ async def insert_doc_image(
     index: int,
     width: int = 0,
     height: int = 0,
-) -> str:
+) -> ToolResult:
     """
     Inserts an image into a Google Doc from Drive or a URL.
 
@@ -707,7 +832,7 @@ async def insert_doc_image(
         height: Image height in points (optional)
 
     Returns:
-        str: Confirmation message with insertion details
+        ToolResult: Confirmation message with insertion details and structured data
     """
     logger.info(
         f"[insert_doc_image] Doc={document_id}, source={image_source}, index={index}"
@@ -738,12 +863,18 @@ async def insert_doc_image(
             )
             mime_type = file_metadata.get("mimeType", "")
             if not mime_type.startswith("image/"):
-                return f"Error: File {image_source} is not an image (MIME type: {mime_type})."
+                raise ValueError(
+                    f"Error: File {image_source} is not an image (MIME type: {mime_type})."
+                )
 
             image_uri = f"https://drive.google.com/uc?id={image_source}"
             source_description = f"Drive file {file_metadata.get('name', image_source)}"
+        except ValueError:
+            raise
         except Exception as e:
-            return f"Error: Could not access Drive file {image_source}: {str(e)}"
+            raise ValueError(
+                f"Error: Could not access Drive file {image_source}: {str(e)}"
+            )
     else:
         image_uri = image_source
         source_description = "URL image"
@@ -762,10 +893,19 @@ async def insert_doc_image(
         size_info = f" (size: {width or 'auto'}x{height or 'auto'} points)"
 
     link = f"https://docs.google.com/document/d/{document_id}/edit"
-    return f"Inserted {source_description}{size_info} at index {index} in document {document_id}. Link: {link}"
+    text_output = f"Inserted {source_description}{size_info} at index {index} in document {document_id}. Link: {link}"
+
+    structured_result = DocsInsertImageResult(
+        document_id=document_id,
+        source_description=source_description,
+        index=index,
+        size_info=size_info,
+        web_link=link,
+    )
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=DOCS_HEADER_FOOTER_RESULT_SCHEMA)
 @handle_http_errors("update_doc_headers_footers", service_type="docs")
 @require_google_service("docs", "docs_write")
 async def update_doc_headers_footers(
@@ -774,7 +914,7 @@ async def update_doc_headers_footers(
     section_type: str,
     content: str,
     header_footer_type: str = "DEFAULT",
-) -> str:
+) -> ToolResult:
     """
     Updates headers or footers in a Google Doc.
 
@@ -785,7 +925,7 @@ async def update_doc_headers_footers(
         header_footer_type: Type of header/footer ("DEFAULT", "FIRST_PAGE_ONLY", "EVEN_PAGE")
 
     Returns:
-        str: Confirmation message with update details
+        ToolResult: Confirmation message with update details and structured data
     """
     logger.info(f"[update_doc_headers_footers] Doc={document_id}, type={section_type}")
 
@@ -794,17 +934,17 @@ async def update_doc_headers_footers(
 
     is_valid, error_msg = validator.validate_document_id(document_id)
     if not is_valid:
-        return f"Error: {error_msg}"
+        raise ValueError(f"Error: {error_msg}")
 
     is_valid, error_msg = validator.validate_header_footer_params(
         section_type, header_footer_type
     )
     if not is_valid:
-        return f"Error: {error_msg}"
+        raise ValueError(f"Error: {error_msg}")
 
     is_valid, error_msg = validator.validate_text_content(content)
     if not is_valid:
-        return f"Error: {error_msg}"
+        raise ValueError(f"Error: {error_msg}")
 
     # Use HeaderFooterManager to handle the complex logic
     header_footer_manager = HeaderFooterManager(service)
@@ -813,21 +953,30 @@ async def update_doc_headers_footers(
         document_id, section_type, content, header_footer_type
     )
 
+    link = f"https://docs.google.com/document/d/{document_id}/edit"
     if success:
-        link = f"https://docs.google.com/document/d/{document_id}/edit"
-        return f"{message}. Link: {link}"
+        text_output = f"{message}. Link: {link}"
     else:
-        return f"Error: {message}"
+        text_output = f"Error: {message}"
+
+    structured_result = DocsHeaderFooterResult(
+        document_id=document_id,
+        section_type=section_type,
+        header_footer_type=header_footer_type,
+        message=message,
+        web_link=link if success else "",
+    )
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=DOCS_BATCH_UPDATE_RESULT_SCHEMA)
 @handle_http_errors("batch_update_doc", service_type="docs")
 @require_google_service("docs", "docs_write")
 async def batch_update_doc(
     service: Any,
     document_id: str,
     operations: List[Dict[str, Any]],
-) -> str:
+) -> ToolResult:
     """
     Executes multiple document operations in a single atomic batch update.
 
@@ -845,7 +994,7 @@ async def batch_update_doc(
         ]
 
     Returns:
-        str: Confirmation message with batch operation results
+        ToolResult: Confirmation message with batch operation results and structured data
     """
     logger.debug(f"[batch_update_doc] Doc={document_id}, operations={len(operations)}")
 
@@ -854,11 +1003,11 @@ async def batch_update_doc(
 
     is_valid, error_msg = validator.validate_document_id(document_id)
     if not is_valid:
-        return f"Error: {error_msg}"
+        raise ValueError(f"Error: {error_msg}")
 
     is_valid, error_msg = validator.validate_batch_operations(operations)
     if not is_valid:
-        return f"Error: {error_msg}"
+        raise ValueError(f"Error: {error_msg}")
 
     # Use BatchOperationManager to handle the complex logic
     batch_manager = BatchOperationManager(service)
@@ -867,22 +1016,32 @@ async def batch_update_doc(
         document_id, operations
     )
 
+    link = f"https://docs.google.com/document/d/{document_id}/edit"
+    replies_count = metadata.get("replies_count", 0)
+
     if success:
-        link = f"https://docs.google.com/document/d/{document_id}/edit"
-        replies_count = metadata.get("replies_count", 0)
-        return f"{message} on document {document_id}. API replies: {replies_count}. Link: {link}"
+        text_output = f"{message} on document {document_id}. API replies: {replies_count}. Link: {link}"
     else:
-        return f"Error: {message}"
+        text_output = f"Error: {message}"
+
+    structured_result = DocsBatchUpdateResult(
+        document_id=document_id,
+        operations_count=len(operations),
+        replies_count=replies_count,
+        message=message,
+        web_link=link if success else "",
+    )
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=DOCS_STRUCTURE_RESULT_SCHEMA)
 @handle_http_errors("inspect_doc_structure", is_read_only=True, service_type="docs")
 @require_google_service("docs", "docs_read")
 async def inspect_doc_structure(
     service: Any,
     document_id: str,
     detailed: bool = False,
-) -> str:
+) -> ToolResult:
     """
     Essential tool for finding safe insertion points and understanding document structure.
 
@@ -912,7 +1071,7 @@ async def inspect_doc_structure(
         detailed: Whether to return detailed structure information
 
     Returns:
-        str: JSON string containing document structure and safe insertion indices
+        ToolResult: JSON string containing document structure and safe insertion indices, plus structured data
     """
     logger.debug(f"[inspect_doc_structure] Doc={document_id}, detailed={detailed}")
 
@@ -998,10 +1157,66 @@ async def inspect_doc_structure(
                 )
 
     link = f"https://docs.google.com/document/d/{document_id}/edit"
-    return f"Document structure analysis for {document_id}:\n\n{json.dumps(result, indent=2)}\n\nLink: {link}"
+    text_output = f"Document structure analysis for {document_id}:\n\n{json.dumps(result, indent=2)}\n\nLink: {link}"
+
+    # Build structured result
+    if detailed:
+        statistics = DocsStructureStatistics(
+            elements=result.get("statistics", {}).get("elements", 0),
+            tables=result.get("statistics", {}).get("tables", 0),
+            paragraphs=result.get("statistics", {}).get("paragraphs", 0),
+            has_headers=result.get("statistics", {}).get("has_headers", False),
+            has_footers=result.get("statistics", {}).get("has_footers", False),
+        )
+        elements_list = [
+            DocsElementSummary(
+                element_type=e.get("type", ""),
+                start_index=e.get("start_index", 0),
+                end_index=e.get("end_index", 0),
+                rows=e.get("rows"),
+                columns=e.get("columns"),
+                cell_count=e.get("cell_count"),
+                text_preview=e.get("text_preview"),
+            )
+            for e in result.get("elements", [])
+        ]
+        tables_list = [
+            DocsTableSummary(
+                index=t.get("index", 0),
+                position=DocsTablePosition(
+                    start=t.get("position", {}).get("start", 0),
+                    end=t.get("position", {}).get("end", 0),
+                ),
+                dimensions=DocsTableDimensions(
+                    rows=t.get("dimensions", {}).get("rows", 0),
+                    columns=t.get("dimensions", {}).get("columns", 0),
+                ),
+                preview=t.get("preview", []),
+            )
+            for t in result.get("tables", [])
+        ]
+        structured_result = DocsStructureResult(
+            document_id=document_id,
+            title=result.get("title"),
+            total_length=result.get("total_length"),
+            statistics=statistics,
+            elements=elements_list,
+            tables=tables_list,
+            web_link=link,
+        )
+    else:
+        structured_result = DocsStructureResult(
+            document_id=document_id,
+            total_elements=result.get("total_elements"),
+            total_length=result.get("total_length"),
+            table_details=result.get("table_details", []),
+            web_link=link,
+        )
+
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=DOCS_CREATE_TABLE_RESULT_SCHEMA)
 @handle_http_errors("create_table_with_data", service_type="docs")
 @require_google_service("docs", "docs_write")
 async def create_table_with_data(
@@ -1010,7 +1225,7 @@ async def create_table_with_data(
     table_data: List[List[str]],
     index: int,
     bold_headers: bool = True,
-) -> str:
+) -> ToolResult:
     """
     Creates a table and populates it with data in one reliable operation.
 
@@ -1049,7 +1264,7 @@ async def create_table_with_data(
         bold_headers: Whether to make first row bold (default: true)
 
     Returns:
-        str: Confirmation with table details and link
+        ToolResult: Confirmation with table details and link, plus structured data
     """
     logger.debug(f"[create_table_with_data] Doc={document_id}, index={index}")
 
@@ -1058,15 +1273,15 @@ async def create_table_with_data(
 
     is_valid, error_msg = validator.validate_document_id(document_id)
     if not is_valid:
-        return f"ERROR: {error_msg}"
+        raise ValueError(f"ERROR: {error_msg}")
 
     is_valid, error_msg = validator.validate_table_data(table_data)
     if not is_valid:
-        return f"ERROR: {error_msg}"
+        raise ValueError(f"ERROR: {error_msg}")
 
     is_valid, error_msg = validator.validate_index(index, "Index")
     if not is_valid:
-        return f"ERROR: {error_msg}"
+        raise ValueError(f"ERROR: {error_msg}")
 
     # Use TableOperationManager to handle the complex logic
     table_manager = TableOperationManager(service)
@@ -1085,26 +1300,37 @@ async def create_table_with_data(
             document_id, table_data, index - 1, bold_headers
         )
 
-    if success:
-        link = f"https://docs.google.com/document/d/{document_id}/edit"
-        rows = metadata.get("rows", 0)
-        columns = metadata.get("columns", 0)
+    link = f"https://docs.google.com/document/d/{document_id}/edit"
+    rows = metadata.get("rows", 0)
+    columns = metadata.get("columns", 0)
 
-        return (
+    if success:
+        text_output = (
             f"SUCCESS: {message}. Table: {rows}x{columns}, Index: {index}. Link: {link}"
         )
     else:
-        return f"ERROR: {message}"
+        text_output = f"ERROR: {message}"
+
+    structured_result = DocsCreateTableResult(
+        document_id=document_id,
+        rows=rows,
+        columns=columns,
+        index=index,
+        message=message,
+        web_link=link if success else "",
+        success=success,
+    )
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=DOCS_TABLE_DEBUG_RESULT_SCHEMA)
 @handle_http_errors("debug_table_structure", is_read_only=True, service_type="docs")
 @require_google_service("docs", "docs_read")
 async def debug_table_structure(
     service: Any,
     document_id: str,
     table_index: int = 0,
-) -> str:
+) -> ToolResult:
     """
     ESSENTIAL DEBUGGING TOOL - Use this whenever tables don't work as expected.
 
@@ -1139,7 +1365,7 @@ async def debug_table_structure(
         table_index: Which table to debug (0 = first table, 1 = second table, etc.)
 
     Returns:
-        str: Detailed JSON structure showing table layout, cell positions, and current content
+        ToolResult: Detailed JSON structure showing table layout, cell positions, and current content, plus structured data
     """
     logger.debug(
         f"[debug_table_structure] Doc={document_id}, table_index={table_index}"
@@ -1153,7 +1379,9 @@ async def debug_table_structure(
     # Find tables
     tables = find_tables(doc)
     if table_index >= len(tables):
-        return f"Error: Table index {table_index} not found. Document has {len(tables)} table(s)."
+        raise ValueError(
+            f"Error: Table index {table_index} not found. Document has {len(tables)} table(s)."
+        )
 
     table_info = tables[table_index]
 
@@ -1179,10 +1407,35 @@ async def debug_table_structure(
         debug_info["cells"].append(row_info)
 
     link = f"https://docs.google.com/document/d/{document_id}/edit"
-    return f"Table structure debug for table {table_index}:\n\n{json.dumps(debug_info, indent=2)}\n\nLink: {link}"
+    text_output = f"Table structure debug for table {table_index}:\n\n{json.dumps(debug_info, indent=2)}\n\nLink: {link}"
+
+    # Build structured cells
+    structured_cells = []
+    for row_info in debug_info["cells"]:
+        row_cells = [
+            DocsCellDebugInfo(
+                position=cell["position"],
+                range=cell["range"],
+                insertion_index=str(cell["insertion_index"]),
+                current_content=cell["current_content"],
+                content_elements_count=cell["content_elements_count"],
+            )
+            for cell in row_info
+        ]
+        structured_cells.append(row_cells)
+
+    structured_result = DocsTableDebugResult(
+        document_id=document_id,
+        table_index=table_index,
+        dimensions=debug_info["dimensions"],
+        table_range=debug_info["table_range"],
+        cells=structured_cells,
+        web_link=link,
+    )
+    return create_tool_result(text=text_output, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=DOCS_EXPORT_PDF_RESULT_SCHEMA)
 @handle_http_errors("export_doc_to_pdf", service_type="drive")
 @require_google_service("drive", "drive_file")
 async def export_doc_to_pdf(
@@ -1190,7 +1443,7 @@ async def export_doc_to_pdf(
     document_id: str,
     pdf_filename: str = None,
     folder_id: str = None,
-) -> str:
+) -> ToolResult:
     """
     Exports a Google Doc to PDF format and saves it to Google Drive.
 
@@ -1200,7 +1453,7 @@ async def export_doc_to_pdf(
         folder_id: Drive folder ID to save PDF in (optional - if not provided, saves in root)
 
     Returns:
-        str: Confirmation message with PDF file details and links
+        ToolResult: Confirmation message with PDF file details and links, plus structured data
     """
     logger.info(
         f"[export_doc_to_pdf] Doc={document_id}, pdf_filename={pdf_filename}, folder_id={folder_id}"
@@ -1218,7 +1471,7 @@ async def export_doc_to_pdf(
             .execute
         )
     except Exception as e:
-        return f"Error: Could not access document {document_id}: {str(e)}"
+        raise ValueError(f"Error: Could not access document {document_id}: {str(e)}")
 
     mime_type = file_metadata.get("mimeType", "")
     original_name = file_metadata.get("name", "Unknown Document")
@@ -1226,7 +1479,9 @@ async def export_doc_to_pdf(
 
     # Verify it's a Google Doc
     if mime_type != "application/vnd.google-apps.document":
-        return f"Error: File '{original_name}' is not a Google Doc (MIME type: {mime_type}). Only native Google Docs can be exported to PDF."
+        raise ValueError(
+            f"Error: File '{original_name}' is not a Google Doc (MIME type: {mime_type}). Only native Google Docs can be exported to PDF."
+        )
 
     logger.info(f"[export_doc_to_pdf] Exporting '{original_name}' to PDF")
 
@@ -1247,7 +1502,7 @@ async def export_doc_to_pdf(
         pdf_size = len(pdf_content)
 
     except Exception as e:
-        return f"Error: Failed to export document to PDF: {str(e)}"
+        raise ValueError(f"Error: Failed to export document to PDF: {str(e)}")
 
     # Determine PDF filename
     if not pdf_filename:
@@ -1290,15 +1545,41 @@ async def export_doc_to_pdf(
         )
 
         folder_info = ""
+        actual_folder_id = None
         if folder_id:
             folder_info = f" in folder {folder_id}"
+            actual_folder_id = folder_id
         elif pdf_parents:
             folder_info = f" in folder {pdf_parents[0]}"
+            actual_folder_id = pdf_parents[0]
 
-        return f"Successfully exported '{original_name}' to PDF and saved to Drive as '{pdf_filename}' (ID: {pdf_file_id}, {pdf_size:,} bytes){folder_info}. PDF: {pdf_web_link} | Original: {web_view_link}"
+        text_output = f"Successfully exported '{original_name}' to PDF and saved to Drive as '{pdf_filename}' (ID: {pdf_file_id}, {pdf_size:,} bytes){folder_info}. PDF: {pdf_web_link} | Original: {web_view_link}"
+
+        structured_result = DocsExportPdfResult(
+            original_document_id=document_id,
+            original_name=original_name,
+            pdf_file_id=pdf_file_id,
+            pdf_filename=pdf_filename,
+            pdf_size_bytes=pdf_size,
+            folder_id=actual_folder_id,
+            pdf_web_link=pdf_web_link,
+            original_web_link=web_view_link,
+        )
+        return create_tool_result(text=text_output, data=structured_result)
 
     except Exception as e:
-        return f"Error: Failed to upload PDF to Drive: {str(e)}. PDF was generated successfully ({pdf_size:,} bytes) but could not be saved to Drive."
+        text_output = f"Error: Failed to upload PDF to Drive: {str(e)}. PDF was generated successfully ({pdf_size:,} bytes) but could not be saved to Drive."
+        structured_result = DocsExportPdfResult(
+            original_document_id=document_id,
+            original_name=original_name,
+            pdf_file_id="",
+            pdf_filename=pdf_filename or "",
+            pdf_size_bytes=pdf_size,
+            folder_id=folder_id,
+            pdf_web_link="",
+            original_web_link=web_view_link,
+        )
+        return create_tool_result(text=text_output, data=structured_result)
 
 
 # ==============================================================================
@@ -1306,7 +1587,7 @@ async def export_doc_to_pdf(
 # ==============================================================================
 
 
-@server.tool()
+@server.tool(output_schema=DOCS_PARAGRAPH_STYLE_RESULT_SCHEMA)
 @handle_http_errors("update_paragraph_style", service_type="docs")
 @require_google_service("docs", "docs_write")
 async def update_paragraph_style(
@@ -1323,7 +1604,7 @@ async def update_paragraph_style(
     indent_end: float = None,
     space_above: float = None,
     space_below: float = None,
-) -> str:
+) -> ToolResult:
     """
     Apply paragraph-level formatting and/or heading styles to a range in a Google Doc.
 
@@ -1347,7 +1628,7 @@ async def update_paragraph_style(
         space_below: Space below paragraph in points
 
     Returns:
-        str: Confirmation message with formatting details
+        ToolResult: Confirmation message with formatting details and structured data
 
     Examples:
         # Apply H1 heading style
@@ -1367,9 +1648,9 @@ async def update_paragraph_style(
 
     # Validate range
     if start_index < 1:
-        return "Error: start_index must be >= 1"
+        raise ValueError("Error: start_index must be >= 1")
     if end_index <= start_index:
-        return "Error: end_index must be greater than start_index"
+        raise ValueError("Error: end_index must be greater than start_index")
 
     # Build paragraph style object
     paragraph_style = {}
@@ -1378,7 +1659,9 @@ async def update_paragraph_style(
     # Handle heading level (named style)
     if heading_level is not None:
         if heading_level < 0 or heading_level > 6:
-            return "Error: heading_level must be between 0 (normal text) and 6"
+            raise ValueError(
+                "Error: heading_level must be between 0 (normal text) and 6"
+            )
         if heading_level == 0:
             paragraph_style["namedStyleType"] = "NORMAL_TEXT"
         else:
@@ -1390,14 +1673,16 @@ async def update_paragraph_style(
         valid_alignments = ["START", "CENTER", "END", "JUSTIFIED"]
         alignment_upper = alignment.upper()
         if alignment_upper not in valid_alignments:
-            return f"Error: Invalid alignment '{alignment}'. Must be one of: {valid_alignments}"
+            raise ValueError(
+                f"Error: Invalid alignment '{alignment}'. Must be one of: {valid_alignments}"
+            )
         paragraph_style["alignment"] = alignment_upper
         fields.append("alignment")
 
     # Handle line spacing
     if line_spacing is not None:
         if line_spacing <= 0:
-            return "Error: line_spacing must be positive"
+            raise ValueError("Error: line_spacing must be positive")
         paragraph_style["lineSpacing"] = line_spacing * 100  # Convert to percentage
         fields.append("lineSpacing")
 
@@ -1427,7 +1712,9 @@ async def update_paragraph_style(
         fields.append("spaceBelow")
 
     if not paragraph_style:
-        return f"No paragraph style changes specified for document {document_id}"
+        raise ValueError(
+            f"No paragraph style changes specified for document {document_id}"
+        )
 
     # Create batch update request
     requests = [
@@ -1455,7 +1742,16 @@ async def update_paragraph_style(
         summary_parts.append(", ".join(format_fields))
 
     link = f"https://docs.google.com/document/d/{document_id}/edit"
-    return f"Applied paragraph style ({', '.join(summary_parts)}) to range {start_index}-{end_index} in document {document_id}. Link: {link}"
+    text_output = f"Applied paragraph style ({', '.join(summary_parts)}) to range {start_index}-{end_index} in document {document_id}. Link: {link}"
+
+    structured_result = DocsParagraphStyleResult(
+        document_id=document_id,
+        start_index=start_index,
+        end_index=end_index,
+        applied_styles=summary_parts,
+        web_link=link,
+    )
+    return create_tool_result(text=text_output, data=structured_result)
 
 
 # Create comment management tools for documents

@@ -8,15 +8,35 @@ import logging
 import asyncio
 from typing import List, Optional, Dict, Any
 
+from fastmcp.tools.tool import ToolResult
 
 from auth.service_decorator import require_google_service
 from core.server import server
+from core.structured_output import create_tool_result
 from core.utils import handle_http_errors
+from gforms.forms_models import (
+    FormsCreateResult,
+    FormsGetResult,
+    FormsQuestionSummary,
+    FormsPublishSettingsResult,
+    FormsResponseResult,
+    FormsAnswerDetail,
+    FormsListResponsesResult,
+    FormsResponseSummary,
+    FormsBatchUpdateResult,
+    FormsBatchUpdateReply,
+    FORMS_CREATE_RESULT_SCHEMA,
+    FORMS_GET_RESULT_SCHEMA,
+    FORMS_PUBLISH_SETTINGS_RESULT_SCHEMA,
+    FORMS_RESPONSE_RESULT_SCHEMA,
+    FORMS_LIST_RESPONSES_RESULT_SCHEMA,
+    FORMS_BATCH_UPDATE_RESULT_SCHEMA,
+)
 
 logger = logging.getLogger(__name__)
 
 
-@server.tool()
+@server.tool(output_schema=FORMS_CREATE_RESULT_SCHEMA)
 @handle_http_errors("create_form", service_type="forms")
 @require_google_service("forms", "forms")
 async def create_form(
@@ -24,7 +44,7 @@ async def create_form(
     title: str,
     description: Optional[str] = None,
     document_title: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Create a new form using the title given in the provided form message in the request.
 
@@ -34,7 +54,8 @@ async def create_form(
         document_title (Optional[str]): The document title (shown in browser tab).
 
     Returns:
-        str: Confirmation message with form ID and edit URL.
+        ToolResult: Confirmation message with form ID and edit URL.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[create_form] Invoked. Title: {title}")
 
@@ -51,20 +72,29 @@ async def create_form(
     )
 
     form_id = created_form.get("formId")
+    form_title = created_form.get("info", {}).get("title", title)
     edit_url = f"https://docs.google.com/forms/d/{form_id}/edit"
     responder_url = created_form.get(
         "responderUri", f"https://docs.google.com/forms/d/{form_id}/viewform"
     )
 
-    confirmation_message = f"Successfully created form '{created_form.get('info', {}).get('title', title)}'. Form ID: {form_id}. Edit URL: {edit_url}. Responder URL: {responder_url}"
+    confirmation_message = f"Successfully created form '{form_title}'. Form ID: {form_id}. Edit URL: {edit_url}. Responder URL: {responder_url}"
     logger.info(f"Form created successfully. ID: {form_id}")
-    return confirmation_message
+
+    structured_result = FormsCreateResult(
+        form_id=form_id,
+        title=form_title,
+        edit_url=edit_url,
+        responder_url=responder_url,
+    )
+
+    return create_tool_result(text=confirmation_message, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=FORMS_GET_RESULT_SCHEMA)
 @handle_http_errors("get_form", is_read_only=True, service_type="forms")
 @require_google_service("forms", "forms")
-async def get_form(service, form_id: str) -> str:
+async def get_form(service, form_id: str) -> ToolResult:
     """
     Get a form.
 
@@ -72,7 +102,8 @@ async def get_form(service, form_id: str) -> str:
         form_id (str): The ID of the form to retrieve.
 
     Returns:
-        str: Form details including title, description, questions, and URLs.
+        ToolResult: Form details including title, description, questions, and URLs.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[get_form] Invoked. Form ID: {form_id}")
 
@@ -90,13 +121,17 @@ async def get_form(service, form_id: str) -> str:
 
     items = form.get("items", [])
     questions_summary = []
+    structured_questions = []
     for i, item in enumerate(items, 1):
         item_title = item.get("title", f"Question {i}")
-        item_type = (
+        is_required = (
             item.get("questionItem", {}).get("question", {}).get("required", False)
         )
-        required_text = " (Required)" if item_type else ""
+        required_text = " (Required)" if is_required else ""
         questions_summary.append(f"  {i}. {item_title}{required_text}")
+        structured_questions.append(
+            FormsQuestionSummary(index=i, title=item_title, required=is_required)
+        )
 
     questions_text = (
         "\n".join(questions_summary) if questions_summary else "  No questions found"
@@ -113,10 +148,21 @@ async def get_form(service, form_id: str) -> str:
 {questions_text}"""
 
     logger.info(f"Successfully retrieved form. ID: {form_id}")
-    return result
+
+    structured_result = FormsGetResult(
+        form_id=form_id,
+        title=title,
+        description=description,
+        document_title=document_title,
+        edit_url=edit_url,
+        responder_url=responder_url,
+        questions=structured_questions,
+    )
+
+    return create_tool_result(text=result, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=FORMS_PUBLISH_SETTINGS_RESULT_SCHEMA)
 @handle_http_errors("set_publish_settings", service_type="forms")
 @require_google_service("forms", "forms")
 async def set_publish_settings(
@@ -124,7 +170,7 @@ async def set_publish_settings(
     form_id: str,
     publish_as_template: bool = False,
     require_authentication: bool = False,
-) -> str:
+) -> ToolResult:
     """
     Updates the publish settings of a form.
 
@@ -134,7 +180,8 @@ async def set_publish_settings(
         require_authentication (bool): Whether to require authentication to view/submit. Defaults to False.
 
     Returns:
-        str: Confirmation message of the successful publish settings update.
+        ToolResult: Confirmation message of the successful publish settings update.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[set_publish_settings] Invoked. Form ID: {form_id}")
 
@@ -149,13 +196,20 @@ async def set_publish_settings(
 
     confirmation_message = f"Successfully updated publish settings for form {form_id}. Publish as template: {publish_as_template}, Require authentication: {require_authentication}"
     logger.info(f"Publish settings updated successfully. Form ID: {form_id}")
-    return confirmation_message
+
+    structured_result = FormsPublishSettingsResult(
+        form_id=form_id,
+        publish_as_template=publish_as_template,
+        require_authentication=require_authentication,
+    )
+
+    return create_tool_result(text=confirmation_message, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=FORMS_RESPONSE_RESULT_SCHEMA)
 @handle_http_errors("get_form_response", is_read_only=True, service_type="forms")
 @require_google_service("forms", "forms")
-async def get_form_response(service, form_id: str, response_id: str) -> str:
+async def get_form_response(service, form_id: str, response_id: str) -> ToolResult:
     """
     Get one response from the form.
 
@@ -164,7 +218,8 @@ async def get_form_response(service, form_id: str, response_id: str) -> str:
         response_id (str): The ID of the response to retrieve.
 
     Returns:
-        str: Response details including answers and metadata.
+        ToolResult: Response details including answers and metadata.
+        Also includes structured_content for machine parsing.
     """
     logger.info(
         f"[get_form_response] Invoked. Form ID: {form_id}, Response ID: {response_id}"
@@ -174,35 +229,49 @@ async def get_form_response(service, form_id: str, response_id: str) -> str:
         service.forms().responses().get(formId=form_id, responseId=response_id).execute
     )
 
-    response_id = response.get("responseId", "Unknown")
+    result_response_id = response.get("responseId", "Unknown")
     create_time = response.get("createTime", "Unknown")
     last_submitted_time = response.get("lastSubmittedTime", "Unknown")
 
     answers = response.get("answers", {})
     answer_details = []
+    structured_answers = []
     for question_id, answer_data in answers.items():
         question_response = answer_data.get("textAnswers", {}).get("answers", [])
         if question_response:
             answer_text = ", ".join([ans.get("value", "") for ans in question_response])
             answer_details.append(f"  Question ID {question_id}: {answer_text}")
         else:
+            answer_text = "No answer provided"
             answer_details.append(f"  Question ID {question_id}: No answer provided")
+        structured_answers.append(
+            FormsAnswerDetail(question_id=question_id, answer_text=answer_text)
+        )
 
     answers_text = "\n".join(answer_details) if answer_details else "  No answers found"
 
     result = f"""Form Response Details:
 - Form ID: {form_id}
-- Response ID: {response_id}
+- Response ID: {result_response_id}
 - Created: {create_time}
 - Last Submitted: {last_submitted_time}
 - Answers:
 {answers_text}"""
 
-    logger.info(f"Successfully retrieved response. Response ID: {response_id}")
-    return result
+    logger.info(f"Successfully retrieved response. Response ID: {result_response_id}")
+
+    structured_result = FormsResponseResult(
+        form_id=form_id,
+        response_id=result_response_id,
+        create_time=create_time,
+        last_submitted_time=last_submitted_time,
+        answers=structured_answers,
+    )
+
+    return create_tool_result(text=result, data=structured_result)
 
 
-@server.tool()
+@server.tool(output_schema=FORMS_LIST_RESPONSES_RESULT_SCHEMA)
 @handle_http_errors("list_form_responses", is_read_only=True, service_type="forms")
 @require_google_service("forms", "forms")
 async def list_form_responses(
@@ -210,7 +279,7 @@ async def list_form_responses(
     form_id: str,
     page_size: int = 10,
     page_token: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     List a form's responses.
 
@@ -220,7 +289,8 @@ async def list_form_responses(
         page_token (Optional[str]): Token for retrieving next page of results.
 
     Returns:
-        str: List of responses with basic details and pagination info.
+        ToolResult: List of responses with basic details and pagination info.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[list_form_responses] Invoked. Form ID: {form_id}")
 
@@ -236,9 +306,19 @@ async def list_form_responses(
     next_page_token = responses_result.get("nextPageToken")
 
     if not responses:
-        return f"No responses found for form {form_id}."
+        structured_result = FormsListResponsesResult(
+            form_id=form_id,
+            total_returned=0,
+            responses=[],
+            next_page_token=None,
+        )
+        return create_tool_result(
+            text=f"No responses found for form {form_id}.",
+            data=structured_result,
+        )
 
     response_details = []
+    structured_responses = []
     for i, response in enumerate(responses, 1):
         response_id = response.get("responseId", "Unknown")
         create_time = response.get("createTime", "Unknown")
@@ -247,6 +327,14 @@ async def list_form_responses(
         answers_count = len(response.get("answers", {}))
         response_details.append(
             f"  {i}. Response ID: {response_id} | Created: {create_time} | Last Submitted: {last_submitted_time} | Answers: {answers_count}"
+        )
+        structured_responses.append(
+            FormsResponseSummary(
+                response_id=response_id,
+                create_time=create_time,
+                last_submitted_time=last_submitted_time,
+                answer_count=answers_count,
+            )
         )
 
     pagination_info = (
@@ -264,7 +352,15 @@ async def list_form_responses(
     logger.info(
         f"Successfully retrieved {len(responses)} responses. Form ID: {form_id}"
     )
-    return result
+
+    structured_result = FormsListResponsesResult(
+        form_id=form_id,
+        total_returned=len(responses),
+        responses=structured_responses,
+        next_page_token=next_page_token,
+    )
+
+    return create_tool_result(text=result, data=structured_result)
 
 
 # Internal implementation function for testing
@@ -272,7 +368,7 @@ async def _batch_update_form_impl(
     service: Any,
     form_id: str,
     requests: List[Dict[str, Any]],
-) -> str:
+) -> tuple[str, FormsBatchUpdateResult]:
     """Internal implementation for batch_update_form.
 
     Applies batch updates to a Google Form using the Forms API batchUpdate method.
@@ -283,7 +379,7 @@ async def _batch_update_form_impl(
         requests: List of update request dictionaries.
 
     Returns:
-        Formatted string with batch update results.
+        Tuple of (formatted string with batch update results, structured result).
     """
     body = {"requests": requests}
 
@@ -292,13 +388,15 @@ async def _batch_update_form_impl(
     )
 
     replies = result.get("replies", [])
+    edit_url = f"https://docs.google.com/forms/d/{form_id}/edit"
 
     confirmation_message = f"""Batch Update Completed:
 - Form ID: {form_id}
-- URL: https://docs.google.com/forms/d/{form_id}/edit
+- URL: {edit_url}
 - Requests Applied: {len(requests)}
 - Replies Received: {len(replies)}"""
 
+    structured_replies = []
     if replies:
         confirmation_message += "\n\nUpdate Results:"
         for i, reply in enumerate(replies, 1):
@@ -313,13 +411,35 @@ async def _batch_update_form_impl(
                 confirmation_message += (
                     f"\n  Request {i}: Created item {item_id}{question_info}"
                 )
+                structured_replies.append(
+                    FormsBatchUpdateReply(
+                        request_index=i,
+                        operation="createItem",
+                        item_id=item_id,
+                        question_ids=question_ids if question_ids else [],
+                    )
+                )
             else:
                 confirmation_message += f"\n  Request {i}: Operation completed"
+                structured_replies.append(
+                    FormsBatchUpdateReply(
+                        request_index=i,
+                        operation="completed",
+                    )
+                )
 
-    return confirmation_message
+    structured_result = FormsBatchUpdateResult(
+        form_id=form_id,
+        edit_url=edit_url,
+        requests_applied=len(requests),
+        replies_received=len(replies),
+        replies=structured_replies,
+    )
+
+    return confirmation_message, structured_result
 
 
-@server.tool()
+@server.tool(output_schema=FORMS_BATCH_UPDATE_RESULT_SCHEMA)
 @handle_http_errors("batch_update_form", service_type="forms")
 @require_google_service("forms", "forms")
 async def batch_update_form(
@@ -327,7 +447,7 @@ async def batch_update_form(
     user_google_email: str,
     form_id: str,
     requests: List[Dict[str, Any]],
-) -> str:
+) -> ToolResult:
     """
     Apply batch updates to a Google Form.
 
@@ -348,14 +468,17 @@ async def batch_update_form(
             - updateSettings: Modify form settings (e.g., quiz mode)
 
     Returns:
-        str: Details about the batch update operation results.
+        ToolResult: Details about the batch update operation results.
+        Also includes structured_content for machine parsing.
     """
     logger.info(
         f"[batch_update_form] Invoked. Email: '{user_google_email}', "
         f"Form ID: '{form_id}', Requests: {len(requests)}"
     )
 
-    result = await _batch_update_form_impl(service, form_id, requests)
+    text_result, structured_result = await _batch_update_form_impl(
+        service, form_id, requests
+    )
 
     logger.info(f"Batch update completed successfully for {user_google_email}")
-    return result
+    return create_tool_result(text=text_result, data=structured_result)

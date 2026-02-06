@@ -18,12 +18,14 @@ from urllib.parse import urlparse
 from urllib.request import url2pathname
 from pathlib import Path
 
+from fastmcp.tools.tool import ToolResult
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 
 from auth.service_decorator import require_google_service
 from auth.oauth_config import is_stateless_mode
 from core.attachment_storage import get_attachment_storage, get_attachment_url
+from core.structured_output import create_tool_result
 from core.utils import extract_office_xml_text, handle_http_errors
 from core.server import server
 from core.config import get_transport_mode
@@ -39,6 +41,43 @@ from gdrive.drive_helpers import (
     validate_share_role,
     validate_share_type,
 )
+from gdrive.drive_models import (
+    DRIVE_BATCH_SHARE_RESULT_SCHEMA,
+    DRIVE_COPY_RESULT_SCHEMA,
+    DRIVE_CREATE_RESULT_SCHEMA,
+    DRIVE_DOWNLOAD_RESULT_SCHEMA,
+    DRIVE_FILE_CONTENT_SCHEMA,
+    DRIVE_IMPORT_RESULT_SCHEMA,
+    DRIVE_LIST_RESULT_SCHEMA,
+    DRIVE_OWNERSHIP_TRANSFER_RESULT_SCHEMA,
+    DRIVE_PERMISSION_REMOVE_RESULT_SCHEMA,
+    DRIVE_PERMISSION_UPDATE_RESULT_SCHEMA,
+    DRIVE_PERMISSIONS_RESULT_SCHEMA,
+    DRIVE_PUBLIC_ACCESS_RESULT_SCHEMA,
+    DRIVE_SEARCH_RESULT_SCHEMA,
+    DRIVE_SHARE_RESULT_SCHEMA,
+    DRIVE_SHAREABLE_LINK_RESULT_SCHEMA,
+    DRIVE_UPDATE_RESULT_SCHEMA,
+    DriveBatchShareResult,
+    DriveBatchShareResultItem,
+    DriveCopyResult,
+    DriveCreateResult,
+    DriveDownloadResult,
+    DriveFileContent,
+    DriveFileItem,
+    DriveImportResult,
+    DriveListResult,
+    DriveOwnershipTransferResult,
+    DrivePermission,
+    DrivePermissionRemoveResult,
+    DrivePermissionUpdateResult,
+    DrivePermissionsResult,
+    DrivePublicAccessResult,
+    DriveSearchResult,
+    DriveShareableLinkResult,
+    DriveShareResult,
+    DriveUpdateResult,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +85,7 @@ DOWNLOAD_CHUNK_SIZE_BYTES = 256 * 1024  # 256 KB
 UPLOAD_CHUNK_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB (Google recommended minimum)
 
 
-@server.tool()
+@server.tool(output_schema=DRIVE_SEARCH_RESULT_SCHEMA)
 @handle_http_errors("search_drive_files", is_read_only=True, service_type="drive")
 @require_google_service("drive", "drive_read")
 async def search_drive_files(
@@ -56,7 +95,7 @@ async def search_drive_files(
     drive_id: Optional[str] = None,
     include_items_from_all_drives: bool = True,
     corpora: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Searches for files and folders within a user's Google Drive, including shared drives.
 
@@ -102,25 +141,39 @@ async def search_drive_files(
     results = await asyncio.to_thread(service.files().list(**list_params).execute)
     files = results.get("files", [])
     if not files:
-        return f"No files found for '{query}'."
+        text_output = f"No files found for '{query}'."
+        result = DriveSearchResult(query=query, total_found=0, files=[])
+        return create_tool_result(text=text_output, data=result)
 
     formatted_files_text_parts = [f"Found {len(files)} files matching '{query}':"]
+    file_items = []
     for item in files:
         size_str = f", Size: {item.get('size', 'N/A')}" if "size" in item else ""
         formatted_files_text_parts.append(
             f'- Name: "{item["name"]}" (ID: {item["id"]}, Type: {item["mimeType"]}{size_str}, Modified: {item.get("modifiedTime", "N/A")}) Link: {item.get("webViewLink", "#")}'
         )
+        file_items.append(
+            DriveFileItem(
+                id=item["id"],
+                name=item["name"],
+                mime_type=item["mimeType"],
+                web_view_link=item.get("webViewLink", "#"),
+                modified_time=item.get("modifiedTime"),
+                size=item.get("size"),
+            )
+        )
     text_output = "\n".join(formatted_files_text_parts)
-    return text_output
+    result = DriveSearchResult(query=query, total_found=len(files), files=file_items)
+    return create_tool_result(text=text_output, data=result)
 
 
-@server.tool()
+@server.tool(output_schema=DRIVE_FILE_CONTENT_SCHEMA)
 @handle_http_errors("get_drive_file_content", is_read_only=True, service_type="drive")
 @require_google_service("drive", "drive_read")
 async def get_drive_file_content(
     service,
     file_id: str,
-) -> str:
+) -> ToolResult:
     """
     Retrieves the content of a specific Google Drive file by ID, supporting files in shared drives.
 
@@ -200,10 +253,18 @@ async def get_drive_file_content(
         f'File: "{file_name}" (ID: {file_id}, Type: {mime_type})\n'
         f"Link: {file_metadata.get('webViewLink', '#')}\n\n--- CONTENT ---\n"
     )
-    return header + body_text
+    text_output = header + body_text
+    result = DriveFileContent(
+        file_id=file_id,
+        name=file_name,
+        mime_type=mime_type,
+        web_view_link=file_metadata.get("webViewLink", "#"),
+        content=body_text,
+    )
+    return create_tool_result(text=text_output, data=result)
 
 
-@server.tool()
+@server.tool(output_schema=DRIVE_DOWNLOAD_RESULT_SCHEMA)
 @handle_http_errors(
     "get_drive_file_download_url", is_read_only=True, service_type="drive"
 )
@@ -212,7 +273,7 @@ async def get_drive_file_download_url(
     service,
     file_id: str,
     export_format: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Gets a download URL for a Google Drive file. The file is prepared and made available via HTTP URL.
 
@@ -334,7 +395,16 @@ async def get_drive_file_download_url(
         logger.info(
             f"[get_drive_file_download_url] Successfully downloaded {size_kb:.1f} KB file (stateless mode)"
         )
-        return "\n".join(result_lines)
+        text_output = "\n".join(result_lines)
+        result = DriveDownloadResult(
+            file_id=file_id,
+            name=file_name,
+            size_bytes=size_bytes,
+            mime_type=output_mime_type,
+            download_url=None,
+            stateless_mode=True,
+        )
+        return create_tool_result(text=text_output, data=result)
 
     # Save file and generate URL
     try:
@@ -372,18 +442,23 @@ async def get_drive_file_download_url(
         logger.info(
             f"[get_drive_file_download_url] Successfully saved {size_kb:.1f} KB file as {saved_file_id}"
         )
-        return "\n".join(result_lines)
+        text_output = "\n".join(result_lines)
+        result = DriveDownloadResult(
+            file_id=file_id,
+            name=file_name,
+            size_bytes=size_bytes,
+            mime_type=output_mime_type,
+            download_url=download_url,
+            stateless_mode=False,
+        )
+        return create_tool_result(text=text_output, data=result)
 
     except Exception as e:
         logger.error(f"[get_drive_file_download_url] Failed to save file: {e}")
-        return (
-            f"Error: Failed to save file for download.\n"
-            f"File was downloaded successfully ({size_kb:.1f} KB) but could not be saved.\n\n"
-            f"Error details: {str(e)}"
-        )
+        raise
 
 
-@server.tool()
+@server.tool(output_schema=DRIVE_LIST_RESULT_SCHEMA)
 @handle_http_errors("list_drive_items", is_read_only=True, service_type="drive")
 @require_google_service("drive", "drive_read")
 async def list_drive_items(
@@ -393,7 +468,7 @@ async def list_drive_items(
     drive_id: Optional[str] = None,
     include_items_from_all_drives: bool = True,
     corpora: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Lists files and folders, supporting shared drives.
     If `drive_id` is specified, lists items within that shared drive. `folder_id` is then relative to that drive (or use drive_id as folder_id for root).
@@ -425,19 +500,35 @@ async def list_drive_items(
     results = await asyncio.to_thread(service.files().list(**list_params).execute)
     files = results.get("files", [])
     if not files:
-        return f"No items found in folder '{folder_id}'."
+        text_output = f"No items found in folder '{folder_id}'."
+        result = DriveListResult(folder_id=folder_id, total_found=0, items=[])
+        return create_tool_result(text=text_output, data=result)
 
     formatted_items_text_parts = [f"Found {len(files)} items in folder '{folder_id}':"]
+    file_items = []
     for item in files:
         size_str = f", Size: {item.get('size', 'N/A')}" if "size" in item else ""
         formatted_items_text_parts.append(
             f'- Name: "{item["name"]}" (ID: {item["id"]}, Type: {item["mimeType"]}{size_str}, Modified: {item.get("modifiedTime", "N/A")}) Link: {item.get("webViewLink", "#")}'
         )
+        file_items.append(
+            DriveFileItem(
+                id=item["id"],
+                name=item["name"],
+                mime_type=item["mimeType"],
+                web_view_link=item.get("webViewLink", "#"),
+                modified_time=item.get("modifiedTime"),
+                size=item.get("size"),
+            )
+        )
     text_output = "\n".join(formatted_items_text_parts)
-    return text_output
+    result = DriveListResult(
+        folder_id=folder_id, total_found=len(files), items=file_items
+    )
+    return create_tool_result(text=text_output, data=result)
 
 
-@server.tool()
+@server.tool(output_schema=DRIVE_CREATE_RESULT_SCHEMA)
 @handle_http_errors("create_drive_file", service_type="drive")
 @require_google_service("drive", "drive_file")
 async def create_drive_file(
@@ -447,7 +538,7 @@ async def create_drive_file(
     folder_id: str = "root",
     mime_type: str = "text/plain",
     fileUrl: Optional[str] = None,  # Now explicitly Optional
-) -> str:
+) -> ToolResult:
     """
     Creates a new file in Google Drive, supporting creation within shared drives.
     Accepts either direct content or a fileUrl to fetch the content from.
@@ -667,7 +758,13 @@ async def create_drive_file(
     link = created_file.get("webViewLink", "No link available")
     confirmation_message = f"Successfully created file '{created_file.get('name', file_name)}' (ID: {created_file.get('id', 'N/A')}) in folder '{folder_id}'. Link: {link}"
     logger.info(f"Successfully created file. Link: {link}")
-    return confirmation_message
+    result = DriveCreateResult(
+        file_id=created_file.get("id", "N/A"),
+        name=created_file.get("name", file_name),
+        folder_id=folder_id,
+        web_view_link=link,
+    )
+    return create_tool_result(text=confirmation_message, data=result)
 
 
 # Mapping of file extensions to source MIME types for Google Docs conversion
@@ -731,7 +828,7 @@ def _detect_source_format(file_name: str, content: Optional[str] = None) -> str:
     return "text/plain"
 
 
-@server.tool()
+@server.tool(output_schema=DRIVE_IMPORT_RESULT_SCHEMA)
 @handle_http_errors("import_to_google_doc", service_type="drive")
 @require_google_service("drive", "drive_file")
 async def import_to_google_doc(
@@ -743,7 +840,7 @@ async def import_to_google_doc(
     file_url: Optional[str] = None,
     source_format: Optional[str] = None,
     folder_id: str = "root",
-) -> str:
+) -> ToolResult:
     """
     Imports a file (Markdown, DOCX, TXT, HTML, RTF, ODT) into Google Docs format with automatic conversion.
 
@@ -931,10 +1028,17 @@ async def import_to_google_doc(
     )
 
     logger.info(f"[import_to_google_doc] Success. Link: {link}")
-    return confirmation
+    result = DriveImportResult(
+        document_id=doc_id,
+        name=doc_name,
+        source_format=source_mime_type,
+        folder_id=folder_id,
+        web_view_link=link,
+    )
+    return create_tool_result(text=confirmation, data=result)
 
 
-@server.tool()
+@server.tool(output_schema=DRIVE_PERMISSIONS_RESULT_SCHEMA)
 @handle_http_errors(
     "get_drive_file_permissions", is_read_only=True, service_type="drive"
 )
@@ -942,7 +1046,7 @@ async def import_to_google_doc(
 async def get_drive_file_permissions(
     service,
     file_id: str,
-) -> str:
+) -> ToolResult:
     """
     Gets detailed metadata about a Google Drive file including sharing permissions.
 
@@ -1032,14 +1136,41 @@ async def get_drive_file_permissions(
                 ]
             )
 
-        return "\n".join(output_parts)
+        text_output = "\n".join(output_parts)
+
+        # Build structured permissions list
+        permission_items = [
+            DrivePermission(
+                id=perm.get("id", ""),
+                type=perm.get("type", ""),
+                role=perm.get("role", ""),
+                email_address=perm.get("emailAddress"),
+                domain=perm.get("domain"),
+                expiration_time=perm.get("expirationTime"),
+            )
+            for perm in permissions
+        ]
+
+        result = DrivePermissionsResult(
+            file_id=file_id,
+            name=file_metadata.get("name", "Unknown"),
+            mime_type=file_metadata.get("mimeType", "Unknown"),
+            size=file_metadata.get("size"),
+            modified_time=file_metadata.get("modifiedTime"),
+            is_shared=file_metadata.get("shared", False),
+            web_view_link=file_metadata.get("webViewLink"),
+            web_content_link=file_metadata.get("webContentLink"),
+            has_public_link=has_public_link,
+            permissions=permission_items,
+        )
+        return create_tool_result(text=text_output, data=result)
 
     except Exception as e:
         logger.error(f"Error getting file permissions: {e}")
-        return f"Error getting file permissions: {e}"
+        raise
 
 
-@server.tool()
+@server.tool(output_schema=DRIVE_PUBLIC_ACCESS_RESULT_SCHEMA)
 @handle_http_errors(
     "check_drive_file_public_access", is_read_only=True, service_type="drive"
 )
@@ -1047,7 +1178,7 @@ async def get_drive_file_permissions(
 async def check_drive_file_public_access(
     service,
     file_name: str,
-) -> str:
+) -> ToolResult:
     """
     Searches for a file by name and checks if it has public link sharing enabled.
 
@@ -1075,7 +1206,17 @@ async def check_drive_file_public_access(
 
     files = results.get("files", [])
     if not files:
-        return f"No file found with name '{file_name}'"
+        text_output = f"No file found with name '{file_name}'"
+        # Return empty result for no files found
+        result = DrivePublicAccessResult(
+            file_id="",
+            name=file_name,
+            mime_type="",
+            is_shared=False,
+            has_public_link=False,
+            drive_image_url=None,
+        )
+        return create_tool_result(text=text_output, data=result)
 
     if len(files) > 1:
         output_parts = [f"Found {len(files)} files with name '{file_name}':"]
@@ -1116,11 +1257,13 @@ async def check_drive_file_public_access(
         ]
     )
 
+    drive_image_url = None
     if has_public_link:
+        drive_image_url = get_drive_image_url(file_id)
         output_parts.extend(
             [
                 "✅ PUBLIC ACCESS ENABLED - This file can be inserted into Google Docs",
-                f"Use with insert_doc_image_url: {get_drive_image_url(file_id)}",
+                f"Use with insert_doc_image_url: {drive_image_url}",
             ]
         )
     else:
@@ -1131,10 +1274,19 @@ async def check_drive_file_public_access(
             ]
         )
 
-    return "\n".join(output_parts)
+    text_output = "\n".join(output_parts)
+    result = DrivePublicAccessResult(
+        file_id=file_id,
+        name=file_metadata["name"],
+        mime_type=file_metadata["mimeType"],
+        is_shared=file_metadata.get("shared", False),
+        has_public_link=has_public_link,
+        drive_image_url=drive_image_url,
+    )
+    return create_tool_result(text=text_output, data=result)
 
 
-@server.tool()
+@server.tool(output_schema=DRIVE_UPDATE_RESULT_SCHEMA)
 @handle_http_errors("update_drive_file", is_read_only=False, service_type="drive")
 @require_google_service("drive", "drive_file")
 async def update_drive_file(
@@ -1155,7 +1307,7 @@ async def update_drive_file(
     copy_requires_writer_permission: Optional[bool] = None,
     # Custom properties
     properties: Optional[dict] = None,  # User-visible custom properties
-) -> str:
+) -> ToolResult:
     """
     Updates metadata and properties of a Google Drive file.
 
@@ -1306,17 +1458,24 @@ async def update_drive_file(
     output_parts.append("")
     output_parts.append(f"View file: {updated_file.get('webViewLink', '#')}")
 
-    return "\n".join(output_parts)
+    text_output = "\n".join(output_parts)
+    result = DriveUpdateResult(
+        file_id=file_id,
+        name=updated_file.get("name", current_file["name"]),
+        web_view_link=updated_file.get("webViewLink", "#"),
+        changes_applied=changes,
+    )
+    return create_tool_result(text=text_output, data=result)
 
 
-@server.tool()
+@server.tool(output_schema=DRIVE_SHAREABLE_LINK_RESULT_SCHEMA)
 @handle_http_errors("get_drive_shareable_link", is_read_only=True, service_type="drive")
 @require_google_service("drive", "drive_read")
 async def get_drive_shareable_link(
     service,
     user_google_email: str,
     file_id: str,
-) -> str:
+) -> ToolResult:
     """
     Gets the shareable link for a Google Drive file or folder.
 
@@ -1366,10 +1525,34 @@ async def get_drive_shareable_link(
         for perm in permissions:
             output_parts.append(f"  - {format_permission_info(perm)}")
 
-    return "\n".join(output_parts)
+    text_output = "\n".join(output_parts)
+
+    # Build structured permissions list
+    permission_items = [
+        DrivePermission(
+            id=perm.get("id", ""),
+            type=perm.get("type", ""),
+            role=perm.get("role", ""),
+            email_address=perm.get("emailAddress"),
+            domain=perm.get("domain"),
+            expiration_time=perm.get("expirationTime"),
+        )
+        for perm in permissions
+    ]
+
+    result = DriveShareableLinkResult(
+        file_id=file_id,
+        name=file_metadata.get("name", "Unknown"),
+        mime_type=file_metadata.get("mimeType", "Unknown"),
+        is_shared=file_metadata.get("shared", False),
+        web_view_link=file_metadata.get("webViewLink"),
+        web_content_link=file_metadata.get("webContentLink"),
+        permissions=permission_items,
+    )
+    return create_tool_result(text=text_output, data=result)
 
 
-@server.tool()
+@server.tool(output_schema=DRIVE_SHARE_RESULT_SCHEMA)
 @handle_http_errors("share_drive_file", is_read_only=False, service_type="drive")
 @require_google_service("drive", "drive_file")
 async def share_drive_file(
@@ -1383,7 +1566,7 @@ async def share_drive_file(
     email_message: Optional[str] = None,
     expiration_time: Optional[str] = None,
     allow_file_discovery: Optional[bool] = None,
-) -> str:
+) -> ToolResult:
     """
     Shares a Google Drive file or folder with a user, group, domain, or anyone with the link.
 
@@ -1462,10 +1645,25 @@ async def share_drive_file(
         f"View link: {file_metadata.get('webViewLink', 'N/A')}",
     ]
 
-    return "\n".join(output_parts)
+    text_output = "\n".join(output_parts)
+    permission = DrivePermission(
+        id=created_permission.get("id", ""),
+        type=created_permission.get("type", ""),
+        role=created_permission.get("role", ""),
+        email_address=created_permission.get("emailAddress"),
+        domain=created_permission.get("domain"),
+        expiration_time=created_permission.get("expirationTime"),
+    )
+    result = DriveShareResult(
+        file_id=file_id,
+        file_name=file_metadata.get("name", "Unknown"),
+        permission=permission,
+        web_view_link=file_metadata.get("webViewLink", "N/A"),
+    )
+    return create_tool_result(text=text_output, data=result)
 
 
-@server.tool()
+@server.tool(output_schema=DRIVE_BATCH_SHARE_RESULT_SCHEMA)
 @handle_http_errors("batch_share_drive_file", is_read_only=False, service_type="drive")
 @require_google_service("drive", "drive_file")
 async def batch_share_drive_file(
@@ -1475,7 +1673,7 @@ async def batch_share_drive_file(
     recipients: List[Dict[str, Any]],
     send_notification: bool = True,
     email_message: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Shares a Google Drive file or folder with multiple users or groups in a single operation.
 
@@ -1512,7 +1710,8 @@ async def batch_share_drive_file(
     if not recipients:
         raise ValueError("recipients list cannot be empty")
 
-    results = []
+    text_results = []
+    structured_results = []
     success_count = 0
     failure_count = 0
 
@@ -1522,14 +1721,28 @@ async def batch_share_drive_file(
         if share_type == "domain":
             domain = recipient.get("domain")
             if not domain:
-                results.append("  - Skipped: missing domain for domain share")
+                text_results.append("  - Skipped: missing domain for domain share")
+                structured_results.append(
+                    DriveBatchShareResultItem(
+                        identifier="unknown",
+                        success=False,
+                        error="missing domain for domain share",
+                    )
+                )
                 failure_count += 1
                 continue
             identifier = domain
         else:
             email = recipient.get("email")
             if not email:
-                results.append("  - Skipped: missing email address")
+                text_results.append("  - Skipped: missing email address")
+                structured_results.append(
+                    DriveBatchShareResultItem(
+                        identifier="unknown",
+                        success=False,
+                        error="missing email address",
+                    )
+                )
                 failure_count += 1
                 continue
             identifier = email
@@ -1538,14 +1751,24 @@ async def batch_share_drive_file(
         try:
             validate_share_role(role)
         except ValueError as e:
-            results.append(f"  - {identifier}: Failed - {e}")
+            text_results.append(f"  - {identifier}: Failed - {e}")
+            structured_results.append(
+                DriveBatchShareResultItem(
+                    identifier=identifier, success=False, error=str(e)
+                )
+            )
             failure_count += 1
             continue
 
         try:
             validate_share_type(share_type)
         except ValueError as e:
-            results.append(f"  - {identifier}: Failed - {e}")
+            text_results.append(f"  - {identifier}: Failed - {e}")
+            structured_results.append(
+                DriveBatchShareResultItem(
+                    identifier=identifier, success=False, error=str(e)
+                )
+            )
             failure_count += 1
             continue
 
@@ -1564,7 +1787,12 @@ async def batch_share_drive_file(
                 validate_expiration_time(recipient["expiration_time"])
                 permission_body["expirationTime"] = recipient["expiration_time"]
             except ValueError as e:
-                results.append(f"  - {identifier}: Failed - {e}")
+                text_results.append(f"  - {identifier}: Failed - {e}")
+                structured_results.append(
+                    DriveBatchShareResultItem(
+                        identifier=identifier, success=False, error=str(e)
+                    )
+                )
                 failure_count += 1
                 continue
 
@@ -1584,10 +1812,28 @@ async def batch_share_drive_file(
             created_permission = await asyncio.to_thread(
                 service.permissions().create(**create_params).execute
             )
-            results.append(f"  - {format_permission_info(created_permission)}")
+            text_results.append(f"  - {format_permission_info(created_permission)}")
+            perm = DrivePermission(
+                id=created_permission.get("id", ""),
+                type=created_permission.get("type", ""),
+                role=created_permission.get("role", ""),
+                email_address=created_permission.get("emailAddress"),
+                domain=created_permission.get("domain"),
+                expiration_time=created_permission.get("expirationTime"),
+            )
+            structured_results.append(
+                DriveBatchShareResultItem(
+                    identifier=identifier, success=True, permission=perm
+                )
+            )
             success_count += 1
         except HttpError as e:
-            results.append(f"  - {identifier}: Failed - {str(e)}")
+            text_results.append(f"  - {identifier}: Failed - {str(e)}")
+            structured_results.append(
+                DriveBatchShareResultItem(
+                    identifier=identifier, success=False, error=str(e)
+                )
+            )
             failure_count += 1
 
     output_parts = [
@@ -1597,7 +1843,7 @@ async def batch_share_drive_file(
         "",
         "Results:",
     ]
-    output_parts.extend(results)
+    output_parts.extend(text_results)
     output_parts.extend(
         [
             "",
@@ -1605,10 +1851,19 @@ async def batch_share_drive_file(
         ]
     )
 
-    return "\n".join(output_parts)
+    text_output = "\n".join(output_parts)
+    result = DriveBatchShareResult(
+        file_id=file_id,
+        file_name=file_metadata.get("name", "Unknown"),
+        success_count=success_count,
+        failure_count=failure_count,
+        results=structured_results,
+        web_view_link=file_metadata.get("webViewLink", "N/A"),
+    )
+    return create_tool_result(text=text_output, data=result)
 
 
-@server.tool()
+@server.tool(output_schema=DRIVE_PERMISSION_UPDATE_RESULT_SCHEMA)
 @handle_http_errors("update_drive_permission", is_read_only=False, service_type="drive")
 @require_google_service("drive", "drive_file")
 async def update_drive_permission(
@@ -1618,7 +1873,7 @@ async def update_drive_permission(
     permission_id: str,
     role: Optional[str] = None,
     expiration_time: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Updates an existing permission on a Google Drive file or folder.
 
@@ -1686,10 +1941,24 @@ async def update_drive_permission(
         f"  - {format_permission_info(updated_permission)}",
     ]
 
-    return "\n".join(output_parts)
+    text_output = "\n".join(output_parts)
+    permission = DrivePermission(
+        id=updated_permission.get("id", ""),
+        type=updated_permission.get("type", ""),
+        role=updated_permission.get("role", ""),
+        email_address=updated_permission.get("emailAddress"),
+        domain=updated_permission.get("domain"),
+        expiration_time=updated_permission.get("expirationTime"),
+    )
+    result = DrivePermissionUpdateResult(
+        file_id=file_id,
+        file_name=file_metadata.get("name", "Unknown"),
+        permission=permission,
+    )
+    return create_tool_result(text=text_output, data=result)
 
 
-@server.tool()
+@server.tool(output_schema=DRIVE_PERMISSION_REMOVE_RESULT_SCHEMA)
 @handle_http_errors("remove_drive_permission", is_read_only=False, service_type="drive")
 @require_google_service("drive", "drive_file")
 async def remove_drive_permission(
@@ -1697,7 +1966,7 @@ async def remove_drive_permission(
     user_google_email: str,
     file_id: str,
     permission_id: str,
-) -> str:
+) -> ToolResult:
     """
     Removes a permission from a Google Drive file or folder, revoking access.
 
@@ -1730,10 +1999,16 @@ async def remove_drive_permission(
         f"Permission ID '{permission_id}' has been revoked.",
     ]
 
-    return "\n".join(output_parts)
+    text_output = "\n".join(output_parts)
+    result = DrivePermissionRemoveResult(
+        file_id=file_id,
+        file_name=file_metadata.get("name", "Unknown"),
+        permission_id=permission_id,
+    )
+    return create_tool_result(text=text_output, data=result)
 
 
-@server.tool()
+@server.tool(output_schema=DRIVE_COPY_RESULT_SCHEMA)
 @handle_http_errors("copy_drive_file", is_read_only=False, service_type="drive")
 @require_google_service("drive", "drive_file")
 async def copy_drive_file(
@@ -1742,7 +2017,7 @@ async def copy_drive_file(
     file_id: str,
     new_name: Optional[str] = None,
     parent_folder_id: str = "root",
-) -> str:
+) -> ToolResult:
     """
     Creates a copy of an existing Google Drive file.
 
@@ -1802,10 +2077,20 @@ async def copy_drive_file(
         f"View copied file: {copied_file.get('webViewLink', 'N/A')}",
     ]
 
-    return "\n".join(output_parts)
+    text_output = "\n".join(output_parts)
+    result = DriveCopyResult(
+        original_file_id=file_id,
+        original_name=original_name,
+        new_file_id=copied_file.get("id", "N/A"),
+        new_name=copied_file.get("name", "Unknown"),
+        mime_type=copied_file.get("mimeType", "Unknown"),
+        parent_folder_id=parent_folder_id,
+        web_view_link=copied_file.get("webViewLink", "N/A"),
+    )
+    return create_tool_result(text=text_output, data=result)
 
 
-@server.tool()
+@server.tool(output_schema=DRIVE_OWNERSHIP_TRANSFER_RESULT_SCHEMA)
 @handle_http_errors(
     "transfer_drive_ownership", is_read_only=False, service_type="drive"
 )
@@ -1816,7 +2101,7 @@ async def transfer_drive_ownership(
     file_id: str,
     new_owner_email: str,
     move_to_new_owners_root: bool = False,
-) -> str:
+) -> ToolResult:
     """
     Transfers ownership of a Google Drive file or folder to another user.
 
@@ -1875,4 +2160,12 @@ async def transfer_drive_ownership(
 
     output_parts.extend(["", "Note: Previous owner now has editor access."])
 
-    return "\n".join(output_parts)
+    text_output = "\n".join(output_parts)
+    result = DriveOwnershipTransferResult(
+        file_id=file_id,
+        file_name=file_metadata.get("name", "Unknown"),
+        new_owner_email=new_owner_email,
+        previous_owner_emails=current_owner_emails,
+        moved_to_new_owners_root=move_to_new_owners_root,
+    )
+    return create_tool_result(text=text_output, data=result)

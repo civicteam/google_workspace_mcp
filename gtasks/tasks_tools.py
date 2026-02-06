@@ -15,7 +15,37 @@ from mcp import Resource
 from auth.oauth_config import is_oauth21_enabled, is_external_oauth21_provider
 from auth.service_decorator import require_google_service
 from core.server import server
+from core.structured_output import create_tool_result
 from core.utils import handle_http_errors
+from fastmcp.tools.tool import ToolResult
+from gtasks.tasks_models import (
+    ClearCompletedTasksResult,
+    CreateTaskListResult,
+    CreateTaskResult,
+    DeleteTaskListResult,
+    DeleteTaskResult,
+    GetTaskListResult,
+    GetTaskResult,
+    ListTaskListsResult,
+    ListTasksResult,
+    MoveTaskResult,
+    TaskListSummary,
+    TaskSummary,
+    UpdateTaskListResult,
+    UpdateTaskResult,
+    TASKS_CLEAR_COMPLETED_SCHEMA,
+    TASKS_CREATE_TASK_LIST_SCHEMA,
+    TASKS_CREATE_TASK_SCHEMA,
+    TASKS_DELETE_TASK_LIST_SCHEMA,
+    TASKS_DELETE_TASK_SCHEMA,
+    TASKS_GET_TASK_LIST_SCHEMA,
+    TASKS_GET_TASK_SCHEMA,
+    TASKS_LIST_TASK_LISTS_SCHEMA,
+    TASKS_LIST_TASKS_SCHEMA,
+    TASKS_MOVE_TASK_SCHEMA,
+    TASKS_UPDATE_TASK_LIST_SCHEMA,
+    TASKS_UPDATE_TASK_SCHEMA,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -86,14 +116,14 @@ def _adjust_due_max_for_tasks_api(due_max: str) -> str:
     return adjusted.isoformat()
 
 
-@server.tool()  # type: ignore
+@server.tool(output_schema=TASKS_LIST_TASK_LISTS_SCHEMA)  # type: ignore
 @require_google_service("tasks", "tasks_read")  # type: ignore
 @handle_http_errors("list_task_lists", service_type="tasks")  # type: ignore
 async def list_task_lists(
     service: Resource,
     max_results: int = 1000,
     page_token: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     List all task lists for the user.
 
@@ -102,7 +132,8 @@ async def list_task_lists(
         page_token (Optional[str]): Token for pagination.
 
     Returns:
-        str: List of task lists with their IDs, titles, and details.
+        ToolResult: List of task lists with their IDs, titles, and details.
+        Also includes structured_content for machine parsing.
     """
     logger.info("[list_task_lists] Invoked")
 
@@ -119,18 +150,40 @@ async def list_task_lists(
         next_page_token = result.get("nextPageToken")
 
         if not task_lists:
-            return "No task lists found."
+            structured_result = ListTaskListsResult(
+                task_lists=[],
+                total_count=0,
+                next_page_token=None,
+            )
+            return create_tool_result(
+                text="No task lists found.", data=structured_result
+            )
 
         response = "Task Lists:\n"
+        task_list_summaries = []
         for task_list in task_lists:
             response += f"- {task_list['title']} (ID: {task_list['id']})\n"
             response += f"  Updated: {task_list.get('updated', 'N/A')}\n"
+            task_list_summaries.append(
+                TaskListSummary(
+                    id=task_list["id"],
+                    title=task_list["title"],
+                    updated=task_list.get("updated"),
+                    self_link=task_list.get("selfLink"),
+                )
+            )
 
         if next_page_token:
             response += f"\nNext page token: {next_page_token}"
 
+        structured_result = ListTaskListsResult(
+            task_lists=task_list_summaries,
+            total_count=len(task_list_summaries),
+            next_page_token=next_page_token,
+        )
+
         logger.info(f"Found {len(task_lists)} task lists")
-        return response
+        return create_tool_result(text=response, data=structured_result)
 
     except HttpError as error:
         message = _format_reauth_message(error)
@@ -142,10 +195,10 @@ async def list_task_lists(
         raise Exception(message)
 
 
-@server.tool()  # type: ignore
+@server.tool(output_schema=TASKS_GET_TASK_LIST_SCHEMA)  # type: ignore
 @require_google_service("tasks", "tasks_read")  # type: ignore
 @handle_http_errors("get_task_list", service_type="tasks")  # type: ignore
-async def get_task_list(service: Resource, task_list_id: str) -> str:
+async def get_task_list(service: Resource, task_list_id: str) -> ToolResult:
     """
     Get details of a specific task list.
 
@@ -153,7 +206,8 @@ async def get_task_list(service: Resource, task_list_id: str) -> str:
         task_list_id (str): The ID of the task list to retrieve.
 
     Returns:
-        str: Task list details including title, ID, and last updated time.
+        ToolResult: Task list details including title, ID, and last updated time.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[get_task_list] Invoked. Task List ID: {task_list_id}")
 
@@ -168,8 +222,15 @@ async def get_task_list(service: Resource, task_list_id: str) -> str:
 - Updated: {task_list.get("updated", "N/A")}
 - Self Link: {task_list.get("selfLink", "N/A")}"""
 
+        structured_result = GetTaskListResult(
+            id=task_list["id"],
+            title=task_list["title"],
+            updated=task_list.get("updated"),
+            self_link=task_list.get("selfLink"),
+        )
+
         logger.info(f"Retrieved task list '{task_list['title']}'")
-        return response
+        return create_tool_result(text=response, data=structured_result)
 
     except HttpError as error:
         message = _format_reauth_message(error)
@@ -181,10 +242,10 @@ async def get_task_list(service: Resource, task_list_id: str) -> str:
         raise Exception(message)
 
 
-@server.tool()  # type: ignore
+@server.tool(output_schema=TASKS_CREATE_TASK_LIST_SCHEMA)  # type: ignore
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("create_task_list", service_type="tasks")  # type: ignore
-async def create_task_list(service: Resource, title: str) -> str:
+async def create_task_list(service: Resource, title: str) -> ToolResult:
     """
     Create a new task list.
 
@@ -192,7 +253,8 @@ async def create_task_list(service: Resource, title: str) -> str:
         title (str): The title of the new task list.
 
     Returns:
-        str: Confirmation message with the new task list ID and details.
+        ToolResult: Confirmation message with the new task list ID and details.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[create_task_list] Invoked. Title: '{title}'")
 
@@ -207,8 +269,15 @@ async def create_task_list(service: Resource, title: str) -> str:
 - Created: {result.get("updated", "N/A")}
 - Self Link: {result.get("selfLink", "N/A")}"""
 
+        structured_result = CreateTaskListResult(
+            id=result["id"],
+            title=result["title"],
+            updated=result.get("updated"),
+            self_link=result.get("selfLink"),
+        )
+
         logger.info(f"Created task list '{title}' with ID {result['id']}")
-        return response
+        return create_tool_result(text=response, data=structured_result)
 
     except HttpError as error:
         message = _format_reauth_message(error)
@@ -220,10 +289,12 @@ async def create_task_list(service: Resource, title: str) -> str:
         raise Exception(message)
 
 
-@server.tool()  # type: ignore
+@server.tool(output_schema=TASKS_UPDATE_TASK_LIST_SCHEMA)  # type: ignore
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("update_task_list", service_type="tasks")  # type: ignore
-async def update_task_list(service: Resource, task_list_id: str, title: str) -> str:
+async def update_task_list(
+    service: Resource, task_list_id: str, title: str
+) -> ToolResult:
     """
     Update an existing task list.
 
@@ -232,7 +303,8 @@ async def update_task_list(service: Resource, task_list_id: str, title: str) -> 
         title (str): The new title for the task list.
 
     Returns:
-        str: Confirmation message with updated task list details.
+        ToolResult: Confirmation message with updated task list details.
+        Also includes structured_content for machine parsing.
     """
     logger.info(
         f"[update_task_list] Invoked. Task List ID: {task_list_id}, New Title: '{title}'"
@@ -250,8 +322,14 @@ async def update_task_list(service: Resource, task_list_id: str, title: str) -> 
 - ID: {result["id"]}
 - Updated: {result.get("updated", "N/A")}"""
 
+        structured_result = UpdateTaskListResult(
+            id=result["id"],
+            title=result["title"],
+            updated=result.get("updated"),
+        )
+
         logger.info(f"Updated task list {task_list_id} with new title '{title}'")
-        return response
+        return create_tool_result(text=response, data=structured_result)
 
     except HttpError as error:
         message = _format_reauth_message(error)
@@ -263,10 +341,10 @@ async def update_task_list(service: Resource, task_list_id: str, title: str) -> 
         raise Exception(message)
 
 
-@server.tool()  # type: ignore
+@server.tool(output_schema=TASKS_DELETE_TASK_LIST_SCHEMA)  # type: ignore
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("delete_task_list", service_type="tasks")  # type: ignore
-async def delete_task_list(service: Resource, task_list_id: str) -> str:
+async def delete_task_list(service: Resource, task_list_id: str) -> ToolResult:
     """
     Delete a task list. Note: This will also delete all tasks in the list.
 
@@ -274,7 +352,8 @@ async def delete_task_list(service: Resource, task_list_id: str) -> str:
         task_list_id (str): The ID of the task list to delete.
 
     Returns:
-        str: Confirmation message.
+        ToolResult: Confirmation message.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[delete_task_list] Invoked. Task List ID: {task_list_id}")
 
@@ -285,8 +364,13 @@ async def delete_task_list(service: Resource, task_list_id: str) -> str:
 
         response = f"Task list {task_list_id} has been deleted. All tasks in this list have also been deleted."
 
+        structured_result = DeleteTaskListResult(
+            task_list_id=task_list_id,
+            deleted=True,
+        )
+
         logger.info(f"Deleted task list {task_list_id}")
-        return response
+        return create_tool_result(text=response, data=structured_result)
 
     except HttpError as error:
         message = _format_reauth_message(error)
@@ -298,7 +382,21 @@ async def delete_task_list(service: Resource, task_list_id: str) -> str:
         raise Exception(message)
 
 
-@server.tool()  # type: ignore
+def _convert_structured_task_to_task_summary(task: StructuredTask) -> TaskSummary:
+    """Convert a StructuredTask to a TaskSummary dataclass for structured output."""
+    return TaskSummary(
+        id=task.id,
+        title=task.title,
+        status=task.status,
+        due=task.due,
+        notes=task.notes,
+        updated=task.updated,
+        completed=task.completed,
+        subtasks=[_convert_structured_task_to_task_summary(st) for st in task.subtasks],
+    )
+
+
+@server.tool(output_schema=TASKS_LIST_TASKS_SCHEMA)  # type: ignore
 @require_google_service("tasks", "tasks_read")  # type: ignore
 @handle_http_errors("list_tasks", service_type="tasks")  # type: ignore
 async def list_tasks(
@@ -315,7 +413,7 @@ async def list_tasks(
     due_max: Optional[str] = None,
     due_min: Optional[str] = None,
     updated_min: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     List all tasks in a specific task list.
 
@@ -334,7 +432,8 @@ async def list_tasks(
         updated_min (Optional[str]): Lower bound for last modification time (RFC 3339 timestamp).
 
     Returns:
-        str: List of tasks with their details.
+        ToolResult: List of tasks with their details.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[list_tasks] Invoked. Task List ID: {task_list_id}")
 
@@ -396,7 +495,16 @@ async def list_tasks(
             results_remaining -= len(more_tasks)
 
         if not tasks:
-            return f"No tasks found in task list {task_list_id}."
+            structured_result = ListTasksResult(
+                task_list_id=task_list_id,
+                tasks=[],
+                total_count=0,
+                next_page_token=None,
+            )
+            return create_tool_result(
+                text=f"No tasks found in task list {task_list_id}.",
+                data=structured_result,
+            )
 
         structured_tasks = get_structured_tasks(tasks)
 
@@ -406,8 +514,19 @@ async def list_tasks(
         if next_page_token:
             response += f"Next page token: {next_page_token}\n"
 
+        # Convert StructuredTask list to TaskSummary list for structured output
+        task_summaries = [
+            _convert_structured_task_to_task_summary(st) for st in structured_tasks
+        ]
+        structured_result = ListTasksResult(
+            task_list_id=task_list_id,
+            tasks=task_summaries,
+            total_count=len(tasks),
+            next_page_token=next_page_token,
+        )
+
         logger.info(f"Found {len(tasks)} tasks in list {task_list_id}")
-        return response
+        return create_tool_result(text=response, data=structured_result)
 
     except HttpError as error:
         message = _format_reauth_message(error)
@@ -534,10 +653,10 @@ This can also occur due to filtering that excludes parent tasks while including 
     return response
 
 
-@server.tool()  # type: ignore
+@server.tool(output_schema=TASKS_GET_TASK_SCHEMA)  # type: ignore
 @require_google_service("tasks", "tasks_read")  # type: ignore
 @handle_http_errors("get_task", service_type="tasks")  # type: ignore
-async def get_task(service: Resource, task_list_id: str, task_id: str) -> str:
+async def get_task(service: Resource, task_list_id: str, task_id: str) -> ToolResult:
     """
     Get details of a specific task.
 
@@ -546,7 +665,8 @@ async def get_task(service: Resource, task_list_id: str, task_id: str) -> str:
         task_id (str): The ID of the task to retrieve.
 
     Returns:
-        str: Task details including title, notes, status, due date, etc.
+        ToolResult: Task details including title, notes, status, due date, etc.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[get_task] Invoked. Task List ID: {task_list_id}, Task ID: {task_id}")
 
@@ -576,8 +696,22 @@ async def get_task(service: Resource, task_list_id: str, task_id: str) -> str:
         if task.get("webViewLink"):
             response += f"\n- Web View Link: {task['webViewLink']}"
 
+        structured_result = GetTaskResult(
+            id=task["id"],
+            title=task.get("title", "Untitled"),
+            status=task.get("status"),
+            updated=task.get("updated"),
+            due=task.get("due"),
+            completed=task.get("completed"),
+            notes=task.get("notes"),
+            parent=task.get("parent"),
+            position=task.get("position"),
+            self_link=task.get("selfLink"),
+            web_view_link=task.get("webViewLink"),
+        )
+
         logger.info(f"Retrieved task '{task.get('title', 'Untitled')}'")
-        return response
+        return create_tool_result(text=response, data=structured_result)
 
     except HttpError as error:
         message = _format_reauth_message(error)
@@ -589,7 +723,7 @@ async def get_task(service: Resource, task_list_id: str, task_id: str) -> str:
         raise Exception(message)
 
 
-@server.tool()  # type: ignore
+@server.tool(output_schema=TASKS_CREATE_TASK_SCHEMA)  # type: ignore
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("create_task", service_type="tasks")  # type: ignore
 async def create_task(
@@ -600,7 +734,7 @@ async def create_task(
     due: Optional[str] = None,
     parent: Optional[str] = None,
     previous: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Create a new task in a task list.
 
@@ -613,7 +747,8 @@ async def create_task(
         previous (Optional[str]): Previous sibling task ID (for positioning).
 
     Returns:
-        str: Confirmation message with the new task ID and details.
+        ToolResult: Confirmation message with the new task ID and details.
+        Also includes structured_content for machine parsing.
     """
     logger.info(
         f"[create_task] Invoked. Task List ID: {task_list_id}, Title: '{title}'"
@@ -647,8 +782,18 @@ async def create_task(
         if result.get("webViewLink"):
             response += f"\n- Web View Link: {result['webViewLink']}"
 
+        structured_result = CreateTaskResult(
+            id=result["id"],
+            title=result["title"],
+            status=result.get("status"),
+            updated=result.get("updated"),
+            due=result.get("due"),
+            notes=result.get("notes"),
+            web_view_link=result.get("webViewLink"),
+        )
+
         logger.info(f"Created task '{title}' with ID {result['id']}")
-        return response
+        return create_tool_result(text=response, data=structured_result)
 
     except HttpError as error:
         message = _format_reauth_message(error)
@@ -660,7 +805,7 @@ async def create_task(
         raise Exception(message)
 
 
-@server.tool()  # type: ignore
+@server.tool(output_schema=TASKS_UPDATE_TASK_SCHEMA)  # type: ignore
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("update_task", service_type="tasks")  # type: ignore
 async def update_task(
@@ -671,7 +816,7 @@ async def update_task(
     notes: Optional[str] = None,
     status: Optional[str] = None,
     due: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Update an existing task.
 
@@ -684,7 +829,8 @@ async def update_task(
         due (Optional[str]): New due date in RFC 3339 format.
 
     Returns:
-        str: Confirmation message with updated task details.
+        ToolResult: Confirmation message with updated task details.
+        Also includes structured_content for machine parsing.
     """
     logger.info(
         f"[update_task] Invoked. Task List ID: {task_list_id}, Task ID: {task_id}"
@@ -733,8 +879,18 @@ async def update_task(
         if result.get("completed"):
             response += f"\n- Completed: {result['completed']}"
 
+        structured_result = UpdateTaskResult(
+            id=result["id"],
+            title=result["title"],
+            status=result.get("status"),
+            updated=result.get("updated"),
+            due=result.get("due"),
+            notes=result.get("notes"),
+            completed=result.get("completed"),
+        )
+
         logger.info(f"Updated task {task_id}")
-        return response
+        return create_tool_result(text=response, data=structured_result)
 
     except HttpError as error:
         message = _format_reauth_message(error)
@@ -746,10 +902,10 @@ async def update_task(
         raise Exception(message)
 
 
-@server.tool()  # type: ignore
+@server.tool(output_schema=TASKS_DELETE_TASK_SCHEMA)  # type: ignore
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("delete_task", service_type="tasks")  # type: ignore
-async def delete_task(service: Resource, task_list_id: str, task_id: str) -> str:
+async def delete_task(service: Resource, task_list_id: str, task_id: str) -> ToolResult:
     """
     Delete a task from a task list.
 
@@ -758,7 +914,8 @@ async def delete_task(service: Resource, task_list_id: str, task_id: str) -> str
         task_id (str): The ID of the task to delete.
 
     Returns:
-        str: Confirmation message.
+        ToolResult: Confirmation message.
+        Also includes structured_content for machine parsing.
     """
     logger.info(
         f"[delete_task] Invoked. Task List ID: {task_list_id}, Task ID: {task_id}"
@@ -771,8 +928,14 @@ async def delete_task(service: Resource, task_list_id: str, task_id: str) -> str
 
         response = f"Task {task_id} has been deleted from task list {task_list_id}."
 
+        structured_result = DeleteTaskResult(
+            task_list_id=task_list_id,
+            task_id=task_id,
+            deleted=True,
+        )
+
         logger.info(f"Deleted task {task_id}")
-        return response
+        return create_tool_result(text=response, data=structured_result)
 
     except HttpError as error:
         message = _format_reauth_message(error)
@@ -784,7 +947,7 @@ async def delete_task(service: Resource, task_list_id: str, task_id: str) -> str
         raise Exception(message)
 
 
-@server.tool()  # type: ignore
+@server.tool(output_schema=TASKS_MOVE_TASK_SCHEMA)  # type: ignore
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("move_task", service_type="tasks")  # type: ignore
 async def move_task(
@@ -794,7 +957,7 @@ async def move_task(
     parent: Optional[str] = None,
     previous: Optional[str] = None,
     destination_task_list: Optional[str] = None,
-) -> str:
+) -> ToolResult:
     """
     Move a task to a different position or parent within the same list, or to a different list.
 
@@ -806,7 +969,8 @@ async def move_task(
         destination_task_list (Optional[str]): Destination task list ID (for moving between lists).
 
     Returns:
-        str: Confirmation message with updated task details.
+        ToolResult: Confirmation message with updated task details.
+        Also includes structured_content for machine parsing.
     """
     logger.info(
         f"[move_task] Invoked. Task List ID: {task_list_id}, Task ID: {task_id}"
@@ -845,8 +1009,18 @@ async def move_task(
         if move_details:
             response += f"\n- Move Details: {', '.join(move_details)}"
 
+        structured_result = MoveTaskResult(
+            id=result["id"],
+            title=result["title"],
+            status=result.get("status"),
+            updated=result.get("updated"),
+            parent=result.get("parent"),
+            position=result.get("position"),
+            destination_task_list=destination_task_list,
+        )
+
         logger.info(f"Moved task {task_id}")
-        return response
+        return create_tool_result(text=response, data=structured_result)
 
     except HttpError as error:
         message = _format_reauth_message(error)
@@ -858,10 +1032,10 @@ async def move_task(
         raise Exception(message)
 
 
-@server.tool()  # type: ignore
+@server.tool(output_schema=TASKS_CLEAR_COMPLETED_SCHEMA)  # type: ignore
 @require_google_service("tasks", "tasks")  # type: ignore
 @handle_http_errors("clear_completed_tasks", service_type="tasks")  # type: ignore
-async def clear_completed_tasks(service: Resource, task_list_id: str) -> str:
+async def clear_completed_tasks(service: Resource, task_list_id: str) -> ToolResult:
     """
     Clear all completed tasks from a task list. The tasks will be marked as hidden.
 
@@ -869,7 +1043,8 @@ async def clear_completed_tasks(service: Resource, task_list_id: str) -> str:
         task_list_id (str): The ID of the task list to clear completed tasks from.
 
     Returns:
-        str: Confirmation message.
+        ToolResult: Confirmation message.
+        Also includes structured_content for machine parsing.
     """
     logger.info(f"[clear_completed_tasks] Invoked. Task List ID: {task_list_id}")
 
@@ -878,8 +1053,13 @@ async def clear_completed_tasks(service: Resource, task_list_id: str) -> str:
 
         response = f"All completed tasks have been cleared from task list {task_list_id}. The tasks are now hidden and won't appear in default task list views."
 
+        structured_result = ClearCompletedTasksResult(
+            task_list_id=task_list_id,
+            cleared=True,
+        )
+
         logger.info(f"Cleared completed tasks from list {task_list_id}")
-        return response
+        return create_tool_result(text=response, data=structured_result)
 
     except HttpError as error:
         message = _format_reauth_message(error)
