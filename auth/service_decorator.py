@@ -433,7 +433,13 @@ def require_google_service(
                 func.__name__
             )
 
-            if not authenticated_user:
+            # In single-user mode, skip the authenticated_user check since
+            # credentials are loaded from file without session context
+            import os
+
+            is_single_user_mode = os.getenv("MCP_SINGLE_USER_MODE") == "1"
+
+            if not authenticated_user and not is_single_user_mode:
                 raise Exception(
                     f"Authentication required for {func.__name__}, but no authenticated user was found."
                 )
