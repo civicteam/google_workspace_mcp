@@ -136,9 +136,7 @@ async def set_publish_settings(
     Returns:
         str: Confirmation message of the successful publish settings update.
     """
-    logger.info(
-        f"[set_publish_settings] Invoked. Form ID: {form_id}"
-    )
+    logger.info(f"[set_publish_settings] Invoked. Form ID: {form_id}")
 
     settings_body = {
         "publishAsTemplate": publish_as_template,
@@ -150,18 +148,14 @@ async def set_publish_settings(
     )
 
     confirmation_message = f"Successfully updated publish settings for form {form_id}. Publish as template: {publish_as_template}, Require authentication: {require_authentication}"
-    logger.info(
-        f"Publish settings updated successfully. Form ID: {form_id}"
-    )
+    logger.info(f"Publish settings updated successfully. Form ID: {form_id}")
     return confirmation_message
 
 
 @server.tool()
 @handle_http_errors("get_form_response", is_read_only=True, service_type="forms")
 @require_google_service("forms", "forms")
-async def get_form_response(
-    service, form_id: str, response_id: str
-) -> str:
+async def get_form_response(service, form_id: str, response_id: str) -> str:
     """
     Get one response from the form.
 
@@ -204,9 +198,7 @@ async def get_form_response(
 - Answers:
 {answers_text}"""
 
-    logger.info(
-        f"Successfully retrieved response. Response ID: {response_id}"
-    )
+    logger.info(f"Successfully retrieved response. Response ID: {response_id}")
     return result
 
 
@@ -230,9 +222,7 @@ async def list_form_responses(
     Returns:
         str: List of responses with basic details and pagination info.
     """
-    logger.info(
-        f"[list_form_responses] Invoked. Form ID: {form_id}"
-    )
+    logger.info(f"[list_form_responses] Invoked. Form ID: {form_id}")
 
     params = {"formId": form_id, "pageSize": page_size}
     if page_token:

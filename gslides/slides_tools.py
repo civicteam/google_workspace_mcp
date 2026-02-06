@@ -20,9 +20,7 @@ logger = logging.getLogger(__name__)
 @server.tool()
 @handle_http_errors("create_presentation", service_type="slides")
 @require_google_service("slides", "slides")
-async def create_presentation(
-    service, title: str = "Untitled Presentation"
-) -> str:
+async def create_presentation(service, title: str = "Untitled Presentation") -> str:
     """
     Create a new Google Slides presentation.
 
@@ -32,9 +30,7 @@ async def create_presentation(
     Returns:
         str: Details about the created presentation including ID and URL.
     """
-    logger.info(
-        f"[create_presentation] Invoked. Title: '{title}'"
-    )
+    logger.info(f"[create_presentation] Invoked. Title: '{title}'")
 
     body = {"title": title}
 
@@ -49,16 +45,14 @@ async def create_presentation(
 - URL: {presentation_url}
 - Slides: {len(result.get("slides", []))} slide(s) created"""
 
-    logger.info(f"Presentation created successfully")
+    logger.info("Presentation created successfully")
     return confirmation_message
 
 
 @server.tool()
 @handle_http_errors("get_presentation", is_read_only=True, service_type="slides")
 @require_google_service("slides", "slides_read")
-async def get_presentation(
-    service, presentation_id: str
-) -> str:
+async def get_presentation(service, presentation_id: str) -> str:
     """
     Get details about a Google Slides presentation.
 
@@ -68,9 +62,7 @@ async def get_presentation(
     Returns:
         str: Details about the presentation including title, slides count, and metadata.
     """
-    logger.info(
-        f"[get_presentation] Invoked. ID: '{presentation_id}'"
-    )
+    logger.info(f"[get_presentation] Invoked. ID: '{presentation_id}'")
 
     result = await asyncio.to_thread(
         service.presentations().get(presentationId=presentation_id).execute
@@ -141,7 +133,7 @@ async def get_presentation(
 Slides Breakdown:
 {chr(10).join(slides_info) if slides_info else "  No slides found"}"""
 
-    logger.info(f"Presentation retrieved successfully")
+    logger.info("Presentation retrieved successfully")
     return confirmation_message
 
 
@@ -199,16 +191,14 @@ async def batch_update_presentation(
             else:
                 confirmation_message += f"\n  Request {i}: Operation completed"
 
-    logger.info(f"Batch update completed successfully")
+    logger.info("Batch update completed successfully")
     return confirmation_message
 
 
 @server.tool()
 @handle_http_errors("get_page", is_read_only=True, service_type="slides")
 @require_google_service("slides", "slides_read")
-async def get_page(
-    service, presentation_id: str, page_object_id: str
-) -> str:
+async def get_page(service, presentation_id: str, page_object_id: str) -> str:
     """
     Get details about a specific page (slide) in a presentation.
 
@@ -259,7 +249,7 @@ async def get_page(
 Page Elements:
 {chr(10).join(elements_info) if elements_info else "  No elements found"}"""
 
-    logger.info(f"Page retrieved successfully")
+    logger.info("Page retrieved successfully")
     return confirmation_message
 
 
@@ -309,7 +299,7 @@ async def get_page_thumbnail(
 
 You can view or download the thumbnail using the provided URL."""
 
-    logger.info(f"Thumbnail generated successfully")
+    logger.info("Thumbnail generated successfully")
     return confirmation_message
 
 

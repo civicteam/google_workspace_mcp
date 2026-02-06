@@ -311,22 +311,21 @@ async def list_calendars(service) -> str:
     Returns:
         str: A formatted list of the user's calendars (summary, ID, primary status).
     """
-    logger.info(f"[list_calendars] Invoked.")
+    logger.info("[list_calendars] Invoked.")
 
     calendar_list_response = await asyncio.to_thread(
         lambda: service.calendarList().list().execute()
     )
     items = calendar_list_response.get("items", [])
     if not items:
-        return f"No calendars found."
+        return "No calendars found."
 
     calendars_summary_list = [
         f'- "{cal.get("summary", "No Summary")}"{" (Primary)" if cal.get("primary") else ""} (ID: {cal["id"]})'
         for cal in items
     ]
-    text_output = (
-        f"Successfully listed {len(items)} calendars:\n"
-        + "\n".join(calendars_summary_list)
+    text_output = f"Successfully listed {len(items)} calendars:\n" + "\n".join(
+        calendars_summary_list
     )
     logger.info(f"Successfully listed {len(items)} calendars.")
     return text_output
@@ -463,9 +462,7 @@ async def get_events(
             event_details += f"- Attachments: {attachment_details_str}\n"
 
         event_details += f"- Event ID: {event_id}\n- Link: {link}"
-        logger.info(
-            f"[get_events] Successfully retrieved detailed event {event_id}."
-        )
+        logger.info(f"[get_events] Successfully retrieved detailed event {event_id}.")
         return event_details
 
     # Handle multiple events or single event with basic output
@@ -577,9 +574,7 @@ async def create_event(
     Returns:
         str: Confirmation message of the successful event creation with event link.
     """
-    logger.info(
-        f"[create_event] Invoked. Summary: {summary}"
-    )
+    logger.info(f"[create_event] Invoked. Summary: {summary}")
     logger.info(f"[create_event] Incoming attachments param: {attachments}")
     # If attachments value is a string, split by comma and strip whitespace
     if attachments and isinstance(attachments, str):
@@ -846,9 +841,7 @@ async def modify_event(
     Returns:
         str: Confirmation message of the successful event modification with event link.
     """
-    logger.info(
-        f"[modify_event] Invoked. Event ID: {event_id}"
-    )
+    logger.info(f"[modify_event] Invoked. Event ID: {event_id}")
 
     # Build the event body with only the fields that are provided
     event_body: Dict[str, Any] = {}
@@ -1061,9 +1054,7 @@ async def modify_event(
 @server.tool()
 @handle_http_errors("delete_event", service_type="calendar")
 @require_google_service("calendar", "calendar_events")
-async def delete_event(
-    service, event_id: str, calendar_id: str = "primary"
-) -> str:
+async def delete_event(service, event_id: str, calendar_id: str = "primary") -> str:
     """
     Deletes an existing event.
 
@@ -1074,9 +1065,7 @@ async def delete_event(
     Returns:
         str: Confirmation message of the successful event deletion.
     """
-    logger.info(
-        f"[delete_event] Invoked. Event ID: {event_id}"
-    )
+    logger.info(f"[delete_event] Invoked. Event ID: {event_id}")
 
     # Log the event ID for debugging
     logger.info(
@@ -1110,7 +1099,9 @@ async def delete_event(
         .execute()
     )
 
-    confirmation_message = f"Successfully deleted event (ID: {event_id}) from calendar '{calendar_id}'."
+    confirmation_message = (
+        f"Successfully deleted event (ID: {event_id}) from calendar '{calendar_id}'."
+    )
     logger.info(f"Event deleted successfully. ID: {event_id}")
     return confirmation_message
 

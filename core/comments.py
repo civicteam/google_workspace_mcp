@@ -39,9 +39,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
 
         @require_google_service("drive", "drive_read")
         @handle_http_errors(read_func_name, service_type="drive")
-        async def read_comments(
-            service, document_id: str
-        ) -> str:
+        async def read_comments(service, document_id: str) -> str:
             """Read all comments from a Google Document."""
             return await _read_comments_impl(service, app_name, document_id)
 
@@ -70,9 +68,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
 
         @require_google_service("drive", "drive_file")
         @handle_http_errors(resolve_func_name, service_type="drive")
-        async def resolve_comment(
-            service, document_id: str, comment_id: str
-        ) -> str:
+        async def resolve_comment(service, document_id: str, comment_id: str) -> str:
             """Resolve a comment in a Google Document."""
             return await _resolve_comment_impl(
                 service, app_name, document_id, comment_id
@@ -82,9 +78,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
 
         @require_google_service("drive", "drive_read")
         @handle_http_errors(read_func_name, service_type="drive")
-        async def read_comments(
-            service, spreadsheet_id: str
-        ) -> str:
+        async def read_comments(service, spreadsheet_id: str) -> str:
             """Read all comments from a Google Spreadsheet."""
             return await _read_comments_impl(service, app_name, spreadsheet_id)
 
@@ -113,9 +107,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
 
         @require_google_service("drive", "drive_file")
         @handle_http_errors(resolve_func_name, service_type="drive")
-        async def resolve_comment(
-            service, spreadsheet_id: str, comment_id: str
-        ) -> str:
+        async def resolve_comment(service, spreadsheet_id: str, comment_id: str) -> str:
             """Resolve a comment in a Google Spreadsheet."""
             return await _resolve_comment_impl(
                 service, app_name, spreadsheet_id, comment_id
@@ -125,9 +117,7 @@ def create_comment_tools(app_name: str, file_id_param: str):
 
         @require_google_service("drive", "drive_read")
         @handle_http_errors(read_func_name, service_type="drive")
-        async def read_comments(
-            service, presentation_id: str
-        ) -> str:
+        async def read_comments(service, presentation_id: str) -> str:
             """Read all comments from a Google Presentation."""
             return await _read_comments_impl(service, app_name, presentation_id)
 

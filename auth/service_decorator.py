@@ -3,7 +3,6 @@ import logging
 
 from functools import wraps
 from typing import Dict, List, Optional, Any, Callable, Union, Tuple
-from contextlib import ExitStack
 
 from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
@@ -17,7 +16,6 @@ from auth.oauth21_session_store import (
 from auth.oauth_config import (
     is_oauth21_enabled,
     get_oauth_config,
-    is_external_oauth21_provider,
 )
 from core.context import set_fastmcp_session_id
 from auth.scopes import (
@@ -133,10 +131,6 @@ def _detect_oauth_version(
         f"[{tool_name}] OAuth version detected: {oauth_version}, will use OAuth 2.1: {use_oauth21}"
     )
     return use_oauth21
-
-
-
-
 
 
 async def _authenticate_service(
@@ -263,10 +257,6 @@ async def get_authenticated_google_service_oauth21(
     logger.info(f"[{tool_name}] Authenticated {service_name} for {auth_token_email}")
 
     return service, auth_token_email
-
-
-
-
 
 
 # Service configuration mapping

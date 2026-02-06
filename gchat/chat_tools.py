@@ -140,9 +140,7 @@ async def send_message(
     create_time = message.get("createTime", "")
 
     msg = f"Message sent to space '{space_id}'. Message ID: {message_name}, Time: {create_time}"
-    logger.info(
-        f"Successfully sent message to space '{space_id}'"
-    )
+    logger.info(f"Successfully sent message to space '{space_id}'")
     return msg
 
 

@@ -266,9 +266,7 @@ async def legacy_oauth2_callback(request: Request) -> HTMLResponse:
 
 
 @server.tool()
-async def start_google_auth(
-    service_name: str
-) -> str:
+async def start_google_auth(service_name: str) -> str:
     """
     Manually initiate Google OAuth authentication flow.
 

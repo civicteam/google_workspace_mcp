@@ -13,7 +13,6 @@ from auth.oauth_config import (
     get_oauth_redirect_uri,
     set_transport_mode,
     get_transport_mode,
-    is_oauth21_enabled,
 )
 
 # Server configuration
