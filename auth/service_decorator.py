@@ -420,8 +420,12 @@ def require_google_service(
                 "must have 'service' as its first parameter."
             )
 
-        # Create a new signature for the wrapper that excludes the 'service' parameter.
-        wrapper_sig = original_sig.replace(parameters=params[1:])
+        # Check if the function also accepts user_google_email (injected automatically)
+        injects_email = len(params) > 1 and params[1].name == "user_google_email"
+
+        # Create a new signature excluding injected parameters (service, and optionally user_google_email)
+        skip_count = 2 if injects_email else 1
+        wrapper_sig = original_sig.replace(parameters=params[skip_count:])
 
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -488,7 +492,9 @@ def require_google_service(
                 raise
 
             try:
-                # Prepend the fetched service object to the original arguments
+                # Prepend injected parameters to the original arguments
+                if injects_email:
+                    return await func(service, actual_user_email, *args, **kwargs)
                 return await func(service, *args, **kwargs)
             except RefreshError as e:
                 error_message = _handle_token_refresh_error(
