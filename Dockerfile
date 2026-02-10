@@ -2,13 +2,17 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install system dependencies and upgrade all packages for security fixes
+# SEC: Fixes CVE-2025-68160, CVE-2025-69418-21, CVE-2025-9230, CVE-2026-22795-96 (openssl)
+RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv for faster dependency management
 RUN pip install --no-cache-dir uv
+
+# SEC: Remove pip from base image - not needed at runtime, fixes CVE-2025-8869, CVE-2026-1703
+RUN rm -rf /usr/local/lib/python*/site-packages/pip* /usr/local/bin/pip*
 
 COPY . .
 
