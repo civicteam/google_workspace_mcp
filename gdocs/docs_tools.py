@@ -1613,7 +1613,6 @@ async def update_paragraph_style(
     Both can be applied in a single operation.
 
     Args:
-        user_google_email: User's Google email address
         document_id: Document ID to modify
         start_index: Start position (1-based)
         end_index: End position (exclusive) - should cover the entire paragraph

@@ -399,7 +399,7 @@ async def list_contacts(
     List contacts for the authenticated user.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         page_size (int): Maximum number of contacts to return (default: 100, max: 1000).
         page_token (Optional[str]): Token for pagination.
         sort_order (Optional[str]): Sort order: "LAST_MODIFIED_ASCENDING", "LAST_MODIFIED_DESCENDING", "FIRST_NAME_ASCENDING", or "LAST_NAME_ASCENDING".
@@ -483,7 +483,7 @@ async def get_contact(
     Get detailed information about a specific contact.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         contact_id (str): The contact ID (e.g., "c1234567890" or full resource name "people/c1234567890").
 
     Returns:
@@ -544,7 +544,7 @@ async def search_contacts(
     Search contacts by name, email, phone number, or other fields.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         query (str): Search query string (searches names, emails, phone numbers).
         page_size (int): Maximum number of results to return (default: 30, max: 30).
 
@@ -629,7 +629,7 @@ async def create_contact(
     Create a new contact.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         given_name (Optional[str]): First name.
         family_name (Optional[str]): Last name.
         email (Optional[str]): Email address.
@@ -713,7 +713,7 @@ async def update_contact(
     Update an existing contact. Note: This replaces fields, not merges them.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         contact_id (str): The contact ID to update.
         given_name (Optional[str]): New first name.
         family_name (Optional[str]): New last name.
@@ -829,7 +829,7 @@ async def delete_contact(
     Delete a contact.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         contact_id (str): The contact ID to delete.
 
     Returns:
@@ -897,7 +897,7 @@ async def list_contact_groups(
     List contact groups (labels) for the user.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         page_size (int): Maximum number of groups to return (default: 100, max: 1000).
         page_token (Optional[str]): Token for pagination.
 
@@ -990,7 +990,7 @@ async def get_contact_group(
     Get details of a specific contact group including its members.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         group_id (str): The contact group ID.
         max_members (int): Maximum number of members to return (default: 100, max: 1000).
 
@@ -1089,7 +1089,7 @@ async def batch_create_contacts(
     Create multiple contacts in a batch operation.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         contacts (List[Dict[str, str]]): List of contact dictionaries with fields:
             - given_name: First name
             - family_name: Last name
@@ -1182,7 +1182,7 @@ async def batch_update_contacts(
     Update multiple contacts in a batch operation.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         updates (List[Dict[str, str]]): List of update dictionaries with fields:
             - contact_id: The contact ID to update (required)
             - given_name: New first name
@@ -1329,7 +1329,7 @@ async def batch_delete_contacts(
     Delete multiple contacts in a batch operation.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         contact_ids (List[str]): List of contact IDs to delete.
 
     Returns:
@@ -1395,7 +1395,7 @@ async def create_contact_group(
     Create a new contact group (label).
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         name (str): The name of the new contact group.
 
     Returns:
@@ -1458,7 +1458,7 @@ async def update_contact_group(
     Update a contact group's name.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         group_id (str): The contact group ID to update.
         name (str): The new name for the contact group.
 
@@ -1533,7 +1533,7 @@ async def delete_contact_group(
     Delete a contact group.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         group_id (str): The contact group ID to delete.
         delete_contacts (bool): If True, also delete contacts in the group (default: False).
 
@@ -1610,7 +1610,7 @@ async def modify_contact_group_members(
     Add or remove contacts from a contact group.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         group_id (str): The contact group ID.
         add_contact_ids (Optional[List[str]]): Contact IDs to add to the group.
         remove_contact_ids (Optional[List[str]]): Contact IDs to remove from the group.

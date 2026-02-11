@@ -456,7 +456,7 @@ async def batch_update_form(
     content after creation.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         form_id (str): The ID of the form to update.
         requests (List[Dict[str, Any]]): List of update requests to apply.
             Supported request types:
