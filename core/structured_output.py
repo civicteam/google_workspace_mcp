@@ -12,6 +12,21 @@ from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
 
 
+def _strip_none(obj: Any) -> Any:
+    """Recursively strip None values from dicts and lists.
+
+    MCP output schema validation does not support JSON Schema ``anyOf``,
+    so ``Optional`` fields that are ``None`` fail validation.  Removing
+    them from the output is safe because every ``Optional`` field already
+    has a default and is not listed in the schema's ``required`` array.
+    """
+    if isinstance(obj, dict):
+        return {k: _strip_none(v) for k, v in obj.items() if v is not None}
+    if isinstance(obj, list):
+        return [_strip_none(item) for item in obj]
+    return obj
+
+
 def create_tool_result(
     text: str,
     data: dict[str, Any] | Any,
@@ -29,5 +44,5 @@ def create_tool_result(
     structured = asdict(data) if is_dataclass(data) else data
     return ToolResult(
         content=[TextContent(type="text", text=text)],
-        structured_content=structured,
+        structured_content=_strip_none(structured),
     )
