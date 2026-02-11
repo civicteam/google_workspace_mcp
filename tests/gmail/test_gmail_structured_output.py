@@ -247,7 +247,7 @@ class TestSendGmailMessageStructuredOutput:
         tool_result = create_tool_result(text="Email sent", data=result)
 
         assert tool_result.structured_content["message_id"] == "sent123"
-        assert tool_result.structured_content["thread_id"] is None
+        assert "thread_id" not in tool_result.structured_content
         assert tool_result.structured_content["attachment_count"] == 0
 
     def test_send_result_with_attachments(self):
