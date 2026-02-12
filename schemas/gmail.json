@@ -74,7 +74,32 @@
           },
           "messages": {
             "items": {
-              "$ref": "#/$defs/GmailMessageSummary"
+              "properties": {
+                "message_id": {
+                  "title": "Message Id",
+                  "type": "string"
+                },
+                "thread_id": {
+                  "title": "Thread Id",
+                  "type": "string"
+                },
+                "web_link": {
+                  "title": "Web Link",
+                  "type": "string"
+                },
+                "thread_link": {
+                  "title": "Thread Link",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "message_id",
+                "thread_id",
+                "web_link",
+                "thread_link"
+              ],
+              "title": "GmailMessageSummary",
+              "type": "object"
             },
             "title": "Messages",
             "type": "array"
@@ -90,36 +115,6 @@
           "total_found",
           "messages"
         ],
-        "$defs": {
-          "GmailMessageSummary": {
-            "properties": {
-              "message_id": {
-                "title": "Message Id",
-                "type": "string"
-              },
-              "thread_id": {
-                "title": "Thread Id",
-                "type": "string"
-              },
-              "web_link": {
-                "title": "Web Link",
-                "type": "string"
-              },
-              "thread_link": {
-                "title": "Thread Link",
-                "type": "string"
-              }
-            },
-            "required": [
-              "message_id",
-              "thread_id",
-              "web_link",
-              "thread_link"
-            ],
-            "title": "GmailMessageSummary",
-            "type": "object"
-          }
-        },
         "title": "GmailSearchResult"
       },
       "_meta": {
@@ -183,7 +178,32 @@
           },
           "attachments": {
             "items": {
-              "$ref": "#/$defs/GmailAttachment"
+              "properties": {
+                "filename": {
+                  "title": "Filename",
+                  "type": "string"
+                },
+                "mime_type": {
+                  "title": "Mime Type",
+                  "type": "string"
+                },
+                "size_bytes": {
+                  "title": "Size Bytes",
+                  "type": "integer"
+                },
+                "attachment_id": {
+                  "title": "Attachment Id",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "filename",
+                "mime_type",
+                "size_bytes",
+                "attachment_id"
+              ],
+              "title": "GmailAttachment",
+              "type": "object"
             },
             "title": "Attachments",
             "type": "array"
@@ -195,36 +215,6 @@
           "sender",
           "date"
         ],
-        "$defs": {
-          "GmailAttachment": {
-            "properties": {
-              "filename": {
-                "title": "Filename",
-                "type": "string"
-              },
-              "mime_type": {
-                "title": "Mime Type",
-                "type": "string"
-              },
-              "size_bytes": {
-                "title": "Size Bytes",
-                "type": "integer"
-              },
-              "attachment_id": {
-                "title": "Attachment Id",
-                "type": "string"
-              }
-            },
-            "required": [
-              "filename",
-              "mime_type",
-              "size_bytes",
-              "attachment_id"
-            ],
-            "title": "GmailAttachment",
-            "type": "object"
-          }
-        },
         "title": "GmailMessageContent"
       },
       "_meta": {

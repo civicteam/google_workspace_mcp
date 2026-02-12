@@ -48,7 +48,27 @@
           },
           "calendars": {
             "items": {
-              "$ref": "#/$defs/CalendarInfo"
+              "properties": {
+                "calendar_id": {
+                  "title": "Calendar Id",
+                  "type": "string"
+                },
+                "summary": {
+                  "title": "Summary",
+                  "type": "string"
+                },
+                "is_primary": {
+                  "title": "Is Primary",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "calendar_id",
+                "summary",
+                "is_primary"
+              ],
+              "title": "CalendarInfo",
+              "type": "object"
             },
             "title": "Calendars",
             "type": "array"
@@ -58,31 +78,6 @@
           "total_count",
           "calendars"
         ],
-        "$defs": {
-          "CalendarInfo": {
-            "properties": {
-              "calendar_id": {
-                "title": "Calendar Id",
-                "type": "string"
-              },
-              "summary": {
-                "title": "Summary",
-                "type": "string"
-              },
-              "is_primary": {
-                "title": "Is Primary",
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "calendar_id",
-              "summary",
-              "is_primary"
-            ],
-            "title": "CalendarInfo",
-            "type": "object"
-          }
-        },
         "title": "CalendarListResult"
       },
       "_meta": {
@@ -172,7 +167,116 @@
           },
           "events": {
             "items": {
-              "$ref": "#/$defs/CalendarEvent"
+              "properties": {
+                "event_id": {
+                  "title": "Event Id",
+                  "type": "string"
+                },
+                "summary": {
+                  "title": "Summary",
+                  "type": "string"
+                },
+                "start": {
+                  "title": "Start",
+                  "type": "string"
+                },
+                "end": {
+                  "title": "End",
+                  "type": "string"
+                },
+                "html_link": {
+                  "title": "Html Link",
+                  "type": "string"
+                },
+                "description": {
+                  "default": null,
+                  "title": "Description",
+                  "type": "string"
+                },
+                "location": {
+                  "default": null,
+                  "title": "Location",
+                  "type": "string"
+                },
+                "color_id": {
+                  "default": null,
+                  "title": "Color Id",
+                  "type": "string"
+                },
+                "attendees": {
+                  "items": {
+                    "properties": {
+                      "email": {
+                        "title": "Email",
+                        "type": "string"
+                      },
+                      "response_status": {
+                        "title": "Response Status",
+                        "type": "string"
+                      },
+                      "is_organizer": {
+                        "default": false,
+                        "title": "Is Organizer",
+                        "type": "boolean"
+                      },
+                      "is_optional": {
+                        "default": false,
+                        "title": "Is Optional",
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "email",
+                      "response_status"
+                    ],
+                    "title": "EventAttendee",
+                    "type": "object"
+                  },
+                  "title": "Attendees",
+                  "type": "array"
+                },
+                "attachments": {
+                  "items": {
+                    "properties": {
+                      "title": {
+                        "title": "Title",
+                        "type": "string"
+                      },
+                      "file_url": {
+                        "title": "File Url",
+                        "type": "string"
+                      },
+                      "file_id": {
+                        "title": "File Id",
+                        "type": "string"
+                      },
+                      "mime_type": {
+                        "title": "Mime Type",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "title",
+                      "file_url",
+                      "file_id",
+                      "mime_type"
+                    ],
+                    "title": "EventAttachment",
+                    "type": "object"
+                  },
+                  "title": "Attachments",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "event_id",
+                "summary",
+                "start",
+                "end",
+                "html_link"
+              ],
+              "title": "CalendarEvent",
+              "type": "object"
             },
             "title": "Events",
             "type": "array"
@@ -183,126 +287,6 @@
           "total_count",
           "events"
         ],
-        "$defs": {
-          "CalendarEvent": {
-            "properties": {
-              "event_id": {
-                "title": "Event Id",
-                "type": "string"
-              },
-              "summary": {
-                "title": "Summary",
-                "type": "string"
-              },
-              "start": {
-                "title": "Start",
-                "type": "string"
-              },
-              "end": {
-                "title": "End",
-                "type": "string"
-              },
-              "html_link": {
-                "title": "Html Link",
-                "type": "string"
-              },
-              "description": {
-                "default": null,
-                "title": "Description",
-                "type": "string"
-              },
-              "location": {
-                "default": null,
-                "title": "Location",
-                "type": "string"
-              },
-              "color_id": {
-                "default": null,
-                "title": "Color Id",
-                "type": "string"
-              },
-              "attendees": {
-                "items": {
-                  "$ref": "#/$defs/EventAttendee"
-                },
-                "title": "Attendees",
-                "type": "array"
-              },
-              "attachments": {
-                "items": {
-                  "$ref": "#/$defs/EventAttachment"
-                },
-                "title": "Attachments",
-                "type": "array"
-              }
-            },
-            "required": [
-              "event_id",
-              "summary",
-              "start",
-              "end",
-              "html_link"
-            ],
-            "title": "CalendarEvent",
-            "type": "object"
-          },
-          "EventAttachment": {
-            "properties": {
-              "title": {
-                "title": "Title",
-                "type": "string"
-              },
-              "file_url": {
-                "title": "File Url",
-                "type": "string"
-              },
-              "file_id": {
-                "title": "File Id",
-                "type": "string"
-              },
-              "mime_type": {
-                "title": "Mime Type",
-                "type": "string"
-              }
-            },
-            "required": [
-              "title",
-              "file_url",
-              "file_id",
-              "mime_type"
-            ],
-            "title": "EventAttachment",
-            "type": "object"
-          },
-          "EventAttendee": {
-            "properties": {
-              "email": {
-                "title": "Email",
-                "type": "string"
-              },
-              "response_status": {
-                "title": "Response Status",
-                "type": "string"
-              },
-              "is_organizer": {
-                "default": false,
-                "title": "Is Organizer",
-                "type": "boolean"
-              },
-              "is_optional": {
-                "default": false,
-                "title": "Is Optional",
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "email",
-              "response_status"
-            ],
-            "title": "EventAttendee",
-            "type": "object"
-          }
-        },
         "title": "GetEventsResult"
       },
       "_meta": {
@@ -872,7 +856,47 @@
           },
           "calendars": {
             "items": {
-              "$ref": "#/$defs/CalendarFreeBusy"
+              "properties": {
+                "calendar_id": {
+                  "title": "Calendar Id",
+                  "type": "string"
+                },
+                "busy_periods": {
+                  "items": {
+                    "properties": {
+                      "start": {
+                        "title": "Start",
+                        "type": "string"
+                      },
+                      "end": {
+                        "title": "End",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "start",
+                      "end"
+                    ],
+                    "title": "BusyPeriod",
+                    "type": "object"
+                  },
+                  "title": "Busy Periods",
+                  "type": "array"
+                },
+                "errors": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Errors",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "calendar_id",
+                "busy_periods"
+              ],
+              "title": "CalendarFreeBusy",
+              "type": "object"
             },
             "title": "Calendars",
             "type": "array"
@@ -883,54 +907,6 @@
           "time_max",
           "calendars"
         ],
-        "$defs": {
-          "BusyPeriod": {
-            "properties": {
-              "start": {
-                "title": "Start",
-                "type": "string"
-              },
-              "end": {
-                "title": "End",
-                "type": "string"
-              }
-            },
-            "required": [
-              "start",
-              "end"
-            ],
-            "title": "BusyPeriod",
-            "type": "object"
-          },
-          "CalendarFreeBusy": {
-            "properties": {
-              "calendar_id": {
-                "title": "Calendar Id",
-                "type": "string"
-              },
-              "busy_periods": {
-                "items": {
-                  "$ref": "#/$defs/BusyPeriod"
-                },
-                "title": "Busy Periods",
-                "type": "array"
-              },
-              "errors": {
-                "items": {
-                  "type": "string"
-                },
-                "title": "Errors",
-                "type": "array"
-              }
-            },
-            "required": [
-              "calendar_id",
-              "busy_periods"
-            ],
-            "title": "CalendarFreeBusy",
-            "type": "object"
-          }
-        },
         "title": "FreeBusyResult"
       },
       "_meta": {

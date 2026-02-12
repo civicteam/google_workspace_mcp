@@ -145,7 +145,27 @@
           },
           "questions": {
             "items": {
-              "$ref": "#/$defs/FormsQuestionSummary"
+              "properties": {
+                "index": {
+                  "title": "Index",
+                  "type": "integer"
+                },
+                "title": {
+                  "title": "Title",
+                  "type": "string"
+                },
+                "required": {
+                  "title": "Required",
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "title",
+                "required"
+              ],
+              "title": "FormsQuestionSummary",
+              "type": "object"
             },
             "title": "Questions",
             "type": "array"
@@ -160,31 +180,6 @@
           "responder_url",
           "questions"
         ],
-        "$defs": {
-          "FormsQuestionSummary": {
-            "properties": {
-              "index": {
-                "title": "Index",
-                "type": "integer"
-              },
-              "title": {
-                "title": "Title",
-                "type": "string"
-              },
-              "required": {
-                "title": "Required",
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "index",
-              "title",
-              "required"
-            ],
-            "title": "FormsQuestionSummary",
-            "type": "object"
-          }
-        },
         "title": "FormsGetResult"
       },
       "_meta": {
@@ -283,7 +278,22 @@
           },
           "answers": {
             "items": {
-              "$ref": "#/$defs/FormsAnswerDetail"
+              "properties": {
+                "question_id": {
+                  "title": "Question Id",
+                  "type": "string"
+                },
+                "answer_text": {
+                  "title": "Answer Text",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "question_id",
+                "answer_text"
+              ],
+              "title": "FormsAnswerDetail",
+              "type": "object"
             },
             "title": "Answers",
             "type": "array"
@@ -296,26 +306,6 @@
           "last_submitted_time",
           "answers"
         ],
-        "$defs": {
-          "FormsAnswerDetail": {
-            "properties": {
-              "question_id": {
-                "title": "Question Id",
-                "type": "string"
-              },
-              "answer_text": {
-                "title": "Answer Text",
-                "type": "string"
-              }
-            },
-            "required": [
-              "question_id",
-              "answer_text"
-            ],
-            "title": "FormsAnswerDetail",
-            "type": "object"
-          }
-        },
         "title": "FormsResponseResult"
       },
       "_meta": {
@@ -366,7 +356,32 @@
           },
           "responses": {
             "items": {
-              "$ref": "#/$defs/FormsResponseSummary"
+              "properties": {
+                "response_id": {
+                  "title": "Response Id",
+                  "type": "string"
+                },
+                "create_time": {
+                  "title": "Create Time",
+                  "type": "string"
+                },
+                "last_submitted_time": {
+                  "title": "Last Submitted Time",
+                  "type": "string"
+                },
+                "answer_count": {
+                  "title": "Answer Count",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "response_id",
+                "create_time",
+                "last_submitted_time",
+                "answer_count"
+              ],
+              "title": "FormsResponseSummary",
+              "type": "object"
             },
             "title": "Responses",
             "type": "array"
@@ -382,36 +397,6 @@
           "total_returned",
           "responses"
         ],
-        "$defs": {
-          "FormsResponseSummary": {
-            "properties": {
-              "response_id": {
-                "title": "Response Id",
-                "type": "string"
-              },
-              "create_time": {
-                "title": "Create Time",
-                "type": "string"
-              },
-              "last_submitted_time": {
-                "title": "Last Submitted Time",
-                "type": "string"
-              },
-              "answer_count": {
-                "title": "Answer Count",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "response_id",
-              "create_time",
-              "last_submitted_time",
-              "answer_count"
-            ],
-            "title": "FormsResponseSummary",
-            "type": "object"
-          }
-        },
         "title": "FormsListResponsesResult"
       },
       "_meta": {
@@ -463,7 +448,34 @@
           },
           "replies": {
             "items": {
-              "$ref": "#/$defs/FormsBatchUpdateReply"
+              "properties": {
+                "request_index": {
+                  "title": "Request Index",
+                  "type": "integer"
+                },
+                "operation": {
+                  "title": "Operation",
+                  "type": "string"
+                },
+                "item_id": {
+                  "default": null,
+                  "title": "Item Id",
+                  "type": "string"
+                },
+                "question_ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Question Ids",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "request_index",
+                "operation"
+              ],
+              "title": "FormsBatchUpdateReply",
+              "type": "object"
             },
             "title": "Replies",
             "type": "array"
@@ -476,38 +488,6 @@
           "replies_received",
           "replies"
         ],
-        "$defs": {
-          "FormsBatchUpdateReply": {
-            "properties": {
-              "request_index": {
-                "title": "Request Index",
-                "type": "integer"
-              },
-              "operation": {
-                "title": "Operation",
-                "type": "string"
-              },
-              "item_id": {
-                "default": null,
-                "title": "Item Id",
-                "type": "string"
-              },
-              "question_ids": {
-                "items": {
-                  "type": "string"
-                },
-                "title": "Question Ids",
-                "type": "array"
-              }
-            },
-            "required": [
-              "request_index",
-              "operation"
-            ],
-            "title": "FormsBatchUpdateReply",
-            "type": "object"
-          }
-        },
         "title": "FormsBatchUpdateResult"
       },
       "_meta": {

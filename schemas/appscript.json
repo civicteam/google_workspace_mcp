@@ -64,7 +64,32 @@
           },
           "projects": {
             "items": {
-              "$ref": "#/$defs/ScriptProjectSummary"
+              "properties": {
+                "script_id": {
+                  "title": "Script Id",
+                  "type": "string"
+                },
+                "title": {
+                  "title": "Title",
+                  "type": "string"
+                },
+                "created_time": {
+                  "title": "Created Time",
+                  "type": "string"
+                },
+                "modified_time": {
+                  "title": "Modified Time",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "script_id",
+                "title",
+                "created_time",
+                "modified_time"
+              ],
+              "title": "ScriptProjectSummary",
+              "type": "object"
             },
             "title": "Projects",
             "type": "array"
@@ -79,36 +104,6 @@
           "total_found",
           "projects"
         ],
-        "$defs": {
-          "ScriptProjectSummary": {
-            "properties": {
-              "script_id": {
-                "title": "Script Id",
-                "type": "string"
-              },
-              "title": {
-                "title": "Title",
-                "type": "string"
-              },
-              "created_time": {
-                "title": "Created Time",
-                "type": "string"
-              },
-              "modified_time": {
-                "title": "Modified Time",
-                "type": "string"
-              }
-            },
-            "required": [
-              "script_id",
-              "title",
-              "created_time",
-              "modified_time"
-            ],
-            "title": "ScriptProjectSummary",
-            "type": "object"
-          }
-        },
         "title": "ListScriptProjectsResult"
       },
       "_meta": {
@@ -156,7 +151,27 @@
           },
           "files": {
             "items": {
-              "$ref": "#/$defs/ScriptFile"
+              "properties": {
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "file_type": {
+                  "title": "File Type",
+                  "type": "string"
+                },
+                "source_preview": {
+                  "default": null,
+                  "title": "Source Preview",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "file_type"
+              ],
+              "title": "ScriptFile",
+              "type": "object"
             },
             "title": "Files",
             "type": "array"
@@ -170,31 +185,6 @@
           "modified_time",
           "files"
         ],
-        "$defs": {
-          "ScriptFile": {
-            "properties": {
-              "name": {
-                "title": "Name",
-                "type": "string"
-              },
-              "file_type": {
-                "title": "File Type",
-                "type": "string"
-              },
-              "source_preview": {
-                "default": null,
-                "title": "Source Preview",
-                "type": "string"
-              }
-            },
-            "required": [
-              "name",
-              "file_type"
-            ],
-            "title": "ScriptFile",
-            "type": "object"
-          }
-        },
         "title": "GetScriptProjectResult"
       },
       "_meta": {
@@ -351,7 +341,22 @@
           },
           "files": {
             "items": {
-              "$ref": "#/$defs/UpdatedFile"
+              "properties": {
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "file_type": {
+                  "title": "File Type",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "file_type"
+              ],
+              "title": "UpdatedFile",
+              "type": "object"
             },
             "title": "Files",
             "type": "array"
@@ -362,26 +367,6 @@
           "files_updated",
           "files"
         ],
-        "$defs": {
-          "UpdatedFile": {
-            "properties": {
-              "name": {
-                "title": "Name",
-                "type": "string"
-              },
-              "file_type": {
-                "title": "File Type",
-                "type": "string"
-              }
-            },
-            "required": [
-              "name",
-              "file_type"
-            ],
-            "title": "UpdatedFile",
-            "type": "object"
-          }
-        },
         "title": "UpdateScriptContentResult"
       },
       "_meta": {
@@ -547,7 +532,27 @@
           },
           "deployments": {
             "items": {
-              "$ref": "#/$defs/DeploymentSummary"
+              "properties": {
+                "deployment_id": {
+                  "title": "Deployment Id",
+                  "type": "string"
+                },
+                "description": {
+                  "title": "Description",
+                  "type": "string"
+                },
+                "update_time": {
+                  "title": "Update Time",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "deployment_id",
+                "description",
+                "update_time"
+              ],
+              "title": "DeploymentSummary",
+              "type": "object"
             },
             "title": "Deployments",
             "type": "array"
@@ -558,31 +563,6 @@
           "total_found",
           "deployments"
         ],
-        "$defs": {
-          "DeploymentSummary": {
-            "properties": {
-              "deployment_id": {
-                "title": "Deployment Id",
-                "type": "string"
-              },
-              "description": {
-                "title": "Description",
-                "type": "string"
-              },
-              "update_time": {
-                "title": "Update Time",
-                "type": "string"
-              }
-            },
-            "required": [
-              "deployment_id",
-              "description",
-              "update_time"
-            ],
-            "title": "DeploymentSummary",
-            "type": "object"
-          }
-        },
         "title": "ListDeploymentsResult"
       },
       "_meta": {
@@ -733,7 +713,32 @@
           },
           "processes": {
             "items": {
-              "$ref": "#/$defs/ProcessSummary"
+              "properties": {
+                "function_name": {
+                  "title": "Function Name",
+                  "type": "string"
+                },
+                "process_status": {
+                  "title": "Process Status",
+                  "type": "string"
+                },
+                "start_time": {
+                  "title": "Start Time",
+                  "type": "string"
+                },
+                "duration": {
+                  "title": "Duration",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "function_name",
+                "process_status",
+                "start_time",
+                "duration"
+              ],
+              "title": "ProcessSummary",
+              "type": "object"
             },
             "title": "Processes",
             "type": "array"
@@ -742,36 +747,6 @@
         "required": [
           "total_found"
         ],
-        "$defs": {
-          "ProcessSummary": {
-            "properties": {
-              "function_name": {
-                "title": "Function Name",
-                "type": "string"
-              },
-              "process_status": {
-                "title": "Process Status",
-                "type": "string"
-              },
-              "start_time": {
-                "title": "Start Time",
-                "type": "string"
-              },
-              "duration": {
-                "title": "Duration",
-                "type": "string"
-              }
-            },
-            "required": [
-              "function_name",
-              "process_status",
-              "start_time",
-              "duration"
-            ],
-            "title": "ProcessSummary",
-            "type": "object"
-          }
-        },
         "title": "ListScriptProcessesResult"
       },
       "_meta": {
@@ -845,7 +820,27 @@
           },
           "versions": {
             "items": {
-              "$ref": "#/$defs/VersionSummary"
+              "properties": {
+                "version_number": {
+                  "title": "Version Number",
+                  "type": "integer"
+                },
+                "description": {
+                  "title": "Description",
+                  "type": "string"
+                },
+                "create_time": {
+                  "title": "Create Time",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "version_number",
+                "description",
+                "create_time"
+              ],
+              "title": "VersionSummary",
+              "type": "object"
             },
             "title": "Versions",
             "type": "array"
@@ -856,31 +851,6 @@
           "total_found",
           "versions"
         ],
-        "$defs": {
-          "VersionSummary": {
-            "properties": {
-              "version_number": {
-                "title": "Version Number",
-                "type": "integer"
-              },
-              "description": {
-                "title": "Description",
-                "type": "string"
-              },
-              "create_time": {
-                "title": "Create Time",
-                "type": "string"
-              }
-            },
-            "required": [
-              "version_number",
-              "description",
-              "create_time"
-            ],
-            "title": "VersionSummary",
-            "type": "object"
-          }
-        },
         "title": "ListVersionsResult"
       },
       "_meta": {
@@ -1031,21 +1001,81 @@
           },
           "active_users": {
             "items": {
-              "$ref": "#/$defs/MetricDataPoint"
+              "properties": {
+                "start_time": {
+                  "title": "Start Time",
+                  "type": "string"
+                },
+                "end_time": {
+                  "title": "End Time",
+                  "type": "string"
+                },
+                "value": {
+                  "title": "Value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_time",
+                "end_time",
+                "value"
+              ],
+              "title": "MetricDataPoint",
+              "type": "object"
             },
             "title": "Active Users",
             "type": "array"
           },
           "total_executions": {
             "items": {
-              "$ref": "#/$defs/MetricDataPoint"
+              "properties": {
+                "start_time": {
+                  "title": "Start Time",
+                  "type": "string"
+                },
+                "end_time": {
+                  "title": "End Time",
+                  "type": "string"
+                },
+                "value": {
+                  "title": "Value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_time",
+                "end_time",
+                "value"
+              ],
+              "title": "MetricDataPoint",
+              "type": "object"
             },
             "title": "Total Executions",
             "type": "array"
           },
           "failed_executions": {
             "items": {
-              "$ref": "#/$defs/MetricDataPoint"
+              "properties": {
+                "start_time": {
+                  "title": "Start Time",
+                  "type": "string"
+                },
+                "end_time": {
+                  "title": "End Time",
+                  "type": "string"
+                },
+                "value": {
+                  "title": "Value",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "start_time",
+                "end_time",
+                "value"
+              ],
+              "title": "MetricDataPoint",
+              "type": "object"
             },
             "title": "Failed Executions",
             "type": "array"
@@ -1055,31 +1085,6 @@
           "script_id",
           "granularity"
         ],
-        "$defs": {
-          "MetricDataPoint": {
-            "properties": {
-              "start_time": {
-                "title": "Start Time",
-                "type": "string"
-              },
-              "end_time": {
-                "title": "End Time",
-                "type": "string"
-              },
-              "value": {
-                "title": "Value",
-                "type": "string"
-              }
-            },
-            "required": [
-              "start_time",
-              "end_time",
-              "value"
-            ],
-            "title": "MetricDataPoint",
-            "type": "object"
-          }
-        },
         "title": "GetScriptMetricsResult"
       },
       "_meta": {

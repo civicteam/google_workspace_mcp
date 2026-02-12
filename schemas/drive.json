@@ -89,7 +89,42 @@
           },
           "files": {
             "items": {
-              "$ref": "#/$defs/DriveFileItem"
+              "properties": {
+                "id": {
+                  "title": "Id",
+                  "type": "string"
+                },
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "mime_type": {
+                  "title": "Mime Type",
+                  "type": "string"
+                },
+                "web_view_link": {
+                  "title": "Web View Link",
+                  "type": "string"
+                },
+                "modified_time": {
+                  "default": null,
+                  "title": "Modified Time",
+                  "type": "string"
+                },
+                "size": {
+                  "default": null,
+                  "title": "Size",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "mime_type",
+                "web_view_link"
+              ],
+              "title": "DriveFileItem",
+              "type": "object"
             },
             "title": "Files",
             "type": "array"
@@ -100,46 +135,6 @@
           "total_found",
           "files"
         ],
-        "$defs": {
-          "DriveFileItem": {
-            "properties": {
-              "id": {
-                "title": "Id",
-                "type": "string"
-              },
-              "name": {
-                "title": "Name",
-                "type": "string"
-              },
-              "mime_type": {
-                "title": "Mime Type",
-                "type": "string"
-              },
-              "web_view_link": {
-                "title": "Web View Link",
-                "type": "string"
-              },
-              "modified_time": {
-                "default": null,
-                "title": "Modified Time",
-                "type": "string"
-              },
-              "size": {
-                "default": null,
-                "title": "Size",
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "name",
-              "mime_type",
-              "web_view_link"
-            ],
-            "title": "DriveFileItem",
-            "type": "object"
-          }
-        },
         "title": "DriveSearchResult"
       },
       "_meta": {
@@ -325,7 +320,42 @@
           },
           "items": {
             "items": {
-              "$ref": "#/$defs/DriveFileItem"
+              "properties": {
+                "id": {
+                  "title": "Id",
+                  "type": "string"
+                },
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "mime_type": {
+                  "title": "Mime Type",
+                  "type": "string"
+                },
+                "web_view_link": {
+                  "title": "Web View Link",
+                  "type": "string"
+                },
+                "modified_time": {
+                  "default": null,
+                  "title": "Modified Time",
+                  "type": "string"
+                },
+                "size": {
+                  "default": null,
+                  "title": "Size",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "mime_type",
+                "web_view_link"
+              ],
+              "title": "DriveFileItem",
+              "type": "object"
             },
             "title": "Items",
             "type": "array"
@@ -336,46 +366,6 @@
           "total_found",
           "items"
         ],
-        "$defs": {
-          "DriveFileItem": {
-            "properties": {
-              "id": {
-                "title": "Id",
-                "type": "string"
-              },
-              "name": {
-                "title": "Name",
-                "type": "string"
-              },
-              "mime_type": {
-                "title": "Mime Type",
-                "type": "string"
-              },
-              "web_view_link": {
-                "title": "Web View Link",
-                "type": "string"
-              },
-              "modified_time": {
-                "default": null,
-                "title": "Modified Time",
-                "type": "string"
-              },
-              "size": {
-                "default": null,
-                "title": "Size",
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "name",
-              "mime_type",
-              "web_view_link"
-            ],
-            "title": "DriveFileItem",
-            "type": "object"
-          }
-        },
         "title": "DriveListResult"
       },
       "_meta": {
@@ -624,7 +614,42 @@
           },
           "permissions": {
             "items": {
-              "$ref": "#/$defs/DrivePermission"
+              "properties": {
+                "id": {
+                  "title": "Id",
+                  "type": "string"
+                },
+                "type": {
+                  "title": "Type",
+                  "type": "string"
+                },
+                "role": {
+                  "title": "Role",
+                  "type": "string"
+                },
+                "email_address": {
+                  "default": null,
+                  "title": "Email Address",
+                  "type": "string"
+                },
+                "domain": {
+                  "default": null,
+                  "title": "Domain",
+                  "type": "string"
+                },
+                "expiration_time": {
+                  "default": null,
+                  "title": "Expiration Time",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "role"
+              ],
+              "title": "DrivePermission",
+              "type": "object"
             },
             "title": "Permissions",
             "type": "array"
@@ -635,46 +660,6 @@
           "name",
           "mime_type"
         ],
-        "$defs": {
-          "DrivePermission": {
-            "properties": {
-              "id": {
-                "title": "Id",
-                "type": "string"
-              },
-              "type": {
-                "title": "Type",
-                "type": "string"
-              },
-              "role": {
-                "title": "Role",
-                "type": "string"
-              },
-              "email_address": {
-                "default": null,
-                "title": "Email Address",
-                "type": "string"
-              },
-              "domain": {
-                "default": null,
-                "title": "Domain",
-                "type": "string"
-              },
-              "expiration_time": {
-                "default": null,
-                "title": "Expiration Time",
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "type",
-              "role"
-            ],
-            "title": "DrivePermission",
-            "type": "object"
-          }
-        },
         "title": "DrivePermissionsResult"
       },
       "_meta": {
@@ -947,7 +932,42 @@
           },
           "permissions": {
             "items": {
-              "$ref": "#/$defs/DrivePermission"
+              "properties": {
+                "id": {
+                  "title": "Id",
+                  "type": "string"
+                },
+                "type": {
+                  "title": "Type",
+                  "type": "string"
+                },
+                "role": {
+                  "title": "Role",
+                  "type": "string"
+                },
+                "email_address": {
+                  "default": null,
+                  "title": "Email Address",
+                  "type": "string"
+                },
+                "domain": {
+                  "default": null,
+                  "title": "Domain",
+                  "type": "string"
+                },
+                "expiration_time": {
+                  "default": null,
+                  "title": "Expiration Time",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "type",
+                "role"
+              ],
+              "title": "DrivePermission",
+              "type": "object"
             },
             "title": "Permissions",
             "type": "array"
@@ -959,46 +979,6 @@
           "mime_type",
           "is_shared"
         ],
-        "$defs": {
-          "DrivePermission": {
-            "properties": {
-              "id": {
-                "title": "Id",
-                "type": "string"
-              },
-              "type": {
-                "title": "Type",
-                "type": "string"
-              },
-              "role": {
-                "title": "Role",
-                "type": "string"
-              },
-              "email_address": {
-                "default": null,
-                "title": "Email Address",
-                "type": "string"
-              },
-              "domain": {
-                "default": null,
-                "title": "Domain",
-                "type": "string"
-              },
-              "expiration_time": {
-                "default": null,
-                "title": "Expiration Time",
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "type",
-              "role"
-            ],
-            "title": "DrivePermission",
-            "type": "object"
-          }
-        },
         "title": "DriveShareableLinkResult"
       },
       "_meta": {
@@ -1089,21 +1069,6 @@
             "type": "string"
           },
           "permission": {
-            "$ref": "#/$defs/DrivePermission"
-          },
-          "web_view_link": {
-            "title": "Web View Link",
-            "type": "string"
-          }
-        },
-        "required": [
-          "file_id",
-          "file_name",
-          "permission",
-          "web_view_link"
-        ],
-        "$defs": {
-          "DrivePermission": {
             "properties": {
               "id": {
                 "title": "Id",
@@ -1140,8 +1105,18 @@
             ],
             "title": "DrivePermission",
             "type": "object"
+          },
+          "web_view_link": {
+            "title": "Web View Link",
+            "type": "string"
           }
         },
+        "required": [
+          "file_id",
+          "file_name",
+          "permission",
+          "web_view_link"
+        ],
         "title": "DriveShareResult"
       },
       "_meta": {
@@ -1208,7 +1183,66 @@
           },
           "results": {
             "items": {
-              "$ref": "#/$defs/DriveBatchShareResultItem"
+              "properties": {
+                "identifier": {
+                  "title": "Identifier",
+                  "type": "string"
+                },
+                "success": {
+                  "title": "Success",
+                  "type": "boolean"
+                },
+                "permission": {
+                  "default": null,
+                  "properties": {
+                    "id": {
+                      "title": "Id",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    },
+                    "role": {
+                      "title": "Role",
+                      "type": "string"
+                    },
+                    "email_address": {
+                      "default": null,
+                      "title": "Email Address",
+                      "type": "string"
+                    },
+                    "domain": {
+                      "default": null,
+                      "title": "Domain",
+                      "type": "string"
+                    },
+                    "expiration_time": {
+                      "default": null,
+                      "title": "Expiration Time",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "role"
+                  ],
+                  "title": "DrivePermission",
+                  "type": "object"
+                },
+                "error": {
+                  "default": null,
+                  "title": "Error",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "identifier",
+                "success"
+              ],
+              "title": "DriveBatchShareResultItem",
+              "type": "object"
             },
             "title": "Results",
             "type": "array"
@@ -1226,73 +1260,6 @@
           "results",
           "web_view_link"
         ],
-        "$defs": {
-          "DriveBatchShareResultItem": {
-            "properties": {
-              "identifier": {
-                "title": "Identifier",
-                "type": "string"
-              },
-              "success": {
-                "title": "Success",
-                "type": "boolean"
-              },
-              "permission": {
-                "default": null,
-                "$ref": "#/$defs/DrivePermission"
-              },
-              "error": {
-                "default": null,
-                "title": "Error",
-                "type": "string"
-              }
-            },
-            "required": [
-              "identifier",
-              "success"
-            ],
-            "title": "DriveBatchShareResultItem",
-            "type": "object"
-          },
-          "DrivePermission": {
-            "properties": {
-              "id": {
-                "title": "Id",
-                "type": "string"
-              },
-              "type": {
-                "title": "Type",
-                "type": "string"
-              },
-              "role": {
-                "title": "Role",
-                "type": "string"
-              },
-              "email_address": {
-                "default": null,
-                "title": "Email Address",
-                "type": "string"
-              },
-              "domain": {
-                "default": null,
-                "title": "Domain",
-                "type": "string"
-              },
-              "expiration_time": {
-                "default": null,
-                "title": "Expiration Time",
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "type",
-              "role"
-            ],
-            "title": "DrivePermission",
-            "type": "object"
-          }
-        },
         "title": "DriveBatchShareResult"
       },
       "_meta": {
@@ -1353,16 +1320,6 @@
             "type": "string"
           },
           "permission": {
-            "$ref": "#/$defs/DrivePermission"
-          }
-        },
-        "required": [
-          "file_id",
-          "file_name",
-          "permission"
-        ],
-        "$defs": {
-          "DrivePermission": {
             "properties": {
               "id": {
                 "title": "Id",
@@ -1401,6 +1358,11 @@
             "type": "object"
           }
         },
+        "required": [
+          "file_id",
+          "file_name",
+          "permission"
+        ],
         "title": "DrivePermissionUpdateResult"
       },
       "_meta": {

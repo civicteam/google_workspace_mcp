@@ -128,7 +128,32 @@
           },
           "slides": {
             "items": {
-              "$ref": "#/$defs/SlideInfo"
+              "properties": {
+                "slide_number": {
+                  "title": "Slide Number",
+                  "type": "integer"
+                },
+                "slide_id": {
+                  "title": "Slide Id",
+                  "type": "string"
+                },
+                "element_count": {
+                  "title": "Element Count",
+                  "type": "integer"
+                },
+                "text_content": {
+                  "title": "Text Content",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "slide_number",
+                "slide_id",
+                "element_count",
+                "text_content"
+              ],
+              "title": "SlideInfo",
+              "type": "object"
             },
             "title": "Slides",
             "type": "array"
@@ -140,36 +165,6 @@
           "url",
           "total_slides"
         ],
-        "$defs": {
-          "SlideInfo": {
-            "properties": {
-              "slide_number": {
-                "title": "Slide Number",
-                "type": "integer"
-              },
-              "slide_id": {
-                "title": "Slide Id",
-                "type": "string"
-              },
-              "element_count": {
-                "title": "Element Count",
-                "type": "integer"
-              },
-              "text_content": {
-                "title": "Text Content",
-                "type": "string"
-              }
-            },
-            "required": [
-              "slide_number",
-              "slide_id",
-              "element_count",
-              "text_content"
-            ],
-            "title": "SlideInfo",
-            "type": "object"
-          }
-        },
         "title": "SlidesGetPresentationResult"
       },
       "_meta": {
@@ -221,7 +216,27 @@
           },
           "replies": {
             "items": {
-              "$ref": "#/$defs/BatchUpdateReply"
+              "properties": {
+                "request_number": {
+                  "title": "Request Number",
+                  "type": "integer"
+                },
+                "operation_type": {
+                  "title": "Operation Type",
+                  "type": "string"
+                },
+                "object_id": {
+                  "default": null,
+                  "title": "Object Id",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "request_number",
+                "operation_type"
+              ],
+              "title": "BatchUpdateReply",
+              "type": "object"
             },
             "title": "Replies",
             "type": "array"
@@ -233,31 +248,6 @@
           "requests_applied",
           "replies_received"
         ],
-        "$defs": {
-          "BatchUpdateReply": {
-            "properties": {
-              "request_number": {
-                "title": "Request Number",
-                "type": "integer"
-              },
-              "operation_type": {
-                "title": "Operation Type",
-                "type": "string"
-              },
-              "object_id": {
-                "default": null,
-                "title": "Object Id",
-                "type": "string"
-              }
-            },
-            "required": [
-              "request_number",
-              "operation_type"
-            ],
-            "title": "BatchUpdateReply",
-            "type": "object"
-          }
-        },
         "title": "SlidesBatchUpdateResult"
       },
       "_meta": {
@@ -305,7 +295,27 @@
           },
           "elements": {
             "items": {
-              "$ref": "#/$defs/PageElementInfo"
+              "properties": {
+                "element_id": {
+                  "title": "Element Id",
+                  "type": "string"
+                },
+                "element_type": {
+                  "title": "Element Type",
+                  "type": "string"
+                },
+                "details": {
+                  "default": null,
+                  "title": "Details",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "element_id",
+                "element_type"
+              ],
+              "title": "PageElementInfo",
+              "type": "object"
             },
             "title": "Elements",
             "type": "array"
@@ -317,31 +327,6 @@
           "page_type",
           "total_elements"
         ],
-        "$defs": {
-          "PageElementInfo": {
-            "properties": {
-              "element_id": {
-                "title": "Element Id",
-                "type": "string"
-              },
-              "element_type": {
-                "title": "Element Type",
-                "type": "string"
-              },
-              "details": {
-                "default": null,
-                "title": "Details",
-                "type": "string"
-              }
-            },
-            "required": [
-              "element_id",
-              "element_type"
-            ],
-            "title": "PageElementInfo",
-            "type": "object"
-          }
-        },
         "title": "SlidesGetPageResult"
       },
       "_meta": {

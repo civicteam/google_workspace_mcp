@@ -174,7 +174,42 @@
           },
           "items": {
             "items": {
-              "$ref": "#/$defs/SearchResultItem"
+              "properties": {
+                "position": {
+                  "title": "Position",
+                  "type": "integer"
+                },
+                "title": {
+                  "title": "Title",
+                  "type": "string"
+                },
+                "link": {
+                  "title": "Link",
+                  "type": "string"
+                },
+                "snippet": {
+                  "title": "Snippet",
+                  "type": "string"
+                },
+                "content_type": {
+                  "default": null,
+                  "title": "Content Type",
+                  "type": "string"
+                },
+                "published_date": {
+                  "default": null,
+                  "title": "Published Date",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "position",
+                "title",
+                "link",
+                "snippet"
+              ],
+              "title": "SearchResultItem",
+              "type": "object"
             },
             "title": "Items",
             "type": "array"
@@ -193,46 +228,6 @@
           "results_returned",
           "start_index"
         ],
-        "$defs": {
-          "SearchResultItem": {
-            "properties": {
-              "position": {
-                "title": "Position",
-                "type": "integer"
-              },
-              "title": {
-                "title": "Title",
-                "type": "string"
-              },
-              "link": {
-                "title": "Link",
-                "type": "string"
-              },
-              "snippet": {
-                "title": "Snippet",
-                "type": "string"
-              },
-              "content_type": {
-                "default": null,
-                "title": "Content Type",
-                "type": "string"
-              },
-              "published_date": {
-                "default": null,
-                "title": "Published Date",
-                "type": "string"
-              }
-            },
-            "required": [
-              "position",
-              "title",
-              "link",
-              "snippet"
-            ],
-            "title": "SearchResultItem",
-            "type": "object"
-          }
-        },
         "title": "SearchResult"
       },
       "_meta": {
@@ -266,7 +261,22 @@
           },
           "facets": {
             "items": {
-              "$ref": "#/$defs/SearchEngineFacet"
+              "properties": {
+                "label": {
+                  "title": "Label",
+                  "type": "string"
+                },
+                "anchor": {
+                  "title": "Anchor",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "label",
+                "anchor"
+              ],
+              "title": "SearchEngineFacet",
+              "type": "object"
             },
             "title": "Facets",
             "type": "array"
@@ -276,26 +286,6 @@
           "search_engine_id",
           "title"
         ],
-        "$defs": {
-          "SearchEngineFacet": {
-            "properties": {
-              "label": {
-                "title": "Label",
-                "type": "string"
-              },
-              "anchor": {
-                "title": "Anchor",
-                "type": "string"
-              }
-            },
-            "required": [
-              "label",
-              "anchor"
-            ],
-            "title": "SearchEngineFacet",
-            "type": "object"
-          }
-        },
         "title": "SearchEngineInfo"
       },
       "_meta": {
@@ -371,7 +361,42 @@
           },
           "items": {
             "items": {
-              "$ref": "#/$defs/SearchResultItem"
+              "properties": {
+                "position": {
+                  "title": "Position",
+                  "type": "integer"
+                },
+                "title": {
+                  "title": "Title",
+                  "type": "string"
+                },
+                "link": {
+                  "title": "Link",
+                  "type": "string"
+                },
+                "snippet": {
+                  "title": "Snippet",
+                  "type": "string"
+                },
+                "content_type": {
+                  "default": null,
+                  "title": "Content Type",
+                  "type": "string"
+                },
+                "published_date": {
+                  "default": null,
+                  "title": "Published Date",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "position",
+                "title",
+                "link",
+                "snippet"
+              ],
+              "title": "SearchResultItem",
+              "type": "object"
             },
             "title": "Items",
             "type": "array"
@@ -390,46 +415,6 @@
           "results_returned",
           "start_index"
         ],
-        "$defs": {
-          "SearchResultItem": {
-            "properties": {
-              "position": {
-                "title": "Position",
-                "type": "integer"
-              },
-              "title": {
-                "title": "Title",
-                "type": "string"
-              },
-              "link": {
-                "title": "Link",
-                "type": "string"
-              },
-              "snippet": {
-                "title": "Snippet",
-                "type": "string"
-              },
-              "content_type": {
-                "default": null,
-                "title": "Content Type",
-                "type": "string"
-              },
-              "published_date": {
-                "default": null,
-                "title": "Published Date",
-                "type": "string"
-              }
-            },
-            "required": [
-              "position",
-              "title",
-              "link",
-              "snippet"
-            ],
-            "title": "SearchResultItem",
-            "type": "object"
-          }
-        },
         "title": "SearchResult"
       },
       "_meta": {

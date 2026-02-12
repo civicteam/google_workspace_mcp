@@ -57,14 +57,47 @@ def _strip_any_of(schema: Any) -> Any:
     return result
 
 
+def _inline_refs(schema: dict[str, Any]) -> dict[str, Any]:
+    """Inline all ``$ref`` references and remove ``$defs``.
+
+    MCP schema validation does not support ``$ref`` / ``$defs``.
+    Pydantic generates these for nested dataclasses. This function
+    resolves every ``$ref`` by substituting the referenced definition
+    inline, then drops the top-level ``$defs`` block.
+    """
+    defs = schema.get("$defs", {})
+    if not defs:
+        return schema
+
+    def _resolve(node: Any) -> Any:
+        if isinstance(node, list):
+            return [_resolve(item) for item in node]
+        if not isinstance(node, dict):
+            return node
+        if "$ref" in node:
+            ref_path = node["$ref"]  # e.g. "#/$defs/CalendarInfo"
+            def_name = ref_path.rsplit("/", 1)[-1]
+            if def_name in defs:
+                # Merge any sibling keys (e.g. title) with the resolved def
+                resolved = {k: v for k, v in node.items() if k != "$ref"}
+                resolved.update(_resolve(defs[def_name]))
+                return resolved
+        return {k: _resolve(v) for k, v in node.items()}
+
+    result = _resolve(schema)
+    result.pop("$defs", None)
+    return result
+
+
 def generate_schema(cls: type) -> dict[str, Any]:
     """Generate an MCP-compatible JSON schema for a dataclass.
 
-    Uses Pydantic's ``TypeAdapter`` then strips ``anyOf`` nullable
-    patterns that MCP validation does not support.
+    Uses Pydantic's ``TypeAdapter`` then:
+    1. Inlines ``$ref`` / ``$defs`` (not supported by MCP)
+    2. Strips ``anyOf`` nullable patterns (not supported by MCP)
     """
     raw = TypeAdapter(cls).json_schema()
-    return _strip_any_of(raw)
+    return _strip_any_of(_inline_refs(raw))
 
 
 def create_tool_result(
