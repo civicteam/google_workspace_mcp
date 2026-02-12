@@ -6,7 +6,6 @@ These models provide machine-parseable JSON alongside the human-readable text ou
 """
 
 from dataclasses import dataclass
-from typing import Any
 
 from core.structured_output import generate_schema
 
