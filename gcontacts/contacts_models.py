@@ -6,9 +6,9 @@ These models provide machine-parseable JSON alongside the human-readable text ou
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Optional
 
-from pydantic import TypeAdapter
+from core.structured_output import generate_schema
 
 
 @dataclass
@@ -50,7 +50,6 @@ class ContactDetails:
 class ListContactsResult:
     """Structured result from list_contacts."""
 
-    user_email: str
     total_count: int
     returned_count: int
     contacts: list[ContactSummary]
@@ -61,7 +60,6 @@ class ListContactsResult:
 class GetContactResult:
     """Structured result from get_contact."""
 
-    user_email: str
     contact: ContactDetails
 
 
@@ -69,7 +67,6 @@ class GetContactResult:
 class SearchContactsResult:
     """Structured result from search_contacts."""
 
-    user_email: str
     query: str
     result_count: int
     contacts: list[ContactSummary]
@@ -79,7 +76,6 @@ class SearchContactsResult:
 class CreateContactResult:
     """Structured result from create_contact."""
 
-    user_email: str
     contact: ContactDetails
 
 
@@ -87,7 +83,6 @@ class CreateContactResult:
 class UpdateContactResult:
     """Structured result from update_contact."""
 
-    user_email: str
     contact: ContactDetails
 
 
@@ -95,7 +90,6 @@ class UpdateContactResult:
 class DeleteContactResult:
     """Structured result from delete_contact."""
 
-    user_email: str
     contact_id: str
     deleted: bool
 
@@ -114,7 +108,6 @@ class ContactGroupSummary:
 class ListContactGroupsResult:
     """Structured result from list_contact_groups."""
 
-    user_email: str
     group_count: int
     groups: list[ContactGroupSummary]
     next_page_token: Optional[str] = None
@@ -135,7 +128,6 @@ class ContactGroupDetails:
 class GetContactGroupResult:
     """Structured result from get_contact_group."""
 
-    user_email: str
     group: ContactGroupDetails
 
 
@@ -143,7 +135,6 @@ class GetContactGroupResult:
 class BatchCreateContactsResult:
     """Structured result from batch_create_contacts."""
 
-    user_email: str
     created_count: int
     contacts: list[ContactSummary]
 
@@ -152,7 +143,6 @@ class BatchCreateContactsResult:
 class BatchUpdateContactsResult:
     """Structured result from batch_update_contacts."""
 
-    user_email: str
     updated_count: int
     contacts: list[ContactSummary]
 
@@ -161,7 +151,6 @@ class BatchUpdateContactsResult:
 class BatchDeleteContactsResult:
     """Structured result from batch_delete_contacts."""
 
-    user_email: str
     deleted_count: int
     deleted: bool
 
@@ -170,7 +159,6 @@ class BatchDeleteContactsResult:
 class CreateContactGroupResult:
     """Structured result from create_contact_group."""
 
-    user_email: str
     group: ContactGroupSummary
 
 
@@ -178,7 +166,6 @@ class CreateContactGroupResult:
 class UpdateContactGroupResult:
     """Structured result from update_contact_group."""
 
-    user_email: str
     group_id: str
     name: str
 
@@ -187,7 +174,6 @@ class UpdateContactGroupResult:
 class DeleteContactGroupResult:
     """Structured result from delete_contact_group."""
 
-    user_email: str
     group_id: str
     deleted: bool
     contacts_deleted: bool
@@ -197,7 +183,6 @@ class DeleteContactGroupResult:
 class ModifyContactGroupMembersResult:
     """Structured result from modify_contact_group_members."""
 
-    user_email: str
     group_id: str
     added_count: int
     removed_count: int
@@ -205,26 +190,21 @@ class ModifyContactGroupMembersResult:
     cannot_remove_ids: list[str] = field(default_factory=list)
 
 
-def _generate_schema(cls: type) -> dict[str, Any]:
-    """Generate JSON schema for a dataclass."""
-    return TypeAdapter(cls).json_schema()
-
-
 # Pre-generated JSON schemas for use in @server.tool() decorators
-LIST_CONTACTS_RESULT_SCHEMA = _generate_schema(ListContactsResult)
-GET_CONTACT_RESULT_SCHEMA = _generate_schema(GetContactResult)
-SEARCH_CONTACTS_RESULT_SCHEMA = _generate_schema(SearchContactsResult)
-CREATE_CONTACT_RESULT_SCHEMA = _generate_schema(CreateContactResult)
-UPDATE_CONTACT_RESULT_SCHEMA = _generate_schema(UpdateContactResult)
-DELETE_CONTACT_RESULT_SCHEMA = _generate_schema(DeleteContactResult)
-LIST_CONTACT_GROUPS_RESULT_SCHEMA = _generate_schema(ListContactGroupsResult)
-GET_CONTACT_GROUP_RESULT_SCHEMA = _generate_schema(GetContactGroupResult)
-BATCH_CREATE_CONTACTS_RESULT_SCHEMA = _generate_schema(BatchCreateContactsResult)
-BATCH_UPDATE_CONTACTS_RESULT_SCHEMA = _generate_schema(BatchUpdateContactsResult)
-BATCH_DELETE_CONTACTS_RESULT_SCHEMA = _generate_schema(BatchDeleteContactsResult)
-CREATE_CONTACT_GROUP_RESULT_SCHEMA = _generate_schema(CreateContactGroupResult)
-UPDATE_CONTACT_GROUP_RESULT_SCHEMA = _generate_schema(UpdateContactGroupResult)
-DELETE_CONTACT_GROUP_RESULT_SCHEMA = _generate_schema(DeleteContactGroupResult)
-MODIFY_CONTACT_GROUP_MEMBERS_RESULT_SCHEMA = _generate_schema(
+LIST_CONTACTS_RESULT_SCHEMA = generate_schema(ListContactsResult)
+GET_CONTACT_RESULT_SCHEMA = generate_schema(GetContactResult)
+SEARCH_CONTACTS_RESULT_SCHEMA = generate_schema(SearchContactsResult)
+CREATE_CONTACT_RESULT_SCHEMA = generate_schema(CreateContactResult)
+UPDATE_CONTACT_RESULT_SCHEMA = generate_schema(UpdateContactResult)
+DELETE_CONTACT_RESULT_SCHEMA = generate_schema(DeleteContactResult)
+LIST_CONTACT_GROUPS_RESULT_SCHEMA = generate_schema(ListContactGroupsResult)
+GET_CONTACT_GROUP_RESULT_SCHEMA = generate_schema(GetContactGroupResult)
+BATCH_CREATE_CONTACTS_RESULT_SCHEMA = generate_schema(BatchCreateContactsResult)
+BATCH_UPDATE_CONTACTS_RESULT_SCHEMA = generate_schema(BatchUpdateContactsResult)
+BATCH_DELETE_CONTACTS_RESULT_SCHEMA = generate_schema(BatchDeleteContactsResult)
+CREATE_CONTACT_GROUP_RESULT_SCHEMA = generate_schema(CreateContactGroupResult)
+UPDATE_CONTACT_GROUP_RESULT_SCHEMA = generate_schema(UpdateContactGroupResult)
+DELETE_CONTACT_GROUP_RESULT_SCHEMA = generate_schema(DeleteContactGroupResult)
+MODIFY_CONTACT_GROUP_MEMBERS_RESULT_SCHEMA = generate_schema(
     ModifyContactGroupMembersResult
 )

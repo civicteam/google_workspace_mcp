@@ -6,9 +6,9 @@ These models provide machine-parseable JSON alongside the human-readable text ou
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Optional
 
-from pydantic import TypeAdapter
+from core.structured_output import generate_schema
 
 
 @dataclass
@@ -55,11 +55,6 @@ class SearchEngineInfo:
     facets: list[SearchEngineFacet] = field(default_factory=list)
 
 
-def _generate_schema(cls: type) -> dict[str, Any]:
-    """Generate JSON schema for a dataclass."""
-    return TypeAdapter(cls).json_schema()
-
-
 # Pre-generated JSON schemas for use in @server.tool() decorators
-SEARCH_RESULT_SCHEMA = _generate_schema(SearchResult)
-SEARCH_ENGINE_INFO_SCHEMA = _generate_schema(SearchEngineInfo)
+SEARCH_RESULT_SCHEMA = generate_schema(SearchResult)
+SEARCH_ENGINE_INFO_SCHEMA = generate_schema(SearchEngineInfo)

@@ -1,0 +1,520 @@
+{
+  "tools": [
+    {
+      "name": "start_google_auth",
+      "description": "Manually initiate Google OAuth authentication flow.\n\nNOTE: This tool should typically NOT be called directly. The authentication system\nautomatically handles credential checks and prompts for authentication when needed.\nOnly use this tool if:\n1. You need to re-authenticate with different credentials\n2. You want to proactively authenticate before using other tools\n3. The automatic authentication flow failed and you need to retry\n\nIn most cases, simply try calling the Google Workspace tool you need - it will\nautomatically handle authentication if required.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_form",
+      "description": "Create a new form using the title given in the provided form message in the request.\n\nArgs:\n    title (str): The title of the form.\n    description (Optional[str]): The description of the form.\n    document_title (Optional[str]): The document title (shown in browser tab).\n\nReturns:\n    ToolResult: Confirmation message with form ID and edit URL.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "document_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "form_id": {
+            "title": "Form Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "edit_url": {
+            "title": "Edit Url",
+            "type": "string"
+          },
+          "responder_url": {
+            "title": "Responder Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "form_id",
+          "title",
+          "edit_url",
+          "responder_url"
+        ],
+        "title": "FormsCreateResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_form",
+      "description": "Get a form.\n\nArgs:\n    form_id (str): The ID of the form to retrieve.\n\nReturns:\n    ToolResult: Form details including title, description, questions, and URLs.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "form_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "form_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "form_id": {
+            "title": "Form Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "document_title": {
+            "title": "Document Title",
+            "type": "string"
+          },
+          "edit_url": {
+            "title": "Edit Url",
+            "type": "string"
+          },
+          "responder_url": {
+            "title": "Responder Url",
+            "type": "string"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/$defs/FormsQuestionSummary"
+            },
+            "title": "Questions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "form_id",
+          "title",
+          "description",
+          "document_title",
+          "edit_url",
+          "responder_url",
+          "questions"
+        ],
+        "$defs": {
+          "FormsQuestionSummary": {
+            "properties": {
+              "index": {
+                "title": "Index",
+                "type": "integer"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              },
+              "required": {
+                "title": "Required",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "index",
+              "title",
+              "required"
+            ],
+            "title": "FormsQuestionSummary",
+            "type": "object"
+          }
+        },
+        "title": "FormsGetResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "set_publish_settings",
+      "description": "Updates the publish settings of a form.\n\nArgs:\n    form_id (str): The ID of the form to update publish settings for.\n    publish_as_template (bool): Whether to publish as a template. Defaults to False.\n    require_authentication (bool): Whether to require authentication to view/submit. Defaults to False.\n\nReturns:\n    ToolResult: Confirmation message of the successful publish settings update.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "form_id": {
+            "type": "string"
+          },
+          "publish_as_template": {
+            "default": false,
+            "type": "boolean"
+          },
+          "require_authentication": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "form_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "form_id": {
+            "title": "Form Id",
+            "type": "string"
+          },
+          "publish_as_template": {
+            "title": "Publish As Template",
+            "type": "boolean"
+          },
+          "require_authentication": {
+            "title": "Require Authentication",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "form_id",
+          "publish_as_template",
+          "require_authentication"
+        ],
+        "title": "FormsPublishSettingsResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_form_response",
+      "description": "Get one response from the form.\n\nArgs:\n    form_id (str): The ID of the form.\n    response_id (str): The ID of the response to retrieve.\n\nReturns:\n    ToolResult: Response details including answers and metadata.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "form_id": {
+            "type": "string"
+          },
+          "response_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "form_id",
+          "response_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "form_id": {
+            "title": "Form Id",
+            "type": "string"
+          },
+          "response_id": {
+            "title": "Response Id",
+            "type": "string"
+          },
+          "create_time": {
+            "title": "Create Time",
+            "type": "string"
+          },
+          "last_submitted_time": {
+            "title": "Last Submitted Time",
+            "type": "string"
+          },
+          "answers": {
+            "items": {
+              "$ref": "#/$defs/FormsAnswerDetail"
+            },
+            "title": "Answers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "form_id",
+          "response_id",
+          "create_time",
+          "last_submitted_time",
+          "answers"
+        ],
+        "$defs": {
+          "FormsAnswerDetail": {
+            "properties": {
+              "question_id": {
+                "title": "Question Id",
+                "type": "string"
+              },
+              "answer_text": {
+                "title": "Answer Text",
+                "type": "string"
+              }
+            },
+            "required": [
+              "question_id",
+              "answer_text"
+            ],
+            "title": "FormsAnswerDetail",
+            "type": "object"
+          }
+        },
+        "title": "FormsResponseResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "list_form_responses",
+      "description": "List a form's responses.\n\nArgs:\n    form_id (str): The ID of the form.\n    page_size (int): Maximum number of responses to return. Defaults to 10.\n    page_token (Optional[str]): Token for retrieving next page of results.\n\nReturns:\n    ToolResult: List of responses with basic details and pagination info.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "form_id": {
+            "type": "string"
+          },
+          "page_size": {
+            "default": 10,
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "form_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "form_id": {
+            "title": "Form Id",
+            "type": "string"
+          },
+          "total_returned": {
+            "title": "Total Returned",
+            "type": "integer"
+          },
+          "responses": {
+            "items": {
+              "$ref": "#/$defs/FormsResponseSummary"
+            },
+            "title": "Responses",
+            "type": "array"
+          },
+          "next_page_token": {
+            "default": null,
+            "title": "Next Page Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "form_id",
+          "total_returned",
+          "responses"
+        ],
+        "$defs": {
+          "FormsResponseSummary": {
+            "properties": {
+              "response_id": {
+                "title": "Response Id",
+                "type": "string"
+              },
+              "create_time": {
+                "title": "Create Time",
+                "type": "string"
+              },
+              "last_submitted_time": {
+                "title": "Last Submitted Time",
+                "type": "string"
+              },
+              "answer_count": {
+                "title": "Answer Count",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "response_id",
+              "create_time",
+              "last_submitted_time",
+              "answer_count"
+            ],
+            "title": "FormsResponseSummary",
+            "type": "object"
+          }
+        },
+        "title": "FormsListResponsesResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "batch_update_form",
+      "description": "Apply batch updates to a Google Form.\n\nSupports adding, updating, and deleting form items, as well as updating\nform metadata and settings. This is the primary method for modifying form\ncontent after creation.\n\nArgs:\n\n    form_id (str): The ID of the form to update.\n    requests (List[Dict[str, Any]]): List of update requests to apply.\n        Supported request types:\n        - createItem: Add a new question or content item\n        - updateItem: Modify an existing item\n        - deleteItem: Remove an item\n        - moveItem: Reorder an item\n        - updateFormInfo: Update form title/description\n        - updateSettings: Modify form settings (e.g., quiz mode)\n\nReturns:\n    ToolResult: Details about the batch update operation results.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "form_id": {
+            "type": "string"
+          },
+          "requests": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "form_id",
+          "requests"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "form_id": {
+            "title": "Form Id",
+            "type": "string"
+          },
+          "edit_url": {
+            "title": "Edit Url",
+            "type": "string"
+          },
+          "requests_applied": {
+            "title": "Requests Applied",
+            "type": "integer"
+          },
+          "replies_received": {
+            "title": "Replies Received",
+            "type": "integer"
+          },
+          "replies": {
+            "items": {
+              "$ref": "#/$defs/FormsBatchUpdateReply"
+            },
+            "title": "Replies",
+            "type": "array"
+          }
+        },
+        "required": [
+          "form_id",
+          "edit_url",
+          "requests_applied",
+          "replies_received",
+          "replies"
+        ],
+        "$defs": {
+          "FormsBatchUpdateReply": {
+            "properties": {
+              "request_index": {
+                "title": "Request Index",
+                "type": "integer"
+              },
+              "operation": {
+                "title": "Operation",
+                "type": "string"
+              },
+              "item_id": {
+                "default": null,
+                "title": "Item Id",
+                "type": "string"
+              },
+              "question_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Question Ids",
+                "type": "array"
+              }
+            },
+            "required": [
+              "request_index",
+              "operation"
+            ],
+            "title": "FormsBatchUpdateReply",
+            "type": "object"
+          }
+        },
+        "title": "FormsBatchUpdateResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    }
+  ]
+}

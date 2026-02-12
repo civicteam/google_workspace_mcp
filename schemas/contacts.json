@@ -1,0 +1,1433 @@
+{
+  "tools": [
+    {
+      "name": "start_google_auth",
+      "description": "Manually initiate Google OAuth authentication flow.\n\nNOTE: This tool should typically NOT be called directly. The authentication system\nautomatically handles credential checks and prompts for authentication when needed.\nOnly use this tool if:\n1. You need to re-authenticate with different credentials\n2. You want to proactively authenticate before using other tools\n3. The automatic authentication flow failed and you need to retry\n\nIn most cases, simply try calling the Google Workspace tool you need - it will\nautomatically handle authentication if required.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "list_contacts",
+      "description": "List contacts for the authenticated user.\n\nArgs:\n\n    page_size (int): Maximum number of contacts to return (default: 100, max: 1000).\n    page_token (Optional[str]): Token for pagination.\n    sort_order (Optional[str]): Sort order: \"LAST_MODIFIED_ASCENDING\", \"LAST_MODIFIED_DESCENDING\", \"FIRST_NAME_ASCENDING\", or \"LAST_NAME_ASCENDING\".\n\nReturns:\n    ToolResult: List of contacts with their basic information.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page_size": {
+            "default": 100,
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "sort_order": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          },
+          "returned_count": {
+            "title": "Returned Count",
+            "type": "integer"
+          },
+          "contacts": {
+            "items": {
+              "$ref": "#/$defs/ContactSummary"
+            },
+            "title": "Contacts",
+            "type": "array"
+          },
+          "next_page_token": {
+            "default": null,
+            "title": "Next Page Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "total_count",
+          "returned_count",
+          "contacts"
+        ],
+        "$defs": {
+          "ContactOrganization": {
+            "properties": {
+              "name": {
+                "default": null,
+                "title": "Name",
+                "type": "string"
+              },
+              "title": {
+                "default": null,
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "title": "ContactOrganization",
+            "type": "object"
+          },
+          "ContactSummary": {
+            "properties": {
+              "contact_id": {
+                "title": "Contact Id",
+                "type": "string"
+              },
+              "name": {
+                "default": null,
+                "title": "Name",
+                "type": "string"
+              },
+              "emails": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Emails",
+                "type": "array"
+              },
+              "phones": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Phones",
+                "type": "array"
+              },
+              "organization": {
+                "default": null,
+                "$ref": "#/$defs/ContactOrganization"
+              }
+            },
+            "required": [
+              "contact_id"
+            ],
+            "title": "ContactSummary",
+            "type": "object"
+          }
+        },
+        "title": "ListContactsResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_contact",
+      "description": "Get detailed information about a specific contact.\n\nArgs:\n\n    contact_id (str): The contact ID (e.g., \"c1234567890\" or full resource name \"people/c1234567890\").\n\nReturns:\n    ToolResult: Detailed contact information.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "contact": {
+            "$ref": "#/$defs/ContactDetails"
+          }
+        },
+        "required": [
+          "contact"
+        ],
+        "$defs": {
+          "ContactDetails": {
+            "properties": {
+              "contact_id": {
+                "title": "Contact Id",
+                "type": "string"
+              },
+              "name": {
+                "default": null,
+                "title": "Name",
+                "type": "string"
+              },
+              "emails": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Emails",
+                "type": "array"
+              },
+              "phones": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Phones",
+                "type": "array"
+              },
+              "organization": {
+                "default": null,
+                "$ref": "#/$defs/ContactOrganization"
+              },
+              "address": {
+                "default": null,
+                "title": "Address",
+                "type": "string"
+              },
+              "birthday": {
+                "default": null,
+                "title": "Birthday",
+                "type": "string"
+              },
+              "urls": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Urls",
+                "type": "array"
+              },
+              "notes": {
+                "default": null,
+                "title": "Notes",
+                "type": "string"
+              },
+              "sources": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Sources",
+                "type": "array"
+              }
+            },
+            "required": [
+              "contact_id"
+            ],
+            "title": "ContactDetails",
+            "type": "object"
+          },
+          "ContactOrganization": {
+            "properties": {
+              "name": {
+                "default": null,
+                "title": "Name",
+                "type": "string"
+              },
+              "title": {
+                "default": null,
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "title": "ContactOrganization",
+            "type": "object"
+          }
+        },
+        "title": "GetContactResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "search_contacts",
+      "description": "Search contacts by name, email, phone number, or other fields.\n\nArgs:\n\n    query (str): Search query string (searches names, emails, phone numbers).\n    page_size (int): Maximum number of results to return (default: 30, max: 30).\n\nReturns:\n    ToolResult: Matching contacts with their basic information.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "page_size": {
+            "default": 30,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "result_count": {
+            "title": "Result Count",
+            "type": "integer"
+          },
+          "contacts": {
+            "items": {
+              "$ref": "#/$defs/ContactSummary"
+            },
+            "title": "Contacts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "query",
+          "result_count",
+          "contacts"
+        ],
+        "$defs": {
+          "ContactOrganization": {
+            "properties": {
+              "name": {
+                "default": null,
+                "title": "Name",
+                "type": "string"
+              },
+              "title": {
+                "default": null,
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "title": "ContactOrganization",
+            "type": "object"
+          },
+          "ContactSummary": {
+            "properties": {
+              "contact_id": {
+                "title": "Contact Id",
+                "type": "string"
+              },
+              "name": {
+                "default": null,
+                "title": "Name",
+                "type": "string"
+              },
+              "emails": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Emails",
+                "type": "array"
+              },
+              "phones": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Phones",
+                "type": "array"
+              },
+              "organization": {
+                "default": null,
+                "$ref": "#/$defs/ContactOrganization"
+              }
+            },
+            "required": [
+              "contact_id"
+            ],
+            "title": "ContactSummary",
+            "type": "object"
+          }
+        },
+        "title": "SearchContactsResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_contact",
+      "description": "Create a new contact.\n\nArgs:\n\n    given_name (Optional[str]): First name.\n    family_name (Optional[str]): Last name.\n    email (Optional[str]): Email address.\n    phone (Optional[str]): Phone number.\n    organization (Optional[str]): Company/organization name.\n    job_title (Optional[str]): Job title.\n    notes (Optional[str]): Additional notes.\n\nReturns:\n    ToolResult: Confirmation with the new contact's details.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "given_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "family_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "organization": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "job_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "contact": {
+            "$ref": "#/$defs/ContactDetails"
+          }
+        },
+        "required": [
+          "contact"
+        ],
+        "$defs": {
+          "ContactDetails": {
+            "properties": {
+              "contact_id": {
+                "title": "Contact Id",
+                "type": "string"
+              },
+              "name": {
+                "default": null,
+                "title": "Name",
+                "type": "string"
+              },
+              "emails": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Emails",
+                "type": "array"
+              },
+              "phones": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Phones",
+                "type": "array"
+              },
+              "organization": {
+                "default": null,
+                "$ref": "#/$defs/ContactOrganization"
+              },
+              "address": {
+                "default": null,
+                "title": "Address",
+                "type": "string"
+              },
+              "birthday": {
+                "default": null,
+                "title": "Birthday",
+                "type": "string"
+              },
+              "urls": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Urls",
+                "type": "array"
+              },
+              "notes": {
+                "default": null,
+                "title": "Notes",
+                "type": "string"
+              },
+              "sources": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Sources",
+                "type": "array"
+              }
+            },
+            "required": [
+              "contact_id"
+            ],
+            "title": "ContactDetails",
+            "type": "object"
+          },
+          "ContactOrganization": {
+            "properties": {
+              "name": {
+                "default": null,
+                "title": "Name",
+                "type": "string"
+              },
+              "title": {
+                "default": null,
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "title": "ContactOrganization",
+            "type": "object"
+          }
+        },
+        "title": "CreateContactResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "update_contact",
+      "description": "Update an existing contact. Note: This replaces fields, not merges them.\n\nArgs:\n\n    contact_id (str): The contact ID to update.\n    given_name (Optional[str]): New first name.\n    family_name (Optional[str]): New last name.\n    email (Optional[str]): New email address.\n    phone (Optional[str]): New phone number.\n    organization (Optional[str]): New company/organization name.\n    job_title (Optional[str]): New job title.\n    notes (Optional[str]): New notes.\n\nReturns:\n    ToolResult: Confirmation with updated contact details.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          },
+          "given_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "family_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "organization": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "job_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "contact_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "contact": {
+            "$ref": "#/$defs/ContactDetails"
+          }
+        },
+        "required": [
+          "contact"
+        ],
+        "$defs": {
+          "ContactDetails": {
+            "properties": {
+              "contact_id": {
+                "title": "Contact Id",
+                "type": "string"
+              },
+              "name": {
+                "default": null,
+                "title": "Name",
+                "type": "string"
+              },
+              "emails": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Emails",
+                "type": "array"
+              },
+              "phones": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Phones",
+                "type": "array"
+              },
+              "organization": {
+                "default": null,
+                "$ref": "#/$defs/ContactOrganization"
+              },
+              "address": {
+                "default": null,
+                "title": "Address",
+                "type": "string"
+              },
+              "birthday": {
+                "default": null,
+                "title": "Birthday",
+                "type": "string"
+              },
+              "urls": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Urls",
+                "type": "array"
+              },
+              "notes": {
+                "default": null,
+                "title": "Notes",
+                "type": "string"
+              },
+              "sources": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Sources",
+                "type": "array"
+              }
+            },
+            "required": [
+              "contact_id"
+            ],
+            "title": "ContactDetails",
+            "type": "object"
+          },
+          "ContactOrganization": {
+            "properties": {
+              "name": {
+                "default": null,
+                "title": "Name",
+                "type": "string"
+              },
+              "title": {
+                "default": null,
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "title": "ContactOrganization",
+            "type": "object"
+          }
+        },
+        "title": "UpdateContactResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "delete_contact",
+      "description": "Delete a contact.\n\nArgs:\n\n    contact_id (str): The contact ID to delete.\n\nReturns:\n    ToolResult: Confirmation message.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "contact_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "contact_id": {
+            "title": "Contact Id",
+            "type": "string"
+          },
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "contact_id",
+          "deleted"
+        ],
+        "title": "DeleteContactResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "list_contact_groups",
+      "description": "List contact groups (labels) for the user.\n\nArgs:\n\n    page_size (int): Maximum number of groups to return (default: 100, max: 1000).\n    page_token (Optional[str]): Token for pagination.\n\nReturns:\n    ToolResult: List of contact groups with their details.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page_size": {
+            "default": 100,
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "group_count": {
+            "title": "Group Count",
+            "type": "integer"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/$defs/ContactGroupSummary"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "next_page_token": {
+            "default": null,
+            "title": "Next Page Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "group_count",
+          "groups"
+        ],
+        "$defs": {
+          "ContactGroupSummary": {
+            "properties": {
+              "group_id": {
+                "title": "Group Id",
+                "type": "string"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "group_type": {
+                "title": "Group Type",
+                "type": "string"
+              },
+              "member_count": {
+                "title": "Member Count",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "group_id",
+              "name",
+              "group_type",
+              "member_count"
+            ],
+            "title": "ContactGroupSummary",
+            "type": "object"
+          }
+        },
+        "title": "ListContactGroupsResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_contact_group",
+      "description": "Get details of a specific contact group including its members.\n\nArgs:\n\n    group_id (str): The contact group ID.\n    max_members (int): Maximum number of members to return (default: 100, max: 1000).\n\nReturns:\n    ToolResult: Contact group details including members.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "string"
+          },
+          "max_members": {
+            "default": 100,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "group_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "$ref": "#/$defs/ContactGroupDetails"
+          }
+        },
+        "required": [
+          "group"
+        ],
+        "$defs": {
+          "ContactGroupDetails": {
+            "properties": {
+              "group_id": {
+                "title": "Group Id",
+                "type": "string"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "group_type": {
+                "title": "Group Type",
+                "type": "string"
+              },
+              "member_count": {
+                "title": "Member Count",
+                "type": "integer"
+              },
+              "member_ids": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Member Ids",
+                "type": "array"
+              }
+            },
+            "required": [
+              "group_id",
+              "name",
+              "group_type",
+              "member_count"
+            ],
+            "title": "ContactGroupDetails",
+            "type": "object"
+          }
+        },
+        "title": "GetContactGroupResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "batch_create_contacts",
+      "description": "Create multiple contacts in a batch operation.\n\nArgs:\n\n    contacts (List[Dict[str, str]]): List of contact dictionaries with fields:\n        - given_name: First name\n        - family_name: Last name\n        - email: Email address\n        - phone: Phone number\n        - organization: Company name\n        - job_title: Job title\n\nReturns:\n    ToolResult: Confirmation with created contacts.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "contacts": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "contacts"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "created_count": {
+            "title": "Created Count",
+            "type": "integer"
+          },
+          "contacts": {
+            "items": {
+              "$ref": "#/$defs/ContactSummary"
+            },
+            "title": "Contacts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "created_count",
+          "contacts"
+        ],
+        "$defs": {
+          "ContactOrganization": {
+            "properties": {
+              "name": {
+                "default": null,
+                "title": "Name",
+                "type": "string"
+              },
+              "title": {
+                "default": null,
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "title": "ContactOrganization",
+            "type": "object"
+          },
+          "ContactSummary": {
+            "properties": {
+              "contact_id": {
+                "title": "Contact Id",
+                "type": "string"
+              },
+              "name": {
+                "default": null,
+                "title": "Name",
+                "type": "string"
+              },
+              "emails": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Emails",
+                "type": "array"
+              },
+              "phones": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Phones",
+                "type": "array"
+              },
+              "organization": {
+                "default": null,
+                "$ref": "#/$defs/ContactOrganization"
+              }
+            },
+            "required": [
+              "contact_id"
+            ],
+            "title": "ContactSummary",
+            "type": "object"
+          }
+        },
+        "title": "BatchCreateContactsResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "batch_update_contacts",
+      "description": "Update multiple contacts in a batch operation.\n\nArgs:\n\n    updates (List[Dict[str, str]]): List of update dictionaries with fields:\n        - contact_id: The contact ID to update (required)\n        - given_name: New first name\n        - family_name: New last name\n        - email: New email address\n        - phone: New phone number\n        - organization: New company name\n        - job_title: New job title\n\nReturns:\n    ToolResult: Confirmation with updated contacts.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "updates": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "updates"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "updated_count": {
+            "title": "Updated Count",
+            "type": "integer"
+          },
+          "contacts": {
+            "items": {
+              "$ref": "#/$defs/ContactSummary"
+            },
+            "title": "Contacts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "updated_count",
+          "contacts"
+        ],
+        "$defs": {
+          "ContactOrganization": {
+            "properties": {
+              "name": {
+                "default": null,
+                "title": "Name",
+                "type": "string"
+              },
+              "title": {
+                "default": null,
+                "title": "Title",
+                "type": "string"
+              }
+            },
+            "title": "ContactOrganization",
+            "type": "object"
+          },
+          "ContactSummary": {
+            "properties": {
+              "contact_id": {
+                "title": "Contact Id",
+                "type": "string"
+              },
+              "name": {
+                "default": null,
+                "title": "Name",
+                "type": "string"
+              },
+              "emails": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Emails",
+                "type": "array"
+              },
+              "phones": {
+                "items": {
+                  "type": "string"
+                },
+                "title": "Phones",
+                "type": "array"
+              },
+              "organization": {
+                "default": null,
+                "$ref": "#/$defs/ContactOrganization"
+              }
+            },
+            "required": [
+              "contact_id"
+            ],
+            "title": "ContactSummary",
+            "type": "object"
+          }
+        },
+        "title": "BatchUpdateContactsResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "batch_delete_contacts",
+      "description": "Delete multiple contacts in a batch operation.\n\nArgs:\n\n    contact_ids (List[str]): List of contact IDs to delete.\n\nReturns:\n    ToolResult: Confirmation message.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "contact_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "contact_ids"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "deleted_count": {
+            "title": "Deleted Count",
+            "type": "integer"
+          },
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "deleted_count",
+          "deleted"
+        ],
+        "title": "BatchDeleteContactsResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_contact_group",
+      "description": "Create a new contact group (label).\n\nArgs:\n\n    name (str): The name of the new contact group.\n\nReturns:\n    ToolResult: Confirmation with the new group details.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "$ref": "#/$defs/ContactGroupSummary"
+          }
+        },
+        "required": [
+          "group"
+        ],
+        "$defs": {
+          "ContactGroupSummary": {
+            "properties": {
+              "group_id": {
+                "title": "Group Id",
+                "type": "string"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "group_type": {
+                "title": "Group Type",
+                "type": "string"
+              },
+              "member_count": {
+                "title": "Member Count",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "group_id",
+              "name",
+              "group_type",
+              "member_count"
+            ],
+            "title": "ContactGroupSummary",
+            "type": "object"
+          }
+        },
+        "title": "CreateContactGroupResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "update_contact_group",
+      "description": "Update a contact group's name.\n\nArgs:\n\n    group_id (str): The contact group ID to update.\n    name (str): The new name for the contact group.\n\nReturns:\n    ToolResult: Confirmation with updated group details.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "group_id",
+          "name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "title": "Group Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "group_id",
+          "name"
+        ],
+        "title": "UpdateContactGroupResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "delete_contact_group",
+      "description": "Delete a contact group.\n\nArgs:\n\n    group_id (str): The contact group ID to delete.\n    delete_contacts (bool): If True, also delete contacts in the group (default: False).\n\nReturns:\n    ToolResult: Confirmation message.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "string"
+          },
+          "delete_contacts": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "group_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "title": "Group Id",
+            "type": "string"
+          },
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "contacts_deleted": {
+            "title": "Contacts Deleted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "group_id",
+          "deleted",
+          "contacts_deleted"
+        ],
+        "title": "DeleteContactGroupResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "modify_contact_group_members",
+      "description": "Add or remove contacts from a contact group.\n\nArgs:\n\n    group_id (str): The contact group ID.\n    add_contact_ids (Optional[List[str]]): Contact IDs to add to the group.\n    remove_contact_ids (Optional[List[str]]): Contact IDs to remove from the group.\n\nReturns:\n    ToolResult: Confirmation with results.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "string"
+          },
+          "add_contact_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "remove_contact_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "group_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "title": "Group Id",
+            "type": "string"
+          },
+          "added_count": {
+            "title": "Added Count",
+            "type": "integer"
+          },
+          "removed_count": {
+            "title": "Removed Count",
+            "type": "integer"
+          },
+          "not_found_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Not Found Ids",
+            "type": "array"
+          },
+          "cannot_remove_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Cannot Remove Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "group_id",
+          "added_count",
+          "removed_count"
+        ],
+        "title": "ModifyContactGroupMembersResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    }
+  ]
+}

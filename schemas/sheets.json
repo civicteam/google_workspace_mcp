@@ -1,0 +1,1060 @@
+{
+  "tools": [
+    {
+      "name": "start_google_auth",
+      "description": "Manually initiate Google OAuth authentication flow.\n\nNOTE: This tool should typically NOT be called directly. The authentication system\nautomatically handles credential checks and prompts for authentication when needed.\nOnly use this tool if:\n1. You need to re-authenticate with different credentials\n2. You want to proactively authenticate before using other tools\n3. The automatic authentication flow failed and you need to retry\n\nIn most cases, simply try calling the Google Workspace tool you need - it will\nautomatically handle authentication if required.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "list_spreadsheets",
+      "description": "Lists spreadsheets from Google Drive that the user has access to.\n\nArgs:\n    max_results (int): Maximum number of spreadsheets to return. Defaults to 25.\n\nReturns:\n    str: A formatted list of spreadsheet files (name, ID, modified time).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "max_results": {
+            "default": 25,
+            "type": "integer"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "total_found": {
+            "title": "Total Found",
+            "type": "integer"
+          },
+          "spreadsheets": {
+            "items": {
+              "$ref": "#/$defs/SpreadsheetItem"
+            },
+            "title": "Spreadsheets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "total_found",
+          "spreadsheets"
+        ],
+        "$defs": {
+          "SpreadsheetItem": {
+            "properties": {
+              "spreadsheet_id": {
+                "title": "Spreadsheet Id",
+                "type": "string"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "modified_time": {
+                "title": "Modified Time",
+                "type": "string"
+              },
+              "web_link": {
+                "title": "Web Link",
+                "type": "string"
+              }
+            },
+            "required": [
+              "spreadsheet_id",
+              "name",
+              "modified_time",
+              "web_link"
+            ],
+            "title": "SpreadsheetItem",
+            "type": "object"
+          }
+        },
+        "title": "ListSpreadsheetsResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_spreadsheet_info",
+      "description": "Gets information about a specific spreadsheet including its sheets.\n\nArgs:\n    spreadsheet_id (str): The ID of the spreadsheet to get info for. Required.\n\nReturns:\n    str: Formatted spreadsheet information including title, locale, and sheets list.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "spreadsheet_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "title": "Spreadsheet Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "locale": {
+            "title": "Locale",
+            "type": "string"
+          },
+          "sheets": {
+            "items": {
+              "$ref": "#/$defs/SheetInfo"
+            },
+            "title": "Sheets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "title",
+          "locale",
+          "sheets"
+        ],
+        "$defs": {
+          "SheetInfo": {
+            "properties": {
+              "sheet_id": {
+                "title": "Sheet Id",
+                "type": "integer"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              },
+              "row_count": {
+                "title": "Row Count",
+                "type": "integer"
+              },
+              "column_count": {
+                "title": "Column Count",
+                "type": "integer"
+              },
+              "conditional_format_count": {
+                "title": "Conditional Format Count",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "sheet_id",
+              "title",
+              "row_count",
+              "column_count",
+              "conditional_format_count"
+            ],
+            "title": "SheetInfo",
+            "type": "object"
+          }
+        },
+        "title": "SpreadsheetInfoResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "read_sheet_values",
+      "description": "Reads values from a specific range in a Google Sheet.\n\nArgs:\n    spreadsheet_id (str): The ID of the spreadsheet. Required.\n    range_name (str): The range to read (e.g., \"Sheet1!A1:D10\", \"A1:D10\"). Defaults to \"A1:Z1000\".\n\nReturns:\n    str: The formatted values from the specified range.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string"
+          },
+          "range_name": {
+            "default": "A1:Z1000",
+            "type": "string"
+          }
+        },
+        "required": [
+          "spreadsheet_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "title": "Spreadsheet Id",
+            "type": "string"
+          },
+          "range_name": {
+            "title": "Range Name",
+            "type": "string"
+          },
+          "row_count": {
+            "title": "Row Count",
+            "type": "integer"
+          },
+          "values": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Values",
+            "type": "array"
+          },
+          "has_errors": {
+            "default": false,
+            "title": "Has Errors",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "range_name",
+          "row_count",
+          "values"
+        ],
+        "title": "ReadSheetValuesResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "modify_sheet_values",
+      "description": "Modifies values in a specific range of a Google Sheet - can write, update, or clear values.\n\nArgs:\n    spreadsheet_id (str): The ID of the spreadsheet. Required.\n    range_name (str): The range to modify (e.g., \"Sheet1!A1:D10\", \"A1:D10\"). Required.\n    values (Optional[Union[str, List[List[str]]]]): 2D array of values to write/update. Can be a JSON string or Python list. Required unless clear_values=True.\n    value_input_option (str): How to interpret input values (\"RAW\" or \"USER_ENTERED\"). Defaults to \"USER_ENTERED\".\n    clear_values (bool): If True, clears the range instead of writing values. Defaults to False.\n\nReturns:\n    str: Confirmation message of the successful modification operation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string"
+          },
+          "range_name": {
+            "type": "string"
+          },
+          "values": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "value_input_option": {
+            "default": "USER_ENTERED",
+            "type": "string"
+          },
+          "clear_values": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "range_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "title": "Spreadsheet Id",
+            "type": "string"
+          },
+          "range_name": {
+            "title": "Range Name",
+            "type": "string"
+          },
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "updated_cells": {
+            "default": 0,
+            "title": "Updated Cells",
+            "type": "integer"
+          },
+          "updated_rows": {
+            "default": 0,
+            "title": "Updated Rows",
+            "type": "integer"
+          },
+          "updated_columns": {
+            "default": 0,
+            "title": "Updated Columns",
+            "type": "integer"
+          },
+          "has_errors": {
+            "default": false,
+            "title": "Has Errors",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "range_name",
+          "operation"
+        ],
+        "title": "ModifySheetValuesResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "format_sheet_range",
+      "description": "Applies formatting to a range: background/text color and number/date formats.\n\nColors accept hex strings (#RRGGBB). Number formats follow Sheets types\n(e.g., NUMBER, NUMBER_WITH_GROUPING, CURRENCY, DATE, TIME, DATE_TIME,\nPERCENT, TEXT, SCIENTIFIC). If no sheet name is provided, the first sheet\nis used.\n\nArgs:\n    spreadsheet_id (str): The ID of the spreadsheet. Required.\n    range_name (str): A1-style range (optionally with sheet name). Required.\n    background_color (Optional[str]): Hex background color (e.g., \"#FFEECC\").\n    text_color (Optional[str]): Hex text color (e.g., \"#000000\").\n    number_format_type (Optional[str]): Sheets number format type (e.g., \"DATE\").\n    number_format_pattern (Optional[str]): Optional custom pattern for the number format.\n\nReturns:\n    str: Confirmation of the applied formatting.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string"
+          },
+          "range_name": {
+            "type": "string"
+          },
+          "background_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "text_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "number_format_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "number_format_pattern": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "range_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "title": "Spreadsheet Id",
+            "type": "string"
+          },
+          "range_name": {
+            "title": "Range Name",
+            "type": "string"
+          },
+          "applied_formats": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Applied Formats",
+            "type": "array"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "range_name",
+          "applied_formats"
+        ],
+        "title": "FormatSheetRangeResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "add_conditional_formatting",
+      "description": "Adds a conditional formatting rule to a range.\n\nArgs:\n    spreadsheet_id (str): The ID of the spreadsheet. Required.\n    range_name (str): A1-style range (optionally with sheet name). Required.\n    condition_type (str): Sheets condition type (e.g., NUMBER_GREATER, TEXT_CONTAINS, DATE_BEFORE, CUSTOM_FORMULA).\n    condition_values (Optional[Union[str, List[Union[str, int, float]]]]): Values for the condition; accepts a list or a JSON string representing a list. Depends on condition_type.\n    background_color (Optional[str]): Hex background color to apply when condition matches.\n    text_color (Optional[str]): Hex text color to apply when condition matches.\n    rule_index (Optional[int]): Optional position to insert the rule (0-based) within the sheet's rules.\n    gradient_points (Optional[Union[str, List[dict]]]): List (or JSON list) of gradient points for a color scale. If provided, a gradient rule is created and boolean parameters are ignored.\n\nReturns:\n    str: Confirmation of the added rule.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string"
+          },
+          "range_name": {
+            "type": "string"
+          },
+          "condition_type": {
+            "type": "string"
+          },
+          "condition_values": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "background_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "text_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "rule_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "gradient_points": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "range_name",
+          "condition_type"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "title": "Spreadsheet Id",
+            "type": "string"
+          },
+          "sheet_name": {
+            "title": "Sheet Name",
+            "type": "string"
+          },
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "rule_index": {
+            "title": "Rule Index",
+            "type": "integer"
+          },
+          "rule_type": {
+            "title": "Rule Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "sheet_name",
+          "operation",
+          "rule_index",
+          "rule_type"
+        ],
+        "title": "ConditionalFormatResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "update_conditional_formatting",
+      "description": "Updates an existing conditional formatting rule by index on a sheet.\n\nArgs:\n    spreadsheet_id (str): The ID of the spreadsheet. Required.\n    range_name (Optional[str]): A1-style range to apply the updated rule (optionally with sheet name). If omitted, existing ranges are preserved.\n    rule_index (int): Index of the rule to update (0-based).\n    condition_type (Optional[str]): Sheets condition type. If omitted, the existing rule's type is preserved.\n    condition_values (Optional[Union[str, List[Union[str, int, float]]]]): Values for the condition.\n    background_color (Optional[str]): Hex background color when condition matches.\n    text_color (Optional[str]): Hex text color when condition matches.\n    sheet_name (Optional[str]): Sheet name to locate the rule when range_name is omitted. Defaults to first sheet.\n    gradient_points (Optional[Union[str, List[dict]]]): If provided, updates the rule to a gradient color scale using these points.\n\nReturns:\n    str: Confirmation of the updated rule and the current rule state.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string"
+          },
+          "rule_index": {
+            "type": "integer"
+          },
+          "range_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "condition_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "condition_values": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "background_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "text_color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "sheet_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "gradient_points": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "rule_index"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "title": "Spreadsheet Id",
+            "type": "string"
+          },
+          "sheet_name": {
+            "title": "Sheet Name",
+            "type": "string"
+          },
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "rule_index": {
+            "title": "Rule Index",
+            "type": "integer"
+          },
+          "rule_type": {
+            "title": "Rule Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "sheet_name",
+          "operation",
+          "rule_index",
+          "rule_type"
+        ],
+        "title": "ConditionalFormatResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "delete_conditional_formatting",
+      "description": "Deletes an existing conditional formatting rule by index on a sheet.\n\nArgs:\n    spreadsheet_id (str): The ID of the spreadsheet. Required.\n    rule_index (int): Index of the rule to delete (0-based).\n    sheet_name (Optional[str]): Name of the sheet that contains the rule. Defaults to the first sheet if not provided.\n\nReturns:\n    str: Confirmation of the deletion and the current rule state.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string"
+          },
+          "rule_index": {
+            "type": "integer"
+          },
+          "sheet_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "rule_index"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "title": "Spreadsheet Id",
+            "type": "string"
+          },
+          "sheet_name": {
+            "title": "Sheet Name",
+            "type": "string"
+          },
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "rule_index": {
+            "title": "Rule Index",
+            "type": "integer"
+          },
+          "rule_type": {
+            "title": "Rule Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "sheet_name",
+          "operation",
+          "rule_index",
+          "rule_type"
+        ],
+        "title": "ConditionalFormatResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_spreadsheet",
+      "description": "Creates a new Google Spreadsheet.\n\nArgs:\n    title (str): The title of the new spreadsheet. Required.\n    sheet_names (Optional[List[str]]): List of sheet names to create. If not provided, creates one sheet with default name.\n\nReturns:\n    str: Information about the newly created spreadsheet including ID, URL, and locale.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "sheet_names": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "title": "Spreadsheet Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "spreadsheet_url": {
+            "title": "Spreadsheet Url",
+            "type": "string"
+          },
+          "locale": {
+            "title": "Locale",
+            "type": "string"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "title",
+          "spreadsheet_url",
+          "locale"
+        ],
+        "title": "CreateSpreadsheetResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_sheet",
+      "description": "Creates a new sheet within an existing spreadsheet.\n\nArgs:\n    spreadsheet_id (str): The ID of the spreadsheet. Required.\n    sheet_name (str): The name of the new sheet. Required.\n\nReturns:\n    str: Confirmation message of the successful sheet creation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string"
+          },
+          "sheet_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "sheet_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "title": "Spreadsheet Id",
+            "type": "string"
+          },
+          "sheet_id": {
+            "title": "Sheet Id",
+            "type": "integer"
+          },
+          "sheet_name": {
+            "title": "Sheet Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "sheet_id",
+          "sheet_name"
+        ],
+        "title": "CreateSheetResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "read_spreadsheet_comments",
+      "description": "Read all comments from a Google Spreadsheet.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "spreadsheet_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_spreadsheet_comment",
+      "description": "Create a new comment on a Google Spreadsheet.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string"
+          },
+          "comment_content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "comment_content"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "reply_to_spreadsheet_comment",
+      "description": "Reply to a specific comment in a Google Spreadsheet.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string"
+          },
+          "comment_id": {
+            "type": "string"
+          },
+          "reply_content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "comment_id",
+          "reply_content"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "resolve_spreadsheet_comment",
+      "description": "Resolve a comment in a Google Spreadsheet.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "spreadsheet_id": {
+            "type": "string"
+          },
+          "comment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "spreadsheet_id",
+          "comment_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    }
+  ]
+}

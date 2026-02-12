@@ -1,0 +1,352 @@
+{
+  "tools": [
+    {
+      "name": "start_google_auth",
+      "description": "Manually initiate Google OAuth authentication flow.\n\nNOTE: This tool should typically NOT be called directly. The authentication system\nautomatically handles credential checks and prompts for authentication when needed.\nOnly use this tool if:\n1. You need to re-authenticate with different credentials\n2. You want to proactively authenticate before using other tools\n3. The automatic authentication flow failed and you need to retry\n\nIn most cases, simply try calling the Google Workspace tool you need - it will\nautomatically handle authentication if required.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "list_spaces",
+      "description": "Lists Google Chat spaces (rooms and direct messages) accessible to the user.\n\nReturns:\n    ToolResult: A formatted list of Google Chat spaces accessible to the user.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page_size": {
+            "default": 100,
+            "type": "integer"
+          },
+          "space_type": {
+            "default": "all",
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "space_type_filter": {
+            "title": "Space Type Filter",
+            "type": "string"
+          },
+          "total_found": {
+            "title": "Total Found",
+            "type": "integer"
+          },
+          "spaces": {
+            "items": {
+              "$ref": "#/$defs/ChatSpace"
+            },
+            "title": "Spaces",
+            "type": "array"
+          }
+        },
+        "required": [
+          "space_type_filter",
+          "total_found",
+          "spaces"
+        ],
+        "$defs": {
+          "ChatSpace": {
+            "properties": {
+              "space_id": {
+                "title": "Space Id",
+                "type": "string"
+              },
+              "display_name": {
+                "title": "Display Name",
+                "type": "string"
+              },
+              "space_type": {
+                "title": "Space Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "space_id",
+              "display_name",
+              "space_type"
+            ],
+            "title": "ChatSpace",
+            "type": "object"
+          }
+        },
+        "title": "ChatListSpacesResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_messages",
+      "description": "Retrieves messages from a Google Chat space.\n\nReturns:\n    ToolResult: Formatted messages from the specified space.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "space_id": {
+            "type": "string"
+          },
+          "page_size": {
+            "default": 50,
+            "type": "integer"
+          },
+          "order_by": {
+            "default": "createTime desc",
+            "type": "string"
+          }
+        },
+        "required": [
+          "space_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          },
+          "space_name": {
+            "title": "Space Name",
+            "type": "string"
+          },
+          "total_messages": {
+            "title": "Total Messages",
+            "type": "integer"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/$defs/ChatMessage"
+            },
+            "title": "Messages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "space_id",
+          "space_name",
+          "total_messages",
+          "messages"
+        ],
+        "$defs": {
+          "ChatMessage": {
+            "properties": {
+              "message_id": {
+                "title": "Message Id",
+                "type": "string"
+              },
+              "sender": {
+                "title": "Sender",
+                "type": "string"
+              },
+              "create_time": {
+                "title": "Create Time",
+                "type": "string"
+              },
+              "text": {
+                "title": "Text",
+                "type": "string"
+              }
+            },
+            "required": [
+              "message_id",
+              "sender",
+              "create_time",
+              "text"
+            ],
+            "title": "ChatMessage",
+            "type": "object"
+          }
+        },
+        "title": "ChatGetMessagesResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "send_message",
+      "description": "Sends a message to a Google Chat space.\n\nReturns:\n    ToolResult: Confirmation message with sent message details.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "space_id": {
+            "type": "string"
+          },
+          "message_text": {
+            "type": "string"
+          },
+          "thread_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "space_id",
+          "message_text"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "space_id": {
+            "title": "Space Id",
+            "type": "string"
+          },
+          "message_id": {
+            "title": "Message Id",
+            "type": "string"
+          },
+          "create_time": {
+            "title": "Create Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "space_id",
+          "message_id",
+          "create_time"
+        ],
+        "title": "ChatSendMessageResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "search_messages",
+      "description": "Searches for messages in Google Chat spaces by text content.\n\nReturns:\n    ToolResult: A formatted list of messages matching the search query.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "space_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "page_size": {
+            "default": 25,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "context": {
+            "title": "Context",
+            "type": "string"
+          },
+          "total_found": {
+            "title": "Total Found",
+            "type": "integer"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/$defs/ChatSearchMessage"
+            },
+            "title": "Messages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "query",
+          "context",
+          "total_found",
+          "messages"
+        ],
+        "$defs": {
+          "ChatSearchMessage": {
+            "properties": {
+              "sender": {
+                "title": "Sender",
+                "type": "string"
+              },
+              "create_time": {
+                "title": "Create Time",
+                "type": "string"
+              },
+              "text": {
+                "title": "Text",
+                "type": "string"
+              },
+              "space_name": {
+                "title": "Space Name",
+                "type": "string"
+              }
+            },
+            "required": [
+              "sender",
+              "create_time",
+              "text",
+              "space_name"
+            ],
+            "title": "ChatSearchMessage",
+            "type": "object"
+          }
+        },
+        "title": "ChatSearchMessagesResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    }
+  ]
+}

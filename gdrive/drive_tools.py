@@ -848,7 +848,7 @@ async def import_to_google_doc(
     preserving formatting like headings, lists, bold, italic, etc.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         file_name (str): The name for the new Google Doc (extension will be ignored).
         content (Optional[str]): Text content for text-based formats (MD, TXT, HTML).
         file_path (Optional[str]): Local file path for binary formats (DOCX, ODT). Supports file:// URLs.
@@ -1480,7 +1480,7 @@ async def get_drive_shareable_link(
     Gets the shareable link for a Google Drive file or folder.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         file_id (str): The ID of the file or folder to get the shareable link for. Required.
 
     Returns:
@@ -1573,7 +1573,7 @@ async def share_drive_file(
     When sharing a folder, all files inside inherit the permission.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         file_id (str): The ID of the file or folder to share. Required.
         share_with (Optional[str]): Email address (for user/group), domain name (for domain), or omit for 'anyone'.
         role (str): Permission role - 'reader', 'commenter', or 'writer'. Defaults to 'reader'.
@@ -1683,7 +1683,7 @@ async def batch_share_drive_file(
     consider splitting into multiple calls.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         file_id (str): The ID of the file or folder to share. Required.
         recipients (List[Dict]): List of recipient objects. Each should have:
             - email (str): Recipient email address. Required for 'user' or 'group' share_type.
@@ -1878,7 +1878,7 @@ async def update_drive_permission(
     Updates an existing permission on a Google Drive file or folder.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         file_id (str): The ID of the file or folder. Required.
         permission_id (str): The ID of the permission to update (from get_drive_file_permissions). Required.
         role (Optional[str]): New role - 'reader', 'commenter', or 'writer'. If not provided, role unchanged.
@@ -1971,7 +1971,7 @@ async def remove_drive_permission(
     Removes a permission from a Google Drive file or folder, revoking access.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         file_id (str): The ID of the file or folder. Required.
         permission_id (str): The ID of the permission to remove (from get_drive_file_permissions). Required.
 
@@ -2025,7 +2025,7 @@ async def copy_drive_file(
     The copy maintains all formatting and content from the original file.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         file_id (str): The ID of the file to copy. Required.
         new_name (Optional[str]): New name for the copied file. If not provided, uses "Copy of [original name]".
         parent_folder_id (str): The ID of the folder where the copy should be created. Defaults to 'root' (My Drive).
@@ -2109,7 +2109,7 @@ async def transfer_drive_ownership(
     Only works within the same Google Workspace domain or for personal accounts.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         file_id (str): The ID of the file or folder to transfer. Required.
         new_owner_email (str): Email address of the new owner. Required.
         move_to_new_owners_root (bool): If True, moves the file to the new owner's My Drive root. Defaults to False.

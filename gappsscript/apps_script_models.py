@@ -8,7 +8,7 @@ These models provide machine-parseable JSON alongside the human-readable text ou
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from pydantic import TypeAdapter
+from core.structured_output import generate_schema
 
 
 @dataclass
@@ -240,26 +240,21 @@ class GenerateTriggerCodeResult:
     is_simple_trigger: bool
 
 
-def _generate_schema(cls: type) -> dict[str, Any]:
-    """Generate JSON schema for a dataclass."""
-    return TypeAdapter(cls).json_schema()
-
-
 # Pre-generated JSON schemas for use in @server.tool() decorators
-LIST_SCRIPT_PROJECTS_SCHEMA = _generate_schema(ListScriptProjectsResult)
-GET_SCRIPT_PROJECT_SCHEMA = _generate_schema(GetScriptProjectResult)
-GET_SCRIPT_CONTENT_SCHEMA = _generate_schema(GetScriptContentResult)
-CREATE_SCRIPT_PROJECT_SCHEMA = _generate_schema(CreateScriptProjectResult)
-UPDATE_SCRIPT_CONTENT_SCHEMA = _generate_schema(UpdateScriptContentResult)
-RUN_SCRIPT_FUNCTION_SCHEMA = _generate_schema(RunScriptFunctionResult)
-CREATE_DEPLOYMENT_SCHEMA = _generate_schema(CreateDeploymentResult)
-LIST_DEPLOYMENTS_SCHEMA = _generate_schema(ListDeploymentsResult)
-UPDATE_DEPLOYMENT_SCHEMA = _generate_schema(UpdateDeploymentResult)
-DELETE_DEPLOYMENT_SCHEMA = _generate_schema(DeleteDeploymentResult)
-LIST_SCRIPT_PROCESSES_SCHEMA = _generate_schema(ListScriptProcessesResult)
-DELETE_SCRIPT_PROJECT_SCHEMA = _generate_schema(DeleteScriptProjectResult)
-LIST_VERSIONS_SCHEMA = _generate_schema(ListVersionsResult)
-CREATE_VERSION_SCHEMA = _generate_schema(CreateVersionResult)
-GET_VERSION_SCHEMA = _generate_schema(GetVersionResult)
-GET_SCRIPT_METRICS_SCHEMA = _generate_schema(GetScriptMetricsResult)
-GENERATE_TRIGGER_CODE_SCHEMA = _generate_schema(GenerateTriggerCodeResult)
+LIST_SCRIPT_PROJECTS_SCHEMA = generate_schema(ListScriptProjectsResult)
+GET_SCRIPT_PROJECT_SCHEMA = generate_schema(GetScriptProjectResult)
+GET_SCRIPT_CONTENT_SCHEMA = generate_schema(GetScriptContentResult)
+CREATE_SCRIPT_PROJECT_SCHEMA = generate_schema(CreateScriptProjectResult)
+UPDATE_SCRIPT_CONTENT_SCHEMA = generate_schema(UpdateScriptContentResult)
+RUN_SCRIPT_FUNCTION_SCHEMA = generate_schema(RunScriptFunctionResult)
+CREATE_DEPLOYMENT_SCHEMA = generate_schema(CreateDeploymentResult)
+LIST_DEPLOYMENTS_SCHEMA = generate_schema(ListDeploymentsResult)
+UPDATE_DEPLOYMENT_SCHEMA = generate_schema(UpdateDeploymentResult)
+DELETE_DEPLOYMENT_SCHEMA = generate_schema(DeleteDeploymentResult)
+LIST_SCRIPT_PROCESSES_SCHEMA = generate_schema(ListScriptProcessesResult)
+DELETE_SCRIPT_PROJECT_SCHEMA = generate_schema(DeleteScriptProjectResult)
+LIST_VERSIONS_SCHEMA = generate_schema(ListVersionsResult)
+CREATE_VERSION_SCHEMA = generate_schema(CreateVersionResult)
+GET_VERSION_SCHEMA = generate_schema(GetVersionResult)
+GET_SCRIPT_METRICS_SCHEMA = generate_schema(GetScriptMetricsResult)
+GENERATE_TRIGGER_CODE_SCHEMA = generate_schema(GenerateTriggerCodeResult)

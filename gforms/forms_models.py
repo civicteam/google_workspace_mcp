@@ -6,9 +6,9 @@ These models provide machine-parseable JSON alongside the human-readable text ou
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Optional
 
-from pydantic import TypeAdapter
+from core.structured_output import generate_schema
 
 
 @dataclass
@@ -112,15 +112,10 @@ class FormsBatchUpdateResult:
     replies: list[FormsBatchUpdateReply]
 
 
-def _generate_schema(cls: type) -> dict[str, Any]:
-    """Generate JSON schema for a dataclass."""
-    return TypeAdapter(cls).json_schema()
-
-
 # Pre-generated JSON schemas for use in @server.tool() decorators
-FORMS_CREATE_RESULT_SCHEMA = _generate_schema(FormsCreateResult)
-FORMS_GET_RESULT_SCHEMA = _generate_schema(FormsGetResult)
-FORMS_PUBLISH_SETTINGS_RESULT_SCHEMA = _generate_schema(FormsPublishSettingsResult)
-FORMS_RESPONSE_RESULT_SCHEMA = _generate_schema(FormsResponseResult)
-FORMS_LIST_RESPONSES_RESULT_SCHEMA = _generate_schema(FormsListResponsesResult)
-FORMS_BATCH_UPDATE_RESULT_SCHEMA = _generate_schema(FormsBatchUpdateResult)
+FORMS_CREATE_RESULT_SCHEMA = generate_schema(FormsCreateResult)
+FORMS_GET_RESULT_SCHEMA = generate_schema(FormsGetResult)
+FORMS_PUBLISH_SETTINGS_RESULT_SCHEMA = generate_schema(FormsPublishSettingsResult)
+FORMS_RESPONSE_RESULT_SCHEMA = generate_schema(FormsResponseResult)
+FORMS_LIST_RESPONSES_RESULT_SCHEMA = generate_schema(FormsListResponsesResult)
+FORMS_BATCH_UPDATE_RESULT_SCHEMA = generate_schema(FormsBatchUpdateResult)

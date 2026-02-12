@@ -1,0 +1,442 @@
+{
+  "tools": [
+    {
+      "name": "start_google_auth",
+      "description": "Manually initiate Google OAuth authentication flow.\n\nNOTE: This tool should typically NOT be called directly. The authentication system\nautomatically handles credential checks and prompts for authentication when needed.\nOnly use this tool if:\n1. You need to re-authenticate with different credentials\n2. You want to proactively authenticate before using other tools\n3. The automatic authentication flow failed and you need to retry\n\nIn most cases, simply try calling the Google Workspace tool you need - it will\nautomatically handle authentication if required.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "search_custom",
+      "description": "Performs a search using Google Custom Search JSON API.\n\nArgs:\n    q (str): The search query. Required.\n    num (int): Number of results to return (1-10). Defaults to 10.\n    start (int): The index of the first result to return (1-based). Defaults to 1.\n    safe (Literal[\"active\", \"moderate\", \"off\"]): Safe search level. Defaults to \"off\".\n    search_type (Optional[Literal[\"image\"]]): Search for images if set to \"image\".\n    site_search (Optional[str]): Restrict search to a specific site/domain.\n    site_search_filter (Optional[Literal[\"e\", \"i\"]]): Exclude (\"e\") or include (\"i\") site_search results.\n    date_restrict (Optional[str]): Restrict results by date (e.g., \"d5\" for past 5 days, \"m3\" for past 3 months).\n    file_type (Optional[str]): Filter by file type (e.g., \"pdf\", \"doc\").\n    language (Optional[str]): Language code for results (e.g., \"lang_en\").\n    country (Optional[str]): Country code for results (e.g., \"countryUS\").\n\nReturns:\n    ToolResult: Formatted search results including title, link, and snippet for each result.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "q": {
+            "type": "string"
+          },
+          "num": {
+            "default": 10,
+            "type": "integer"
+          },
+          "start": {
+            "default": 1,
+            "type": "integer"
+          },
+          "safe": {
+            "default": "off",
+            "enum": [
+              "active",
+              "moderate",
+              "off"
+            ],
+            "type": "string"
+          },
+          "search_type": {
+            "anyOf": [
+              {
+                "const": "image",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "site_search": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "site_search_filter": {
+            "anyOf": [
+              {
+                "enum": [
+                  "e",
+                  "i"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "date_restrict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "file_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "q"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "search_engine_id": {
+            "title": "Search Engine Id",
+            "type": "string"
+          },
+          "total_results": {
+            "title": "Total Results",
+            "type": "string"
+          },
+          "search_time_seconds": {
+            "title": "Search Time Seconds",
+            "type": "number"
+          },
+          "results_returned": {
+            "title": "Results Returned",
+            "type": "integer"
+          },
+          "start_index": {
+            "title": "Start Index",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/$defs/SearchResultItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_page_start": {
+            "default": null,
+            "title": "Next Page Start",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query",
+          "search_engine_id",
+          "total_results",
+          "search_time_seconds",
+          "results_returned",
+          "start_index"
+        ],
+        "$defs": {
+          "SearchResultItem": {
+            "properties": {
+              "position": {
+                "title": "Position",
+                "type": "integer"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              },
+              "link": {
+                "title": "Link",
+                "type": "string"
+              },
+              "snippet": {
+                "title": "Snippet",
+                "type": "string"
+              },
+              "content_type": {
+                "default": null,
+                "title": "Content Type",
+                "type": "string"
+              },
+              "published_date": {
+                "default": null,
+                "title": "Published Date",
+                "type": "string"
+              }
+            },
+            "required": [
+              "position",
+              "title",
+              "link",
+              "snippet"
+            ],
+            "title": "SearchResultItem",
+            "type": "object"
+          }
+        },
+        "title": "SearchResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_search_engine_info",
+      "description": "Retrieves metadata about a Programmable Search Engine.\n\nReturns:\n    ToolResult: Information about the search engine including its configuration and available refinements.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "search_engine_id": {
+            "title": "Search Engine Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "total_indexed_results": {
+            "default": null,
+            "title": "Total Indexed Results",
+            "type": "string"
+          },
+          "facets": {
+            "items": {
+              "$ref": "#/$defs/SearchEngineFacet"
+            },
+            "title": "Facets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "search_engine_id",
+          "title"
+        ],
+        "$defs": {
+          "SearchEngineFacet": {
+            "properties": {
+              "label": {
+                "title": "Label",
+                "type": "string"
+              },
+              "anchor": {
+                "title": "Anchor",
+                "type": "string"
+              }
+            },
+            "required": [
+              "label",
+              "anchor"
+            ],
+            "title": "SearchEngineFacet",
+            "type": "object"
+          }
+        },
+        "title": "SearchEngineInfo"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "search_custom_siterestrict",
+      "description": "Performs a search restricted to specific sites using Google Custom Search.\n\nArgs:\n    q (str): The search query. Required.\n    sites (List[str]): List of sites/domains to search within.\n    num (int): Number of results to return (1-10). Defaults to 10.\n    start (int): The index of the first result to return (1-based). Defaults to 1.\n    safe (Literal[\"active\", \"moderate\", \"off\"]): Safe search level. Defaults to \"off\".\n\nReturns:\n    ToolResult: Formatted search results from the specified sites.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "q": {
+            "type": "string"
+          },
+          "sites": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "num": {
+            "default": 10,
+            "type": "integer"
+          },
+          "start": {
+            "default": 1,
+            "type": "integer"
+          },
+          "safe": {
+            "default": "off",
+            "enum": [
+              "active",
+              "moderate",
+              "off"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "q",
+          "sites"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "search_engine_id": {
+            "title": "Search Engine Id",
+            "type": "string"
+          },
+          "total_results": {
+            "title": "Total Results",
+            "type": "string"
+          },
+          "search_time_seconds": {
+            "title": "Search Time Seconds",
+            "type": "number"
+          },
+          "results_returned": {
+            "title": "Results Returned",
+            "type": "integer"
+          },
+          "start_index": {
+            "title": "Start Index",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/$defs/SearchResultItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_page_start": {
+            "default": null,
+            "title": "Next Page Start",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query",
+          "search_engine_id",
+          "total_results",
+          "search_time_seconds",
+          "results_returned",
+          "start_index"
+        ],
+        "$defs": {
+          "SearchResultItem": {
+            "properties": {
+              "position": {
+                "title": "Position",
+                "type": "integer"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              },
+              "link": {
+                "title": "Link",
+                "type": "string"
+              },
+              "snippet": {
+                "title": "Snippet",
+                "type": "string"
+              },
+              "content_type": {
+                "default": null,
+                "title": "Content Type",
+                "type": "string"
+              },
+              "published_date": {
+                "default": null,
+                "title": "Published Date",
+                "type": "string"
+              }
+            },
+            "required": [
+              "position",
+              "title",
+              "link",
+              "snippet"
+            ],
+            "title": "SearchResultItem",
+            "type": "object"
+          }
+        },
+        "title": "SearchResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    }
+  ]
+}

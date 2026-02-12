@@ -6,9 +6,8 @@ These models provide machine-parseable JSON alongside the human-readable text ou
 """
 
 from dataclasses import dataclass
-from typing import Any
 
-from pydantic import TypeAdapter
+from core.structured_output import generate_schema
 
 
 @dataclass
@@ -78,13 +77,8 @@ class ChatSearchMessagesResult:
     messages: list[ChatSearchMessage]
 
 
-def _generate_schema(cls: type) -> dict[str, Any]:
-    """Generate JSON schema for a dataclass."""
-    return TypeAdapter(cls).json_schema()
-
-
 # Pre-generated JSON schemas for use in @server.tool() decorators
-CHAT_LIST_SPACES_RESULT_SCHEMA = _generate_schema(ChatListSpacesResult)
-CHAT_GET_MESSAGES_RESULT_SCHEMA = _generate_schema(ChatGetMessagesResult)
-CHAT_SEND_MESSAGE_RESULT_SCHEMA = _generate_schema(ChatSendMessageResult)
-CHAT_SEARCH_MESSAGES_RESULT_SCHEMA = _generate_schema(ChatSearchMessagesResult)
+CHAT_LIST_SPACES_RESULT_SCHEMA = generate_schema(ChatListSpacesResult)
+CHAT_GET_MESSAGES_RESULT_SCHEMA = generate_schema(ChatGetMessagesResult)
+CHAT_SEND_MESSAGE_RESULT_SCHEMA = generate_schema(ChatSendMessageResult)
+CHAT_SEARCH_MESSAGES_RESULT_SCHEMA = generate_schema(ChatSearchMessagesResult)

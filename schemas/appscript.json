@@ -1,0 +1,1153 @@
+{
+  "tools": [
+    {
+      "name": "start_google_auth",
+      "description": "Manually initiate Google OAuth authentication flow.\n\nNOTE: This tool should typically NOT be called directly. The authentication system\nautomatically handles credential checks and prompts for authentication when needed.\nOnly use this tool if:\n1. You need to re-authenticate with different credentials\n2. You want to proactively authenticate before using other tools\n3. The automatic authentication flow failed and you need to retry\n\nIn most cases, simply try calling the Google Workspace tool you need - it will\nautomatically handle authentication if required.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "list_script_projects",
+      "description": "Lists Google Apps Script projects accessible to the user.\n\nUses Drive API to find Apps Script files.\n\nArgs:\n\n\n    page_size: Number of results per page (default: 50)\n    page_token: Token for pagination (optional)\n\nReturns:\n    ToolResult: Formatted list of script projects with structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page_size": {
+            "default": 50,
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "total_found": {
+            "title": "Total Found",
+            "type": "integer"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/$defs/ScriptProjectSummary"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "next_page_token": {
+            "default": null,
+            "title": "Next Page Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "total_found",
+          "projects"
+        ],
+        "$defs": {
+          "ScriptProjectSummary": {
+            "properties": {
+              "script_id": {
+                "title": "Script Id",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              },
+              "created_time": {
+                "title": "Created Time",
+                "type": "string"
+              },
+              "modified_time": {
+                "title": "Modified Time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "script_id",
+              "title",
+              "created_time",
+              "modified_time"
+            ],
+            "title": "ScriptProjectSummary",
+            "type": "object"
+          }
+        },
+        "title": "ListScriptProjectsResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_script_project",
+      "description": "Retrieves complete project details including all source files.\n\nArgs:\n\n\n    script_id: The script project ID\n\nReturns:\n    ToolResult: Formatted project details with all file contents and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "script_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "title": "Script Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "creator": {
+            "title": "Creator",
+            "type": "string"
+          },
+          "created_time": {
+            "title": "Created Time",
+            "type": "string"
+          },
+          "modified_time": {
+            "title": "Modified Time",
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/$defs/ScriptFile"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "script_id",
+          "title",
+          "creator",
+          "created_time",
+          "modified_time",
+          "files"
+        ],
+        "$defs": {
+          "ScriptFile": {
+            "properties": {
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "file_type": {
+                "title": "File Type",
+                "type": "string"
+              },
+              "source_preview": {
+                "default": null,
+                "title": "Source Preview",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "file_type"
+            ],
+            "title": "ScriptFile",
+            "type": "object"
+          }
+        },
+        "title": "GetScriptProjectResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_script_content",
+      "description": "Retrieves content of a specific file within a project.\n\nArgs:\n\n\n    script_id: The script project ID\n    file_name: Name of the file to retrieve\n\nReturns:\n    ToolResult: File content with structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "type": "string"
+          },
+          "file_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "script_id",
+          "file_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "title": "Script Id",
+            "type": "string"
+          },
+          "file_name": {
+            "title": "File Name",
+            "type": "string"
+          },
+          "file_type": {
+            "title": "File Type",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "found": {
+            "default": true,
+            "title": "Found",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "script_id",
+          "file_name",
+          "file_type",
+          "source"
+        ],
+        "title": "GetScriptContentResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_script_project",
+      "description": "Creates a new Apps Script project.\n\nArgs:\n\n\n    title: Project title\n    parent_id: Optional Drive folder ID or bound container ID\n\nReturns:\n    ToolResult: Formatted string with new project details and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "title": "Script Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "edit_url": {
+            "title": "Edit Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "script_id",
+          "title",
+          "edit_url"
+        ],
+        "title": "CreateScriptProjectResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "update_script_content",
+      "description": "Updates or creates files in a script project.\n\nArgs:\n\n\n    script_id: The script project ID\n    files: List of file objects with name, type, and source\n\nReturns:\n    ToolResult: Formatted string confirming update with file list and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "script_id",
+          "files"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "title": "Script Id",
+            "type": "string"
+          },
+          "files_updated": {
+            "title": "Files Updated",
+            "type": "integer"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/$defs/UpdatedFile"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "script_id",
+          "files_updated",
+          "files"
+        ],
+        "$defs": {
+          "UpdatedFile": {
+            "properties": {
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "file_type": {
+                "title": "File Type",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "file_type"
+            ],
+            "title": "UpdatedFile",
+            "type": "object"
+          }
+        },
+        "title": "UpdateScriptContentResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "run_script_function",
+      "description": "Executes a function in a deployed script.\n\nArgs:\n\n\n    script_id: The script project ID\n    function_name: Name of function to execute\n    parameters: Optional list of parameters to pass\n    dev_mode: Whether to run latest code vs deployed version\n\nReturns:\n    ToolResult: Formatted string with execution result or error and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "type": "string"
+          },
+          "function_name": {
+            "type": "string"
+          },
+          "parameters": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "dev_mode": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "script_id",
+          "function_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "function_name": {
+            "title": "Function Name",
+            "type": "string"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          },
+          "result": {
+            "default": null,
+            "title": "Result"
+          },
+          "error_message": {
+            "default": null,
+            "title": "Error Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "function_name",
+          "success"
+        ],
+        "title": "RunScriptFunctionResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_deployment",
+      "description": "Creates a new deployment of the script.\n\nArgs:\n\n\n    script_id: The script project ID\n    description: Deployment description\n    version_description: Optional version description\n\nReturns:\n    ToolResult: Formatted string with deployment details and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "version_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "script_id",
+          "description"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "title": "Script Id",
+            "type": "string"
+          },
+          "deployment_id": {
+            "title": "Deployment Id",
+            "type": "string"
+          },
+          "version_number": {
+            "title": "Version Number",
+            "type": "integer"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          }
+        },
+        "required": [
+          "script_id",
+          "deployment_id",
+          "version_number",
+          "description"
+        ],
+        "title": "CreateDeploymentResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "list_deployments",
+      "description": "Lists all deployments for a script project.\n\nArgs:\n\n\n    script_id: The script project ID\n\nReturns:\n    ToolResult: Formatted string with deployment list and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "script_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "title": "Script Id",
+            "type": "string"
+          },
+          "total_found": {
+            "title": "Total Found",
+            "type": "integer"
+          },
+          "deployments": {
+            "items": {
+              "$ref": "#/$defs/DeploymentSummary"
+            },
+            "title": "Deployments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "script_id",
+          "total_found",
+          "deployments"
+        ],
+        "$defs": {
+          "DeploymentSummary": {
+            "properties": {
+              "deployment_id": {
+                "title": "Deployment Id",
+                "type": "string"
+              },
+              "description": {
+                "title": "Description",
+                "type": "string"
+              },
+              "update_time": {
+                "title": "Update Time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "deployment_id",
+              "description",
+              "update_time"
+            ],
+            "title": "DeploymentSummary",
+            "type": "object"
+          }
+        },
+        "title": "ListDeploymentsResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "update_deployment",
+      "description": "Updates an existing deployment configuration.\n\nArgs:\n\n\n    script_id: The script project ID\n    deployment_id: The deployment ID to update\n    description: Optional new description\n\nReturns:\n    ToolResult: Formatted string confirming update with structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "type": "string"
+          },
+          "deployment_id": {
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "script_id",
+          "deployment_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "title": "Script Id",
+            "type": "string"
+          },
+          "deployment_id": {
+            "title": "Deployment Id",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          }
+        },
+        "required": [
+          "script_id",
+          "deployment_id",
+          "description"
+        ],
+        "title": "UpdateDeploymentResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "delete_deployment",
+      "description": "Deletes a deployment.\n\nArgs:\n\n\n    script_id: The script project ID\n    deployment_id: The deployment ID to delete\n\nReturns:\n    ToolResult: Confirmation message with structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "type": "string"
+          },
+          "deployment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "script_id",
+          "deployment_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "title": "Script Id",
+            "type": "string"
+          },
+          "deployment_id": {
+            "title": "Deployment Id",
+            "type": "string"
+          },
+          "deleted": {
+            "default": true,
+            "title": "Deleted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "script_id",
+          "deployment_id"
+        ],
+        "title": "DeleteDeploymentResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "list_script_processes",
+      "description": "Lists recent execution processes for user's scripts.\n\nArgs:\n\n\n    page_size: Number of results (default: 50)\n    script_id: Optional filter by script ID\n\nReturns:\n    ToolResult: Formatted string with process list and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "page_size": {
+            "default": 50,
+            "type": "integer"
+          },
+          "script_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "total_found": {
+            "title": "Total Found",
+            "type": "integer"
+          },
+          "script_id": {
+            "default": null,
+            "title": "Script Id",
+            "type": "string"
+          },
+          "processes": {
+            "items": {
+              "$ref": "#/$defs/ProcessSummary"
+            },
+            "title": "Processes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "total_found"
+        ],
+        "$defs": {
+          "ProcessSummary": {
+            "properties": {
+              "function_name": {
+                "title": "Function Name",
+                "type": "string"
+              },
+              "process_status": {
+                "title": "Process Status",
+                "type": "string"
+              },
+              "start_time": {
+                "title": "Start Time",
+                "type": "string"
+              },
+              "duration": {
+                "title": "Duration",
+                "type": "string"
+              }
+            },
+            "required": [
+              "function_name",
+              "process_status",
+              "start_time",
+              "duration"
+            ],
+            "title": "ProcessSummary",
+            "type": "object"
+          }
+        },
+        "title": "ListScriptProcessesResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "delete_script_project",
+      "description": "Deletes an Apps Script project.\n\nThis permanently deletes the script project. The action cannot be undone.\n\nArgs:\n\n\n    script_id: The script project ID to delete\n\nReturns:\n    ToolResult: Confirmation message with structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "script_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "title": "Script Id",
+            "type": "string"
+          },
+          "deleted": {
+            "default": true,
+            "title": "Deleted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "script_id"
+        ],
+        "title": "DeleteScriptProjectResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "list_versions",
+      "description": "Lists all versions of a script project.\n\nVersions are immutable snapshots of your script code.\nThey are created when you deploy or explicitly create a version.\n\nArgs:\n\n\n    script_id: The script project ID\n\nReturns:\n    ToolResult: Formatted string with version list and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "script_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "title": "Script Id",
+            "type": "string"
+          },
+          "total_found": {
+            "title": "Total Found",
+            "type": "integer"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/$defs/VersionSummary"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "script_id",
+          "total_found",
+          "versions"
+        ],
+        "$defs": {
+          "VersionSummary": {
+            "properties": {
+              "version_number": {
+                "title": "Version Number",
+                "type": "integer"
+              },
+              "description": {
+                "title": "Description",
+                "type": "string"
+              },
+              "create_time": {
+                "title": "Create Time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "version_number",
+              "description",
+              "create_time"
+            ],
+            "title": "VersionSummary",
+            "type": "object"
+          }
+        },
+        "title": "ListVersionsResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_version",
+      "description": "Creates a new immutable version of a script project.\n\nVersions capture a snapshot of the current script code.\nOnce created, versions cannot be modified.\n\nArgs:\n\n\n    script_id: The script project ID\n    description: Optional description for this version\n\nReturns:\n    ToolResult: Formatted string with new version details and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "script_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "title": "Script Id",
+            "type": "string"
+          },
+          "version_number": {
+            "title": "Version Number",
+            "type": "integer"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "create_time": {
+            "title": "Create Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "script_id",
+          "version_number",
+          "description",
+          "create_time"
+        ],
+        "title": "CreateVersionResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_version",
+      "description": "Gets details of a specific version.\n\nArgs:\n\n\n    script_id: The script project ID\n    version_number: The version number to retrieve (1, 2, 3, etc.)\n\nReturns:\n    ToolResult: Formatted string with version details and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "type": "string"
+          },
+          "version_number": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "script_id",
+          "version_number"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "title": "Script Id",
+            "type": "string"
+          },
+          "version_number": {
+            "title": "Version Number",
+            "type": "integer"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "create_time": {
+            "title": "Create Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "script_id",
+          "version_number",
+          "description",
+          "create_time"
+        ],
+        "title": "GetVersionResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_script_metrics",
+      "description": "Gets execution metrics for a script project.\n\nReturns analytics data including active users, total executions,\nand failed executions over time.\n\nArgs:\n\n\n    script_id: The script project ID\n    metrics_granularity: Granularity of metrics - \"DAILY\" or \"WEEKLY\"\n\nReturns:\n    ToolResult: Formatted string with metrics data and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "type": "string"
+          },
+          "metrics_granularity": {
+            "default": "DAILY",
+            "type": "string"
+          }
+        },
+        "required": [
+          "script_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "script_id": {
+            "title": "Script Id",
+            "type": "string"
+          },
+          "granularity": {
+            "title": "Granularity",
+            "type": "string"
+          },
+          "active_users": {
+            "items": {
+              "$ref": "#/$defs/MetricDataPoint"
+            },
+            "title": "Active Users",
+            "type": "array"
+          },
+          "total_executions": {
+            "items": {
+              "$ref": "#/$defs/MetricDataPoint"
+            },
+            "title": "Total Executions",
+            "type": "array"
+          },
+          "failed_executions": {
+            "items": {
+              "$ref": "#/$defs/MetricDataPoint"
+            },
+            "title": "Failed Executions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "script_id",
+          "granularity"
+        ],
+        "$defs": {
+          "MetricDataPoint": {
+            "properties": {
+              "start_time": {
+                "title": "Start Time",
+                "type": "string"
+              },
+              "end_time": {
+                "title": "End Time",
+                "type": "string"
+              },
+              "value": {
+                "title": "Value",
+                "type": "string"
+              }
+            },
+            "required": [
+              "start_time",
+              "end_time",
+              "value"
+            ],
+            "title": "MetricDataPoint",
+            "type": "object"
+          }
+        },
+        "title": "GetScriptMetricsResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "generate_trigger_code",
+      "description": "Generates Apps Script code for creating triggers.\n\nThe Apps Script API cannot create triggers directly - they must be created\nfrom within Apps Script itself. This tool generates the code you need.\n\nArgs:\n    trigger_type: Type of trigger. One of:\n                  - \"time_minutes\" (run every N minutes: 1, 5, 10, 15, 30)\n                  - \"time_hours\" (run every N hours: 1, 2, 4, 6, 8, 12)\n                  - \"time_daily\" (run daily at a specific hour: 0-23)\n                  - \"time_weekly\" (run weekly on a specific day)\n                  - \"on_open\" (simple trigger - runs when document opens)\n                  - \"on_edit\" (simple trigger - runs when user edits)\n                  - \"on_form_submit\" (runs when form is submitted)\n                  - \"on_change\" (runs when content changes)\n\n    function_name: The function to run when trigger fires (e.g., \"sendDailyReport\")\n\n    schedule: Schedule details (depends on trigger_type):\n              - For time_minutes: \"1\", \"5\", \"10\", \"15\", or \"30\"\n              - For time_hours: \"1\", \"2\", \"4\", \"6\", \"8\", or \"12\"\n              - For time_daily: hour as \"0\"-\"23\" (e.g., \"9\" for 9am)\n              - For time_weekly: \"MONDAY\", \"TUESDAY\", etc.\n              - For simple triggers (on_open, on_edit): not needed\n\nReturns:\n    ToolResult: Apps Script code to create the trigger with structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "trigger_type": {
+            "type": "string"
+          },
+          "function_name": {
+            "type": "string"
+          },
+          "schedule": {
+            "default": "",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trigger_type",
+          "function_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "trigger_type": {
+            "title": "Trigger Type",
+            "type": "string"
+          },
+          "function_name": {
+            "title": "Function Name",
+            "type": "string"
+          },
+          "schedule": {
+            "title": "Schedule",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "is_simple_trigger": {
+            "title": "Is Simple Trigger",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "trigger_type",
+          "function_name",
+          "schedule",
+          "code",
+          "is_simple_trigger"
+        ],
+        "title": "GenerateTriggerCodeResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    }
+  ]
+}

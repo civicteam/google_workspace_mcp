@@ -1304,7 +1304,7 @@ async def query_freebusy(
     Returns free/busy information for a set of calendars.
 
     Args:
-        user_google_email (str): The user's Google email address. Required.
+
         time_min (str): The start of the interval for the query in RFC3339 format (e.g., '2024-05-12T10:00:00Z' or '2024-05-12').
         time_max (str): The end of the interval for the query in RFC3339 format (e.g., '2024-05-12T18:00:00Z' or '2024-05-12').
         calendar_ids (Optional[List[str]]): List of calendar identifiers to query. If not provided, queries the primary calendar. Use 'primary' for the user's primary calendar or specific calendar IDs obtained from `list_calendars`.
@@ -1355,7 +1355,6 @@ async def query_freebusy(
 
     if not calendars:
         empty_result = FreeBusyResult(
-            user_email=user_google_email,
             time_min=time_min_result,
             time_max=time_max_result,
             calendars=[],
@@ -1434,7 +1433,6 @@ async def query_freebusy(
 
     # Build final structured output
     structured_result = FreeBusyResult(
-        user_email=user_google_email,
         time_min=time_min_result,
         time_max=time_max_result,
         calendars=structured_calendars,

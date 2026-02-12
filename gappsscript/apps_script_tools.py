@@ -149,8 +149,8 @@ async def list_script_projects(
     Uses Drive API to find Apps Script files.
 
     Args:
-        service: Injected Google API service client
-        user_google_email: User's email address
+
+
         page_size: Number of results per page (default: 50)
         page_token: Token for pagination (optional)
 
@@ -235,8 +235,8 @@ async def get_script_project(
     Retrieves complete project details including all source files.
 
     Args:
-        service: Injected Google API service client
-        user_google_email: User's email address
+
+
         script_id: The script project ID
 
     Returns:
@@ -312,8 +312,8 @@ async def get_script_content(
     Retrieves content of a specific file within a project.
 
     Args:
-        service: Injected Google API service client
-        user_google_email: User's email address
+
+
         script_id: The script project ID
         file_name: Name of the file to retrieve
 
@@ -376,8 +376,8 @@ async def create_script_project(
     Creates a new Apps Script project.
 
     Args:
-        service: Injected Google API service client
-        user_google_email: User's email address
+
+
         title: Project title
         parent_id: Optional Drive folder ID or bound container ID
 
@@ -439,8 +439,8 @@ async def update_script_content(
     Updates or creates files in a script project.
 
     Args:
-        service: Injected Google API service client
-        user_google_email: User's email address
+
+
         script_id: The script project ID
         files: List of file objects with name, type, and source
 
@@ -531,8 +531,8 @@ async def run_script_function(
     Executes a function in a deployed script.
 
     Args:
-        service: Injected Google API service client
-        user_google_email: User's email address
+
+
         script_id: The script project ID
         function_name: Name of function to execute
         parameters: Optional list of parameters to pass
@@ -620,8 +620,8 @@ async def create_deployment(
     Creates a new deployment of the script.
 
     Args:
-        service: Injected Google API service client
-        user_google_email: User's email address
+
+
         script_id: The script project ID
         description: Deployment description
         version_description: Optional version description
@@ -697,8 +697,8 @@ async def list_deployments(
     Lists all deployments for a script project.
 
     Args:
-        service: Injected Google API service client
-        user_google_email: User's email address
+
+
         script_id: The script project ID
 
     Returns:
@@ -765,8 +765,8 @@ async def update_deployment(
     Updates an existing deployment configuration.
 
     Args:
-        service: Injected Google API service client
-        user_google_email: User's email address
+
+
         script_id: The script project ID
         deployment_id: The deployment ID to update
         description: Optional new description
@@ -823,8 +823,8 @@ async def delete_deployment(
     Deletes a deployment.
 
     Args:
-        service: Injected Google API service client
-        user_google_email: User's email address
+
+
         script_id: The script project ID
         deployment_id: The deployment ID to delete
 
@@ -911,8 +911,8 @@ async def list_script_processes(
     Lists recent execution processes for user's scripts.
 
     Args:
-        service: Injected Google API service client
-        user_google_email: User's email address
+
+
         page_size: Number of results (default: 50)
         script_id: Optional filter by script ID
 
@@ -963,8 +963,8 @@ async def delete_script_project(
     This permanently deletes the script project. The action cannot be undone.
 
     Args:
-        service: Injected Google API service client
-        user_google_email: User's email address
+
+
         script_id: The script project ID to delete
 
     Returns:
@@ -1044,8 +1044,8 @@ async def list_versions(
     They are created when you deploy or explicitly create a version.
 
     Args:
-        service: Injected Google API service client
-        user_google_email: User's email address
+
+
         script_id: The script project ID
 
     Returns:
@@ -1112,8 +1112,8 @@ async def create_version(
     Once created, versions cannot be modified.
 
     Args:
-        service: Injected Google API service client
-        user_google_email: User's email address
+
+
         script_id: The script project ID
         description: Optional description for this version
 
@@ -1178,8 +1178,8 @@ async def get_version(
     Gets details of a specific version.
 
     Args:
-        service: Injected Google API service client
-        user_google_email: User's email address
+
+
         script_id: The script project ID
         version_number: The version number to retrieve (1, 2, 3, etc.)
 
@@ -1299,8 +1299,8 @@ async def get_script_metrics(
     and failed executions over time.
 
     Args:
-        service: Injected Google API service client
-        user_google_email: User's email address
+
+
         script_id: The script project ID
         metrics_granularity: Granularity of metrics - "DAILY" or "WEEKLY"
 

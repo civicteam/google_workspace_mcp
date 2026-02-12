@@ -1,0 +1,1005 @@
+{
+  "tools": [
+    {
+      "name": "start_google_auth",
+      "description": "Manually initiate Google OAuth authentication flow.\n\nNOTE: This tool should typically NOT be called directly. The authentication system\nautomatically handles credential checks and prompts for authentication when needed.\nOnly use this tool if:\n1. You need to re-authenticate with different credentials\n2. You want to proactively authenticate before using other tools\n3. The automatic authentication flow failed and you need to retry\n\nIn most cases, simply try calling the Google Workspace tool you need - it will\nautomatically handle authentication if required.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "list_task_lists",
+      "description": "List all task lists for the user.\n\nArgs:\n    max_results (int): Maximum number of task lists to return (default: 1000, max: 1000).\n    page_token (Optional[str]): Token for pagination.\n\nReturns:\n    ToolResult: List of task lists with their IDs, titles, and details.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "max_results": {
+            "default": 1000,
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "task_lists": {
+            "items": {
+              "$ref": "#/$defs/TaskListSummary"
+            },
+            "title": "Task Lists",
+            "type": "array"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          },
+          "next_page_token": {
+            "default": null,
+            "title": "Next Page Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_lists",
+          "total_count"
+        ],
+        "$defs": {
+          "TaskListSummary": {
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "title": {
+                "title": "Title",
+                "type": "string"
+              },
+              "updated": {
+                "default": null,
+                "title": "Updated",
+                "type": "string"
+              },
+              "self_link": {
+                "default": null,
+                "title": "Self Link",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "title"
+            ],
+            "title": "TaskListSummary",
+            "type": "object"
+          }
+        },
+        "title": "ListTaskListsResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_task_list",
+      "description": "Get details of a specific task list.\n\nArgs:\n    task_list_id (str): The ID of the task list to retrieve.\n\nReturns:\n    ToolResult: Task list details including title, ID, and last updated time.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_list_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_list_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated": {
+            "default": null,
+            "title": "Updated",
+            "type": "string"
+          },
+          "self_link": {
+            "default": null,
+            "title": "Self Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "GetTaskListResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_task_list",
+      "description": "Create a new task list.\n\nArgs:\n    title (str): The title of the new task list.\n\nReturns:\n    ToolResult: Confirmation message with the new task list ID and details.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated": {
+            "default": null,
+            "title": "Updated",
+            "type": "string"
+          },
+          "self_link": {
+            "default": null,
+            "title": "Self Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "CreateTaskListResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "update_task_list",
+      "description": "Update an existing task list.\n\nArgs:\n    task_list_id (str): The ID of the task list to update.\n    title (str): The new title for the task list.\n\nReturns:\n    ToolResult: Confirmation message with updated task list details.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_list_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_list_id",
+          "title"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated": {
+            "default": null,
+            "title": "Updated",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "UpdateTaskListResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "delete_task_list",
+      "description": "Delete a task list. Note: This will also delete all tasks in the list.\n\nArgs:\n    task_list_id (str): The ID of the task list to delete.\n\nReturns:\n    ToolResult: Confirmation message.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_list_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_list_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "task_list_id": {
+            "title": "Task List Id",
+            "type": "string"
+          },
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "task_list_id",
+          "deleted"
+        ],
+        "title": "DeleteTaskListResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "list_tasks",
+      "description": "List all tasks in a specific task list.\n\nArgs:\n    task_list_id (str): The ID of the task list to retrieve tasks from.\n    max_results (int): Maximum number of tasks to return. (default: 20, max: 10000).\n    page_token (Optional[str]): Token for pagination.\n    show_completed (bool): Whether to include completed tasks (default: True). Note that show_hidden must also be true to show tasks completed in first party clients, such as the web UI and Google's mobile apps.\n    show_deleted (bool): Whether to include deleted tasks (default: False).\n    show_hidden (bool): Whether to include hidden tasks (default: False).\n    show_assigned (bool): Whether to include assigned tasks (default: False).\n    completed_max (Optional[str]): Upper bound for completion date (RFC 3339 timestamp).\n    completed_min (Optional[str]): Lower bound for completion date (RFC 3339 timestamp).\n    due_max (Optional[str]): Upper bound for due date (RFC 3339 timestamp).\n    due_min (Optional[str]): Lower bound for due date (RFC 3339 timestamp).\n    updated_min (Optional[str]): Lower bound for last modification time (RFC 3339 timestamp).\n\nReturns:\n    ToolResult: List of tasks with their details.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_list_id": {
+            "type": "string"
+          },
+          "max_results": {
+            "default": 20,
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "show_completed": {
+            "default": true,
+            "type": "boolean"
+          },
+          "show_deleted": {
+            "default": false,
+            "type": "boolean"
+          },
+          "show_hidden": {
+            "default": false,
+            "type": "boolean"
+          },
+          "show_assigned": {
+            "default": false,
+            "type": "boolean"
+          },
+          "completed_max": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "completed_min": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "due_max": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "due_min": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "updated_min": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "task_list_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "task_list_id": {
+            "title": "Task List Id",
+            "type": "string"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/$defs/TaskSummary"
+            },
+            "title": "Tasks",
+            "type": "array"
+          },
+          "total_count": {
+            "title": "Total Count",
+            "type": "integer"
+          },
+          "next_page_token": {
+            "default": null,
+            "title": "Next Page Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_list_id",
+          "tasks",
+          "total_count"
+        ],
+        "$defs": {
+          "TaskSummary": {
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "title": {
+                "default": null,
+                "title": "Title",
+                "type": "string"
+              },
+              "status": {
+                "default": null,
+                "title": "Status",
+                "type": "string"
+              },
+              "due": {
+                "default": null,
+                "title": "Due",
+                "type": "string"
+              },
+              "notes": {
+                "default": null,
+                "title": "Notes",
+                "type": "string"
+              },
+              "updated": {
+                "default": null,
+                "title": "Updated",
+                "type": "string"
+              },
+              "completed": {
+                "default": null,
+                "title": "Completed",
+                "type": "string"
+              },
+              "parent": {
+                "default": null,
+                "title": "Parent",
+                "type": "string"
+              },
+              "position": {
+                "default": null,
+                "title": "Position",
+                "type": "string"
+              },
+              "self_link": {
+                "default": null,
+                "title": "Self Link",
+                "type": "string"
+              },
+              "web_view_link": {
+                "default": null,
+                "title": "Web View Link",
+                "type": "string"
+              },
+              "subtasks": {
+                "items": {
+                  "$ref": "#/$defs/TaskSummary"
+                },
+                "title": "Subtasks",
+                "type": "array"
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "title": "TaskSummary",
+            "type": "object"
+          }
+        },
+        "title": "ListTasksResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_task",
+      "description": "Get details of a specific task.\n\nArgs:\n    task_list_id (str): The ID of the task list containing the task.\n    task_id (str): The ID of the task to retrieve.\n\nReturns:\n    ToolResult: Task details including title, notes, status, due date, etc.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_list_id": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_list_id",
+          "task_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "status": {
+            "default": null,
+            "title": "Status",
+            "type": "string"
+          },
+          "updated": {
+            "default": null,
+            "title": "Updated",
+            "type": "string"
+          },
+          "due": {
+            "default": null,
+            "title": "Due",
+            "type": "string"
+          },
+          "completed": {
+            "default": null,
+            "title": "Completed",
+            "type": "string"
+          },
+          "notes": {
+            "default": null,
+            "title": "Notes",
+            "type": "string"
+          },
+          "parent": {
+            "default": null,
+            "title": "Parent",
+            "type": "string"
+          },
+          "position": {
+            "default": null,
+            "title": "Position",
+            "type": "string"
+          },
+          "self_link": {
+            "default": null,
+            "title": "Self Link",
+            "type": "string"
+          },
+          "web_view_link": {
+            "default": null,
+            "title": "Web View Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "GetTaskResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_task",
+      "description": "Create a new task in a task list.\n\nArgs:\n    task_list_id (str): The ID of the task list to create the task in.\n    title (str): The title of the task.\n    notes (Optional[str]): Notes/description for the task.\n    due (Optional[str]): Due date in RFC 3339 format (e.g., \"2024-12-31T23:59:59Z\").\n    parent (Optional[str]): Parent task ID (for subtasks).\n    previous (Optional[str]): Previous sibling task ID (for positioning).\n\nReturns:\n    ToolResult: Confirmation message with the new task ID and details.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_list_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "due": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "task_list_id",
+          "title"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "status": {
+            "default": null,
+            "title": "Status",
+            "type": "string"
+          },
+          "updated": {
+            "default": null,
+            "title": "Updated",
+            "type": "string"
+          },
+          "due": {
+            "default": null,
+            "title": "Due",
+            "type": "string"
+          },
+          "notes": {
+            "default": null,
+            "title": "Notes",
+            "type": "string"
+          },
+          "web_view_link": {
+            "default": null,
+            "title": "Web View Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "CreateTaskResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "update_task",
+      "description": "Update an existing task.\n\nArgs:\n    task_list_id (str): The ID of the task list containing the task.\n    task_id (str): The ID of the task to update.\n    title (Optional[str]): New title for the task.\n    notes (Optional[str]): New notes/description for the task.\n    status (Optional[str]): New status (\"needsAction\" or \"completed\").\n    due (Optional[str]): New due date in RFC 3339 format.\n\nReturns:\n    ToolResult: Confirmation message with updated task details.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_list_id": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "due": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "task_list_id",
+          "task_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "status": {
+            "default": null,
+            "title": "Status",
+            "type": "string"
+          },
+          "updated": {
+            "default": null,
+            "title": "Updated",
+            "type": "string"
+          },
+          "due": {
+            "default": null,
+            "title": "Due",
+            "type": "string"
+          },
+          "notes": {
+            "default": null,
+            "title": "Notes",
+            "type": "string"
+          },
+          "completed": {
+            "default": null,
+            "title": "Completed",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "UpdateTaskResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "delete_task",
+      "description": "Delete a task from a task list.\n\nArgs:\n    task_list_id (str): The ID of the task list containing the task.\n    task_id (str): The ID of the task to delete.\n\nReturns:\n    ToolResult: Confirmation message.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_list_id": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_list_id",
+          "task_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "task_list_id": {
+            "title": "Task List Id",
+            "type": "string"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "string"
+          },
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "task_list_id",
+          "task_id",
+          "deleted"
+        ],
+        "title": "DeleteTaskResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "move_task",
+      "description": "Move a task to a different position or parent within the same list, or to a different list.\n\nArgs:\n    task_list_id (str): The ID of the current task list containing the task.\n    task_id (str): The ID of the task to move.\n    parent (Optional[str]): New parent task ID (for making it a subtask).\n    previous (Optional[str]): Previous sibling task ID (for positioning).\n    destination_task_list (Optional[str]): Destination task list ID (for moving between lists).\n\nReturns:\n    ToolResult: Confirmation message with updated task details.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_list_id": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "destination_task_list": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "task_list_id",
+          "task_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "status": {
+            "default": null,
+            "title": "Status",
+            "type": "string"
+          },
+          "updated": {
+            "default": null,
+            "title": "Updated",
+            "type": "string"
+          },
+          "parent": {
+            "default": null,
+            "title": "Parent",
+            "type": "string"
+          },
+          "position": {
+            "default": null,
+            "title": "Position",
+            "type": "string"
+          },
+          "destination_task_list": {
+            "default": null,
+            "title": "Destination Task List",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "MoveTaskResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "clear_completed_tasks",
+      "description": "Clear all completed tasks from a task list. The tasks will be marked as hidden.\n\nArgs:\n    task_list_id (str): The ID of the task list to clear completed tasks from.\n\nReturns:\n    ToolResult: Confirmation message.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "task_list_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_list_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "task_list_id": {
+            "title": "Task List Id",
+            "type": "string"
+          },
+          "cleared": {
+            "title": "Cleared",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "task_list_id",
+          "cleared"
+        ],
+        "title": "ClearCompletedTasksResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    }
+  ]
+}
