@@ -54,18 +54,18 @@ async def test_batch_update_form_multiple_requests():
         },
     ]
 
-    result = await _batch_update_form_impl(
+    text, structured = await _batch_update_form_impl(
         service=mock_service,
         form_id="test_form_123",
         requests=requests,
     )
 
-    assert "Batch Update Completed" in result
-    assert "test_form_123" in result
-    assert "Requests Applied: 2" in result
-    assert "Replies Received: 2" in result
-    assert "item001" in result
-    assert "item002" in result
+    assert "Batch Update Completed" in text
+    assert "test_form_123" in text
+    assert "Requests Applied: 2" in text
+    assert "Replies Received: 2" in text
+    assert "item001" in text
+    assert "item002" in text
 
 
 @pytest.mark.asyncio
@@ -102,15 +102,15 @@ async def test_batch_update_form_single_request():
         },
     ]
 
-    result = await _batch_update_form_impl(
+    text, structured = await _batch_update_form_impl(
         service=mock_service,
         form_id="single_form_456",
         requests=requests,
     )
 
-    assert "single_form_456" in result
-    assert "Requests Applied: 1" in result
-    assert "Replies Received: 1" in result
+    assert "single_form_456" in text
+    assert "Requests Applied: 1" in text
+    assert "Replies Received: 1" in text
 
 
 @pytest.mark.asyncio
@@ -132,15 +132,15 @@ async def test_batch_update_form_empty_replies():
         },
     ]
 
-    result = await _batch_update_form_impl(
+    text, structured = await _batch_update_form_impl(
         service=mock_service,
         form_id="info_form_789",
         requests=requests,
     )
 
-    assert "info_form_789" in result
-    assert "Requests Applied: 1" in result
-    assert "Replies Received: 0" in result
+    assert "info_form_789" in text
+    assert "Requests Applied: 1" in text
+    assert "Replies Received: 0" in text
 
 
 @pytest.mark.asyncio
@@ -160,15 +160,15 @@ async def test_batch_update_form_no_replies_key():
         },
     ]
 
-    result = await _batch_update_form_impl(
+    text, structured = await _batch_update_form_impl(
         service=mock_service,
         form_id="quiz_form_000",
         requests=requests,
     )
 
-    assert "quiz_form_000" in result
-    assert "Requests Applied: 1" in result
-    assert "Replies Received: 0" in result
+    assert "quiz_form_000" in text
+    assert "Requests Applied: 1" in text
+    assert "Replies Received: 0" in text
 
 
 @pytest.mark.asyncio
@@ -185,13 +185,13 @@ async def test_batch_update_form_url_in_response():
         {"updateFormInfo": {"info": {"title": "New Title"}, "updateMask": "title"}}
     ]
 
-    result = await _batch_update_form_impl(
+    text, structured = await _batch_update_form_impl(
         service=mock_service,
         form_id="url_form_abc",
         requests=requests,
     )
 
-    assert "https://docs.google.com/forms/d/url_form_abc/edit" in result
+    assert "https://docs.google.com/forms/d/url_form_abc/edit" in text
 
 
 @pytest.mark.asyncio
@@ -219,13 +219,13 @@ async def test_batch_update_form_mixed_reply_types():
         {"createItem": {"item": {"title": "Q2"}, "location": {"index": 1}}},
     ]
 
-    result = await _batch_update_form_impl(
+    text, structured = await _batch_update_form_impl(
         service=mock_service,
         form_id="mixed_form_xyz",
         requests=requests,
     )
 
-    assert "Requests Applied: 3" in result
-    assert "Replies Received: 3" in result
-    assert "item_a" in result
-    assert "item_c" in result
+    assert "Requests Applied: 3" in text
+    assert "Replies Received: 3" in text
+    assert "item_a" in text
+    assert "item_c" in text

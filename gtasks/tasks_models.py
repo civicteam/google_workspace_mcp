@@ -8,7 +8,7 @@ These models provide machine-parseable JSON alongside the human-readable text ou
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from pydantic import TypeAdapter
+from core.structured_output import generate_schema
 
 
 @dataclass
@@ -168,21 +168,16 @@ class ClearCompletedTasksResult:
     cleared: bool
 
 
-def _generate_schema(cls: type) -> dict[str, Any]:
-    """Generate JSON schema for a dataclass."""
-    return TypeAdapter(cls).json_schema()
-
-
 # Pre-generated JSON schemas for use in @server.tool() decorators
-TASKS_LIST_TASK_LISTS_SCHEMA = _generate_schema(ListTaskListsResult)
-TASKS_GET_TASK_LIST_SCHEMA = _generate_schema(GetTaskListResult)
-TASKS_CREATE_TASK_LIST_SCHEMA = _generate_schema(CreateTaskListResult)
-TASKS_UPDATE_TASK_LIST_SCHEMA = _generate_schema(UpdateTaskListResult)
-TASKS_DELETE_TASK_LIST_SCHEMA = _generate_schema(DeleteTaskListResult)
-TASKS_LIST_TASKS_SCHEMA = _generate_schema(ListTasksResult)
-TASKS_GET_TASK_SCHEMA = _generate_schema(GetTaskResult)
-TASKS_CREATE_TASK_SCHEMA = _generate_schema(CreateTaskResult)
-TASKS_UPDATE_TASK_SCHEMA = _generate_schema(UpdateTaskResult)
-TASKS_DELETE_TASK_SCHEMA = _generate_schema(DeleteTaskResult)
-TASKS_MOVE_TASK_SCHEMA = _generate_schema(MoveTaskResult)
-TASKS_CLEAR_COMPLETED_SCHEMA = _generate_schema(ClearCompletedTasksResult)
+TASKS_LIST_TASK_LISTS_SCHEMA = generate_schema(ListTaskListsResult)
+TASKS_GET_TASK_LIST_SCHEMA = generate_schema(GetTaskListResult)
+TASKS_CREATE_TASK_LIST_SCHEMA = generate_schema(CreateTaskListResult)
+TASKS_UPDATE_TASK_LIST_SCHEMA = generate_schema(UpdateTaskListResult)
+TASKS_DELETE_TASK_LIST_SCHEMA = generate_schema(DeleteTaskListResult)
+TASKS_LIST_TASKS_SCHEMA = generate_schema(ListTasksResult)
+TASKS_GET_TASK_SCHEMA = generate_schema(GetTaskResult)
+TASKS_CREATE_TASK_SCHEMA = generate_schema(CreateTaskResult)
+TASKS_UPDATE_TASK_SCHEMA = generate_schema(UpdateTaskResult)
+TASKS_DELETE_TASK_SCHEMA = generate_schema(DeleteTaskResult)
+TASKS_MOVE_TASK_SCHEMA = generate_schema(MoveTaskResult)
+TASKS_CLEAR_COMPLETED_SCHEMA = generate_schema(ClearCompletedTasksResult)

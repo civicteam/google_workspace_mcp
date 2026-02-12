@@ -8,7 +8,7 @@ These models provide machine-parseable JSON alongside the human-readable text ou
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from pydantic import TypeAdapter
+from core.structured_output import generate_schema
 
 
 @dataclass
@@ -222,25 +222,20 @@ class DriveOwnershipTransferResult:
     moved_to_new_owners_root: bool = False
 
 
-def _generate_schema(cls: type) -> dict[str, Any]:
-    """Generate JSON schema for a dataclass."""
-    return TypeAdapter(cls).json_schema()
-
-
 # Pre-generated JSON schemas for use in @server.tool() decorators
-DRIVE_SEARCH_RESULT_SCHEMA = _generate_schema(DriveSearchResult)
-DRIVE_LIST_RESULT_SCHEMA = _generate_schema(DriveListResult)
-DRIVE_FILE_CONTENT_SCHEMA = _generate_schema(DriveFileContent)
-DRIVE_DOWNLOAD_RESULT_SCHEMA = _generate_schema(DriveDownloadResult)
-DRIVE_CREATE_RESULT_SCHEMA = _generate_schema(DriveCreateResult)
-DRIVE_IMPORT_RESULT_SCHEMA = _generate_schema(DriveImportResult)
-DRIVE_PERMISSIONS_RESULT_SCHEMA = _generate_schema(DrivePermissionsResult)
-DRIVE_PUBLIC_ACCESS_RESULT_SCHEMA = _generate_schema(DrivePublicAccessResult)
-DRIVE_UPDATE_RESULT_SCHEMA = _generate_schema(DriveUpdateResult)
-DRIVE_SHAREABLE_LINK_RESULT_SCHEMA = _generate_schema(DriveShareableLinkResult)
-DRIVE_SHARE_RESULT_SCHEMA = _generate_schema(DriveShareResult)
-DRIVE_BATCH_SHARE_RESULT_SCHEMA = _generate_schema(DriveBatchShareResult)
-DRIVE_PERMISSION_UPDATE_RESULT_SCHEMA = _generate_schema(DrivePermissionUpdateResult)
-DRIVE_PERMISSION_REMOVE_RESULT_SCHEMA = _generate_schema(DrivePermissionRemoveResult)
-DRIVE_COPY_RESULT_SCHEMA = _generate_schema(DriveCopyResult)
-DRIVE_OWNERSHIP_TRANSFER_RESULT_SCHEMA = _generate_schema(DriveOwnershipTransferResult)
+DRIVE_SEARCH_RESULT_SCHEMA = generate_schema(DriveSearchResult)
+DRIVE_LIST_RESULT_SCHEMA = generate_schema(DriveListResult)
+DRIVE_FILE_CONTENT_SCHEMA = generate_schema(DriveFileContent)
+DRIVE_DOWNLOAD_RESULT_SCHEMA = generate_schema(DriveDownloadResult)
+DRIVE_CREATE_RESULT_SCHEMA = generate_schema(DriveCreateResult)
+DRIVE_IMPORT_RESULT_SCHEMA = generate_schema(DriveImportResult)
+DRIVE_PERMISSIONS_RESULT_SCHEMA = generate_schema(DrivePermissionsResult)
+DRIVE_PUBLIC_ACCESS_RESULT_SCHEMA = generate_schema(DrivePublicAccessResult)
+DRIVE_UPDATE_RESULT_SCHEMA = generate_schema(DriveUpdateResult)
+DRIVE_SHAREABLE_LINK_RESULT_SCHEMA = generate_schema(DriveShareableLinkResult)
+DRIVE_SHARE_RESULT_SCHEMA = generate_schema(DriveShareResult)
+DRIVE_BATCH_SHARE_RESULT_SCHEMA = generate_schema(DriveBatchShareResult)
+DRIVE_PERMISSION_UPDATE_RESULT_SCHEMA = generate_schema(DrivePermissionUpdateResult)
+DRIVE_PERMISSION_REMOVE_RESULT_SCHEMA = generate_schema(DrivePermissionRemoveResult)
+DRIVE_COPY_RESULT_SCHEMA = generate_schema(DriveCopyResult)
+DRIVE_OWNERSHIP_TRANSFER_RESULT_SCHEMA = generate_schema(DriveOwnershipTransferResult)

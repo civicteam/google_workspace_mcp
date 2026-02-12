@@ -8,7 +8,7 @@ These models provide machine-parseable JSON alongside the human-readable text ou
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from pydantic import TypeAdapter
+from core.structured_output import generate_schema
 
 
 @dataclass
@@ -123,21 +123,16 @@ class CalendarFreeBusy:
 class FreeBusyResult:
     """Structured result from query_freebusy."""
 
-    user_email: str
+
     time_min: str
     time_max: str
     calendars: list[CalendarFreeBusy]
 
 
-def _generate_schema(cls: type) -> dict[str, Any]:
-    """Generate JSON schema for a dataclass."""
-    return TypeAdapter(cls).json_schema()
-
-
 # Pre-generated JSON schemas for use in @server.tool() decorators
-CALENDAR_LIST_RESULT_SCHEMA = _generate_schema(CalendarListResult)
-GET_EVENTS_RESULT_SCHEMA = _generate_schema(GetEventsResult)
-CREATE_EVENT_RESULT_SCHEMA = _generate_schema(CreateEventResult)
-MODIFY_EVENT_RESULT_SCHEMA = _generate_schema(ModifyEventResult)
-DELETE_EVENT_RESULT_SCHEMA = _generate_schema(DeleteEventResult)
-FREEBUSY_RESULT_SCHEMA = _generate_schema(FreeBusyResult)
+CALENDAR_LIST_RESULT_SCHEMA = generate_schema(CalendarListResult)
+GET_EVENTS_RESULT_SCHEMA = generate_schema(GetEventsResult)
+CREATE_EVENT_RESULT_SCHEMA = generate_schema(CreateEventResult)
+MODIFY_EVENT_RESULT_SCHEMA = generate_schema(ModifyEventResult)
+DELETE_EVENT_RESULT_SCHEMA = generate_schema(DeleteEventResult)
+FREEBUSY_RESULT_SCHEMA = generate_schema(FreeBusyResult)

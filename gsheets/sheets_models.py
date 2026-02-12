@@ -8,7 +8,7 @@ These models provide machine-parseable JSON alongside the human-readable text ou
 from dataclasses import dataclass
 from typing import Any
 
-from pydantic import TypeAdapter
+from core.structured_output import generate_schema
 
 
 @dataclass
@@ -113,17 +113,12 @@ class CreateSheetResult:
     sheet_name: str
 
 
-def _generate_schema(cls: type) -> dict[str, Any]:
-    """Generate JSON schema for a dataclass."""
-    return TypeAdapter(cls).json_schema()
-
-
 # Pre-generated JSON schemas for use in @server.tool() decorators
-LIST_SPREADSHEETS_SCHEMA = _generate_schema(ListSpreadsheetsResult)
-SPREADSHEET_INFO_SCHEMA = _generate_schema(SpreadsheetInfoResult)
-READ_SHEET_VALUES_SCHEMA = _generate_schema(ReadSheetValuesResult)
-MODIFY_SHEET_VALUES_SCHEMA = _generate_schema(ModifySheetValuesResult)
-FORMAT_SHEET_RANGE_SCHEMA = _generate_schema(FormatSheetRangeResult)
-CONDITIONAL_FORMAT_SCHEMA = _generate_schema(ConditionalFormatResult)
-CREATE_SPREADSHEET_SCHEMA = _generate_schema(CreateSpreadsheetResult)
-CREATE_SHEET_SCHEMA = _generate_schema(CreateSheetResult)
+LIST_SPREADSHEETS_SCHEMA = generate_schema(ListSpreadsheetsResult)
+SPREADSHEET_INFO_SCHEMA = generate_schema(SpreadsheetInfoResult)
+READ_SHEET_VALUES_SCHEMA = generate_schema(ReadSheetValuesResult)
+MODIFY_SHEET_VALUES_SCHEMA = generate_schema(ModifySheetValuesResult)
+FORMAT_SHEET_RANGE_SCHEMA = generate_schema(FormatSheetRangeResult)
+CONDITIONAL_FORMAT_SCHEMA = generate_schema(ConditionalFormatResult)
+CREATE_SPREADSHEET_SCHEMA = generate_schema(CreateSpreadsheetResult)
+CREATE_SHEET_SCHEMA = generate_schema(CreateSheetResult)

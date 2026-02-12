@@ -8,7 +8,7 @@ These models provide machine-parseable JSON alongside the human-readable text ou
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from pydantic import TypeAdapter
+from core.structured_output import generate_schema
 
 
 @dataclass
@@ -95,14 +95,9 @@ class SlidesGetPageThumbnailResult:
     thumbnail_url: str
 
 
-def _generate_schema(cls: type) -> dict[str, Any]:
-    """Generate JSON schema for a dataclass."""
-    return TypeAdapter(cls).json_schema()
-
-
 # Pre-generated JSON schemas for use in @server.tool() decorators
-SLIDES_CREATE_PRESENTATION_SCHEMA = _generate_schema(SlidesCreatePresentationResult)
-SLIDES_GET_PRESENTATION_SCHEMA = _generate_schema(SlidesGetPresentationResult)
-SLIDES_BATCH_UPDATE_SCHEMA = _generate_schema(SlidesBatchUpdateResult)
-SLIDES_GET_PAGE_SCHEMA = _generate_schema(SlidesGetPageResult)
-SLIDES_GET_PAGE_THUMBNAIL_SCHEMA = _generate_schema(SlidesGetPageThumbnailResult)
+SLIDES_CREATE_PRESENTATION_SCHEMA = generate_schema(SlidesCreatePresentationResult)
+SLIDES_GET_PRESENTATION_SCHEMA = generate_schema(SlidesGetPresentationResult)
+SLIDES_BATCH_UPDATE_SCHEMA = generate_schema(SlidesBatchUpdateResult)
+SLIDES_GET_PAGE_SCHEMA = generate_schema(SlidesGetPageResult)
+SLIDES_GET_PAGE_THUMBNAIL_SCHEMA = generate_schema(SlidesGetPageThumbnailResult)

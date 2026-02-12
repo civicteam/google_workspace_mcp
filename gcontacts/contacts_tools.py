@@ -432,7 +432,7 @@ async def list_contacts(
         if not connections:
             text = f"No contacts found for {user_google_email}."
             structured = ListContactsResult(
-                user_email=user_google_email,
+    
                 total_count=0,
                 returned_count=0,
                 contacts=[],
@@ -451,7 +451,7 @@ async def list_contacts(
             response += f"Next page token: {next_page_token}"
 
         structured = ListContactsResult(
-            user_email=user_google_email,
+
             total_count=total_people,
             returned_count=len(connections),
             contacts=contact_summaries,
@@ -510,7 +510,7 @@ async def get_contact(
         response += _format_contact(person, detailed=True)
 
         structured = GetContactResult(
-            user_email=user_google_email,
+
             contact=_extract_contact_details(person),
         )
 
@@ -574,7 +574,7 @@ async def search_contacts(
         if not results:
             text = f"No contacts found matching '{query}' for {user_google_email}."
             structured = SearchContactsResult(
-                user_email=user_google_email,
+    
                 query=query,
                 result_count=0,
                 contacts=[],
@@ -590,7 +590,7 @@ async def search_contacts(
             contact_summaries.append(_extract_contact_summary(person))
 
         structured = SearchContactsResult(
-            user_email=user_google_email,
+
             query=query,
             result_count=len(results),
             contacts=contact_summaries,
@@ -671,7 +671,7 @@ async def create_contact(
         response += _format_contact(result, detailed=True)
 
         structured = CreateContactResult(
-            user_email=user_google_email,
+
             contact=_extract_contact_details(result),
         )
 
@@ -796,7 +796,7 @@ async def update_contact(
         response += _format_contact(result, detailed=True)
 
         structured = UpdateContactResult(
-            user_email=user_google_email,
+
             contact=_extract_contact_details(result),
         )
 
@@ -862,7 +862,7 @@ async def delete_contact(
         )
 
         structured = DeleteContactResult(
-            user_email=user_google_email,
+
             contact_id=clean_contact_id,
             deleted=True,
         )
@@ -923,7 +923,7 @@ async def list_contact_groups(
         if not groups:
             text = f"No contact groups found for {user_google_email}."
             structured = ListContactGroupsResult(
-                user_email=user_google_email,
+    
                 group_count=0,
                 groups=[],
                 next_page_token=None,
@@ -958,7 +958,7 @@ async def list_contact_groups(
             response += f"Next page token: {next_page_token}"
 
         structured = ListContactGroupsResult(
-            user_email=user_google_email,
+
             group_count=len(groups),
             groups=group_summaries,
             next_page_token=next_page_token,
@@ -1045,7 +1045,7 @@ async def get_contact_group(
                 member_ids.append(contact_id)
 
         structured = GetContactGroupResult(
-            user_email=user_google_email,
+
             group=ContactGroupDetails(
                 group_id=clean_group_id,
                 name=name,
@@ -1150,7 +1150,7 @@ async def batch_create_contacts(
             contact_summaries.append(_extract_contact_summary(person))
 
         structured = BatchCreateContactsResult(
-            user_email=user_google_email,
+
             created_count=len(created_people),
             contacts=contact_summaries,
         )
@@ -1297,7 +1297,7 @@ async def batch_update_contacts(
             contact_summaries.append(_extract_contact_summary(person))
 
         structured = BatchUpdateContactsResult(
-            user_email=user_google_email,
+
             updated_count=len(update_results),
             contacts=contact_summaries,
         )
@@ -1363,7 +1363,7 @@ async def batch_delete_contacts(
         response = f"Batch deleted {len(contact_ids)} contacts for {user_google_email}."
 
         structured = BatchDeleteContactsResult(
-            user_email=user_google_email,
+
             deleted_count=len(contact_ids),
             deleted=True,
         )
@@ -1423,7 +1423,7 @@ async def create_contact_group(
         response += f"Type: {group_type}\n"
 
         structured = CreateContactGroupResult(
-            user_email=user_google_email,
+
             group=ContactGroupSummary(
                 group_id=group_id,
                 name=created_name,
@@ -1498,7 +1498,7 @@ async def update_contact_group(
         response += f"ID: {clean_group_id}\n"
 
         structured = UpdateContactGroupResult(
-            user_email=user_google_email,
+
             group_id=clean_group_id,
             name=updated_name,
         )
@@ -1573,7 +1573,7 @@ async def delete_contact_group(
             response += " Contacts in the group were preserved."
 
         structured = DeleteContactGroupResult(
-            user_email=user_google_email,
+
             group_id=clean_group_id,
             deleted=True,
             contacts_deleted=delete_contacts,
@@ -1694,7 +1694,7 @@ async def modify_contact_group_members(
             response += f"\nCannot remove (last group): {', '.join(cannot_remove)}\n"
 
         structured = ModifyContactGroupMembersResult(
-            user_email=user_google_email,
+
             group_id=clean_group_id,
             added_count=added_count,
             removed_count=removed_count,

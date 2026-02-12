@@ -8,7 +8,7 @@ These models provide machine-parseable JSON alongside the human-readable text ou
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from pydantic import TypeAdapter
+from core.structured_output import generate_schema
 
 
 @dataclass
@@ -250,24 +250,19 @@ class DocsParagraphStyleResult:
     web_link: str
 
 
-def _generate_schema(cls: type) -> dict[str, Any]:
-    """Generate JSON schema for a dataclass."""
-    return TypeAdapter(cls).json_schema()
-
-
 # Pre-generated JSON schemas for use in @server.tool() decorators
-DOCS_SEARCH_RESULT_SCHEMA = _generate_schema(DocsSearchResult)
-DOCS_CONTENT_SCHEMA = _generate_schema(DocsContent)
-DOCS_LIST_RESULT_SCHEMA = _generate_schema(DocsListResult)
-DOCS_CREATE_RESULT_SCHEMA = _generate_schema(DocsCreateResult)
-DOCS_MODIFY_TEXT_RESULT_SCHEMA = _generate_schema(DocsModifyTextResult)
-DOCS_FIND_REPLACE_RESULT_SCHEMA = _generate_schema(DocsFindReplaceResult)
-DOCS_INSERT_ELEMENT_RESULT_SCHEMA = _generate_schema(DocsInsertElementResult)
-DOCS_INSERT_IMAGE_RESULT_SCHEMA = _generate_schema(DocsInsertImageResult)
-DOCS_HEADER_FOOTER_RESULT_SCHEMA = _generate_schema(DocsHeaderFooterResult)
-DOCS_BATCH_UPDATE_RESULT_SCHEMA = _generate_schema(DocsBatchUpdateResult)
-DOCS_STRUCTURE_RESULT_SCHEMA = _generate_schema(DocsStructureResult)
-DOCS_CREATE_TABLE_RESULT_SCHEMA = _generate_schema(DocsCreateTableResult)
-DOCS_TABLE_DEBUG_RESULT_SCHEMA = _generate_schema(DocsTableDebugResult)
-DOCS_EXPORT_PDF_RESULT_SCHEMA = _generate_schema(DocsExportPdfResult)
-DOCS_PARAGRAPH_STYLE_RESULT_SCHEMA = _generate_schema(DocsParagraphStyleResult)
+DOCS_SEARCH_RESULT_SCHEMA = generate_schema(DocsSearchResult)
+DOCS_CONTENT_SCHEMA = generate_schema(DocsContent)
+DOCS_LIST_RESULT_SCHEMA = generate_schema(DocsListResult)
+DOCS_CREATE_RESULT_SCHEMA = generate_schema(DocsCreateResult)
+DOCS_MODIFY_TEXT_RESULT_SCHEMA = generate_schema(DocsModifyTextResult)
+DOCS_FIND_REPLACE_RESULT_SCHEMA = generate_schema(DocsFindReplaceResult)
+DOCS_INSERT_ELEMENT_RESULT_SCHEMA = generate_schema(DocsInsertElementResult)
+DOCS_INSERT_IMAGE_RESULT_SCHEMA = generate_schema(DocsInsertImageResult)
+DOCS_HEADER_FOOTER_RESULT_SCHEMA = generate_schema(DocsHeaderFooterResult)
+DOCS_BATCH_UPDATE_RESULT_SCHEMA = generate_schema(DocsBatchUpdateResult)
+DOCS_STRUCTURE_RESULT_SCHEMA = generate_schema(DocsStructureResult)
+DOCS_CREATE_TABLE_RESULT_SCHEMA = generate_schema(DocsCreateTableResult)
+DOCS_TABLE_DEBUG_RESULT_SCHEMA = generate_schema(DocsTableDebugResult)
+DOCS_EXPORT_PDF_RESULT_SCHEMA = generate_schema(DocsExportPdfResult)
+DOCS_PARAGRAPH_STYLE_RESULT_SCHEMA = generate_schema(DocsParagraphStyleResult)

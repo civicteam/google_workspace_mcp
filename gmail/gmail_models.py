@@ -8,7 +8,7 @@ These models provide machine-parseable JSON alongside the human-readable text ou
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from pydantic import TypeAdapter
+from core.structured_output import generate_schema
 
 
 @dataclass
@@ -65,12 +65,7 @@ class GmailSendResult:
     attachment_count: int = 0
 
 
-def _generate_schema(cls: type) -> dict[str, Any]:
-    """Generate JSON schema for a dataclass."""
-    return TypeAdapter(cls).json_schema()
-
-
 # Pre-generated JSON schemas for use in @server.tool() decorators
-GMAIL_SEARCH_RESULT_SCHEMA = _generate_schema(GmailSearchResult)
-GMAIL_MESSAGE_CONTENT_SCHEMA = _generate_schema(GmailMessageContent)
-GMAIL_SEND_RESULT_SCHEMA = _generate_schema(GmailSendResult)
+GMAIL_SEARCH_RESULT_SCHEMA = generate_schema(GmailSearchResult)
+GMAIL_MESSAGE_CONTENT_SCHEMA = generate_schema(GmailMessageContent)
+GMAIL_SEND_RESULT_SCHEMA = generate_schema(GmailSendResult)

@@ -1355,7 +1355,6 @@ async def query_freebusy(
 
     if not calendars:
         empty_result = FreeBusyResult(
-            user_email=user_google_email,
             time_min=time_min_result,
             time_max=time_max_result,
             calendars=[],
@@ -1434,7 +1433,6 @@ async def query_freebusy(
 
     # Build final structured output
     structured_result = FreeBusyResult(
-        user_email=user_google_email,
         time_min=time_min_result,
         time_max=time_max_result,
         calendars=structured_calendars,
