@@ -1,0 +1,554 @@
+{
+  "tools": [
+    {
+      "name": "start_google_auth",
+      "description": "Manually initiate Google OAuth authentication flow.\n\nNOTE: This tool should typically NOT be called directly. The authentication system\nautomatically handles credential checks and prompts for authentication when needed.\nOnly use this tool if:\n1. You need to re-authenticate with different credentials\n2. You want to proactively authenticate before using other tools\n3. The automatic authentication flow failed and you need to retry\n\nIn most cases, simply try calling the Google Workspace tool you need - it will\nautomatically handle authentication if required.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_presentation",
+      "description": "Create a new Google Slides presentation.\n\nArgs:\n    title (str): The title for the new presentation. Defaults to \"Untitled Presentation\".\n\nReturns:\n    ToolResult: Details about the created presentation including ID and URL.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "default": "Untitled Presentation",
+            "type": "string"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "presentation_id": {
+            "title": "Presentation Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "slide_count": {
+            "title": "Slide Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "presentation_id",
+          "title",
+          "url",
+          "slide_count"
+        ],
+        "title": "SlidesCreatePresentationResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_presentation",
+      "description": "Get details about a Google Slides presentation.\n\nArgs:\n    presentation_id (str): The ID of the presentation to retrieve.\n\nReturns:\n    ToolResult: Details about the presentation including title, slides count, and metadata.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "presentation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "presentation_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "presentation_id": {
+            "title": "Presentation Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "total_slides": {
+            "title": "Total Slides",
+            "type": "integer"
+          },
+          "page_width": {
+            "default": null,
+            "title": "Page Width",
+            "type": "number"
+          },
+          "page_height": {
+            "default": null,
+            "title": "Page Height",
+            "type": "number"
+          },
+          "page_unit": {
+            "default": null,
+            "title": "Page Unit",
+            "type": "string"
+          },
+          "slides": {
+            "items": {
+              "$ref": "#/$defs/SlideInfo"
+            },
+            "title": "Slides",
+            "type": "array"
+          }
+        },
+        "required": [
+          "presentation_id",
+          "title",
+          "url",
+          "total_slides"
+        ],
+        "$defs": {
+          "SlideInfo": {
+            "properties": {
+              "slide_number": {
+                "title": "Slide Number",
+                "type": "integer"
+              },
+              "slide_id": {
+                "title": "Slide Id",
+                "type": "string"
+              },
+              "element_count": {
+                "title": "Element Count",
+                "type": "integer"
+              },
+              "text_content": {
+                "title": "Text Content",
+                "type": "string"
+              }
+            },
+            "required": [
+              "slide_number",
+              "slide_id",
+              "element_count",
+              "text_content"
+            ],
+            "title": "SlideInfo",
+            "type": "object"
+          }
+        },
+        "title": "SlidesGetPresentationResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "batch_update_presentation",
+      "description": "Apply batch updates to a Google Slides presentation.\n\nArgs:\n    presentation_id (str): The ID of the presentation to update.\n    requests (List[Dict[str, Any]]): List of update requests to apply.\n\nReturns:\n    ToolResult: Details about the batch update operation results.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "presentation_id": {
+            "type": "string"
+          },
+          "requests": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "presentation_id",
+          "requests"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "presentation_id": {
+            "title": "Presentation Id",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "requests_applied": {
+            "title": "Requests Applied",
+            "type": "integer"
+          },
+          "replies_received": {
+            "title": "Replies Received",
+            "type": "integer"
+          },
+          "replies": {
+            "items": {
+              "$ref": "#/$defs/BatchUpdateReply"
+            },
+            "title": "Replies",
+            "type": "array"
+          }
+        },
+        "required": [
+          "presentation_id",
+          "url",
+          "requests_applied",
+          "replies_received"
+        ],
+        "$defs": {
+          "BatchUpdateReply": {
+            "properties": {
+              "request_number": {
+                "title": "Request Number",
+                "type": "integer"
+              },
+              "operation_type": {
+                "title": "Operation Type",
+                "type": "string"
+              },
+              "object_id": {
+                "default": null,
+                "title": "Object Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "request_number",
+              "operation_type"
+            ],
+            "title": "BatchUpdateReply",
+            "type": "object"
+          }
+        },
+        "title": "SlidesBatchUpdateResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_page",
+      "description": "Get details about a specific page (slide) in a presentation.\n\nArgs:\n    presentation_id (str): The ID of the presentation.\n    page_object_id (str): The object ID of the page/slide to retrieve.\n\nReturns:\n    ToolResult: Details about the specific page including elements and layout.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "presentation_id": {
+            "type": "string"
+          },
+          "page_object_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "presentation_id",
+          "page_object_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "presentation_id": {
+            "title": "Presentation Id",
+            "type": "string"
+          },
+          "page_id": {
+            "title": "Page Id",
+            "type": "string"
+          },
+          "page_type": {
+            "title": "Page Type",
+            "type": "string"
+          },
+          "total_elements": {
+            "title": "Total Elements",
+            "type": "integer"
+          },
+          "elements": {
+            "items": {
+              "$ref": "#/$defs/PageElementInfo"
+            },
+            "title": "Elements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "presentation_id",
+          "page_id",
+          "page_type",
+          "total_elements"
+        ],
+        "$defs": {
+          "PageElementInfo": {
+            "properties": {
+              "element_id": {
+                "title": "Element Id",
+                "type": "string"
+              },
+              "element_type": {
+                "title": "Element Type",
+                "type": "string"
+              },
+              "details": {
+                "default": null,
+                "title": "Details",
+                "type": "string"
+              }
+            },
+            "required": [
+              "element_id",
+              "element_type"
+            ],
+            "title": "PageElementInfo",
+            "type": "object"
+          }
+        },
+        "title": "SlidesGetPageResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_page_thumbnail",
+      "description": "Generate a thumbnail URL for a specific page (slide) in a presentation.\n\nArgs:\n    presentation_id (str): The ID of the presentation.\n    page_object_id (str): The object ID of the page/slide.\n    thumbnail_size (str): Size of thumbnail (\"LARGE\", \"MEDIUM\", \"SMALL\"). Defaults to \"MEDIUM\".\n\nReturns:\n    ToolResult: URL to the generated thumbnail image.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "presentation_id": {
+            "type": "string"
+          },
+          "page_object_id": {
+            "type": "string"
+          },
+          "thumbnail_size": {
+            "default": "MEDIUM",
+            "type": "string"
+          }
+        },
+        "required": [
+          "presentation_id",
+          "page_object_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "presentation_id": {
+            "title": "Presentation Id",
+            "type": "string"
+          },
+          "page_id": {
+            "title": "Page Id",
+            "type": "string"
+          },
+          "thumbnail_size": {
+            "title": "Thumbnail Size",
+            "type": "string"
+          },
+          "thumbnail_url": {
+            "title": "Thumbnail Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "presentation_id",
+          "page_id",
+          "thumbnail_size",
+          "thumbnail_url"
+        ],
+        "title": "SlidesGetPageThumbnailResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "read_presentation_comments",
+      "description": "Read all comments from a Google Presentation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "presentation_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "presentation_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_presentation_comment",
+      "description": "Create a new comment on a Google Presentation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "presentation_id": {
+            "type": "string"
+          },
+          "comment_content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "presentation_id",
+          "comment_content"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "reply_to_presentation_comment",
+      "description": "Reply to a specific comment in a Google Presentation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "presentation_id": {
+            "type": "string"
+          },
+          "comment_id": {
+            "type": "string"
+          },
+          "reply_content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "presentation_id",
+          "comment_id",
+          "reply_content"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "resolve_presentation_comment",
+      "description": "Resolve a comment in a Google Presentation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "presentation_id": {
+            "type": "string"
+          },
+          "comment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "presentation_id",
+          "comment_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,1450 @@
+{
+  "tools": [
+    {
+      "name": "start_google_auth",
+      "description": "Manually initiate Google OAuth authentication flow.\n\nNOTE: This tool should typically NOT be called directly. The authentication system\nautomatically handles credential checks and prompts for authentication when needed.\nOnly use this tool if:\n1. You need to re-authenticate with different credentials\n2. You want to proactively authenticate before using other tools\n3. The automatic authentication flow failed and you need to retry\n\nIn most cases, simply try calling the Google Workspace tool you need - it will\nautomatically handle authentication if required.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "search_docs",
+      "description": "Searches for Google Docs by name using Drive API (mimeType filter).\n\nReturns:\n    ToolResult: A formatted list of Google Docs matching the search query with structured data.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "page_size": {
+            "default": 10,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "total_found": {
+            "title": "Total Found",
+            "type": "integer"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/$defs/DocsSearchResultItem"
+            },
+            "title": "Documents",
+            "type": "array"
+          }
+        },
+        "required": [
+          "query",
+          "total_found",
+          "documents"
+        ],
+        "$defs": {
+          "DocsSearchResultItem": {
+            "properties": {
+              "doc_id": {
+                "title": "Doc Id",
+                "type": "string"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "modified_time": {
+                "default": null,
+                "title": "Modified Time",
+                "type": "string"
+              },
+              "web_link": {
+                "default": null,
+                "title": "Web Link",
+                "type": "string"
+              }
+            },
+            "required": [
+              "doc_id",
+              "name"
+            ],
+            "title": "DocsSearchResultItem",
+            "type": "object"
+          }
+        },
+        "title": "DocsSearchResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_doc_content",
+      "description": "Retrieves content of a Google Doc or a Drive file (like .docx) identified by document_id.\n- Native Google Docs: Fetches content via Docs API.\n- Office files (.docx, etc.) stored in Drive: Downloads via Drive API and extracts text.\n\nReturns:\n    ToolResult: The document content with metadata header and structured data.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "mime_type": {
+            "title": "Mime Type",
+            "type": "string"
+          },
+          "web_link": {
+            "title": "Web Link",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "name",
+          "mime_type",
+          "web_link",
+          "content"
+        ],
+        "title": "DocsContent"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "list_docs_in_folder",
+      "description": "Lists Google Docs within a specific Drive folder.\n\nReturns:\n    ToolResult: A formatted list of Google Docs in the specified folder with structured data.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "default": "root",
+            "type": "string"
+          },
+          "page_size": {
+            "default": 100,
+            "type": "integer"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "title": "Folder Id",
+            "type": "string"
+          },
+          "total_found": {
+            "title": "Total Found",
+            "type": "integer"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/$defs/DocsSearchResultItem"
+            },
+            "title": "Documents",
+            "type": "array"
+          }
+        },
+        "required": [
+          "folder_id",
+          "total_found",
+          "documents"
+        ],
+        "$defs": {
+          "DocsSearchResultItem": {
+            "properties": {
+              "doc_id": {
+                "title": "Doc Id",
+                "type": "string"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "modified_time": {
+                "default": null,
+                "title": "Modified Time",
+                "type": "string"
+              },
+              "web_link": {
+                "default": null,
+                "title": "Web Link",
+                "type": "string"
+              }
+            },
+            "required": [
+              "doc_id",
+              "name"
+            ],
+            "title": "DocsSearchResultItem",
+            "type": "object"
+          }
+        },
+        "title": "DocsListResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_doc",
+      "description": "Creates a new Google Doc and optionally inserts initial content.\n\nReturns:\n    ToolResult: Confirmation message with document ID and link, plus structured data.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "default": "",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "web_link": {
+            "title": "Web Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "title",
+          "web_link"
+        ],
+        "title": "DocsCreateResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "modify_doc_text",
+      "description": "Modifies text in a Google Doc - can insert/replace text and/or apply formatting in a single operation.\n\nArgs:\n    document_id: ID of the document to update\n    start_index: Start position for operation (0-based)\n    end_index: End position for text replacement/formatting (if not provided with text, text is inserted)\n    text: New text to insert or replace with (optional - can format existing text without changing it)\n    bold: Whether to make text bold (True/False/None to leave unchanged)\n    italic: Whether to make text italic (True/False/None to leave unchanged)\n    underline: Whether to underline text (True/False/None to leave unchanged)\n    font_size: Font size in points\n    font_family: Font family name (e.g., \"Arial\", \"Times New Roman\")\n    text_color: Foreground text color (#RRGGBB)\n    background_color: Background/highlight color (#RRGGBB)\n\nReturns:\n    ToolResult: Confirmation message with operation details and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "start_index": {
+            "type": "integer"
+          },
+          "end_index": {
+            "default": null,
+            "type": "integer"
+          },
+          "text": {
+            "default": null,
+            "type": "string"
+          },
+          "bold": {
+            "default": null,
+            "type": "boolean"
+          },
+          "italic": {
+            "default": null,
+            "type": "boolean"
+          },
+          "underline": {
+            "default": null,
+            "type": "boolean"
+          },
+          "font_size": {
+            "default": null,
+            "type": "integer"
+          },
+          "font_family": {
+            "default": null,
+            "type": "string"
+          },
+          "text_color": {
+            "default": null,
+            "type": "string"
+          },
+          "background_color": {
+            "default": null,
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "start_index"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "operations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Operations",
+            "type": "array"
+          },
+          "text_length": {
+            "default": null,
+            "title": "Text Length",
+            "type": "integer"
+          },
+          "web_link": {
+            "default": "",
+            "title": "Web Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "operations"
+        ],
+        "title": "DocsModifyTextResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "find_and_replace_doc",
+      "description": "Finds and replaces text throughout a Google Doc.\n\nArgs:\n    document_id: ID of the document to update\n    find_text: Text to search for\n    replace_text: Text to replace with\n    match_case: Whether to match case exactly\n\nReturns:\n    ToolResult: Confirmation message with replacement count and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "find_text": {
+            "type": "string"
+          },
+          "replace_text": {
+            "type": "string"
+          },
+          "match_case": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "document_id",
+          "find_text",
+          "replace_text"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "find_text": {
+            "title": "Find Text",
+            "type": "string"
+          },
+          "replace_text": {
+            "title": "Replace Text",
+            "type": "string"
+          },
+          "occurrences_changed": {
+            "title": "Occurrences Changed",
+            "type": "integer"
+          },
+          "web_link": {
+            "title": "Web Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "find_text",
+          "replace_text",
+          "occurrences_changed",
+          "web_link"
+        ],
+        "title": "DocsFindReplaceResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "insert_doc_elements",
+      "description": "Inserts structural elements like tables, lists, or page breaks into a Google Doc.\n\nArgs:\n    document_id: ID of the document to update\n    element_type: Type of element to insert (\"table\", \"list\", \"page_break\")\n    index: Position to insert element (0-based)\n    rows: Number of rows for table (required for table)\n    columns: Number of columns for table (required for table)\n    list_type: Type of list (\"UNORDERED\", \"ORDERED\") (required for list)\n    text: Initial text content for list items\n\nReturns:\n    ToolResult: Confirmation message with insertion details and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "element_type": {
+            "type": "string"
+          },
+          "index": {
+            "type": "integer"
+          },
+          "rows": {
+            "default": null,
+            "type": "integer"
+          },
+          "columns": {
+            "default": null,
+            "type": "integer"
+          },
+          "list_type": {
+            "default": null,
+            "type": "string"
+          },
+          "text": {
+            "default": null,
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "element_type",
+          "index"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "element_type": {
+            "title": "Element Type",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "web_link": {
+            "title": "Web Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "element_type",
+          "description",
+          "index",
+          "web_link"
+        ],
+        "title": "DocsInsertElementResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "insert_doc_image",
+      "description": "Inserts an image into a Google Doc from Drive or a URL.\n\nArgs:\n    document_id: ID of the document to update\n    image_source: Drive file ID or public image URL\n    index: Position to insert image (0-based)\n    width: Image width in points (optional)\n    height: Image height in points (optional)\n\nReturns:\n    ToolResult: Confirmation message with insertion details and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "image_source": {
+            "type": "string"
+          },
+          "index": {
+            "type": "integer"
+          },
+          "width": {
+            "default": 0,
+            "type": "integer"
+          },
+          "height": {
+            "default": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document_id",
+          "image_source",
+          "index"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "source_description": {
+            "title": "Source Description",
+            "type": "string"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "size_info": {
+            "title": "Size Info",
+            "type": "string"
+          },
+          "web_link": {
+            "title": "Web Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "source_description",
+          "index",
+          "size_info",
+          "web_link"
+        ],
+        "title": "DocsInsertImageResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "update_doc_headers_footers",
+      "description": "Updates headers or footers in a Google Doc.\n\nArgs:\n    document_id: ID of the document to update\n    section_type: Type of section to update (\"header\" or \"footer\")\n    content: Text content for the header/footer\n    header_footer_type: Type of header/footer (\"DEFAULT\", \"FIRST_PAGE_ONLY\", \"EVEN_PAGE\")\n\nReturns:\n    ToolResult: Confirmation message with update details and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "section_type": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "header_footer_type": {
+            "default": "DEFAULT",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "section_type",
+          "content"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "section_type": {
+            "title": "Section Type",
+            "type": "string"
+          },
+          "header_footer_type": {
+            "title": "Header Footer Type",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "web_link": {
+            "title": "Web Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "section_type",
+          "header_footer_type",
+          "message",
+          "web_link"
+        ],
+        "title": "DocsHeaderFooterResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "batch_update_doc",
+      "description": "Executes multiple document operations in a single atomic batch update.\n\nArgs:\n    document_id: ID of the document to update\n    operations: List of operation dictionaries. Each operation should contain:\n               - type: Operation type ('insert_text', 'delete_text', 'replace_text', 'format_text', 'insert_table', 'insert_page_break')\n               - Additional parameters specific to each operation type\n\nExample operations:\n    [\n        {\"type\": \"insert_text\", \"index\": 1, \"text\": \"Hello World\"},\n        {\"type\": \"format_text\", \"start_index\": 1, \"end_index\": 12, \"bold\": true},\n        {\"type\": \"insert_table\", \"index\": 20, \"rows\": 2, \"columns\": 3}\n    ]\n\nReturns:\n    ToolResult: Confirmation message with batch operation results and structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "operations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "document_id",
+          "operations"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "operations_count": {
+            "title": "Operations Count",
+            "type": "integer"
+          },
+          "replies_count": {
+            "title": "Replies Count",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "web_link": {
+            "title": "Web Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "operations_count",
+          "replies_count",
+          "message",
+          "web_link"
+        ],
+        "title": "DocsBatchUpdateResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "inspect_doc_structure",
+      "description": "Essential tool for finding safe insertion points and understanding document structure.\n\nUSE THIS FOR:\n- Finding the correct index for table insertion\n- Understanding document layout before making changes\n- Locating existing tables and their positions\n- Getting document statistics and complexity info\n\nCRITICAL FOR TABLE OPERATIONS:\nALWAYS call this BEFORE creating tables to get a safe insertion index.\n\nWHAT THE OUTPUT SHOWS:\n- total_elements: Number of document elements\n- total_length: Maximum safe index for insertion\n- tables: Number of existing tables\n- table_details: Position and dimensions of each table\n\nWORKFLOW:\nStep 1: Call this function\nStep 2: Note the \"total_length\" value\nStep 3: Use an index < total_length for table insertion\nStep 4: Create your table\n\nArgs:\n    document_id: ID of the document to inspect\n    detailed: Whether to return detailed structure information\n\nReturns:\n    ToolResult: JSON string containing document structure and safe insertion indices, plus structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "detailed": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "title": {
+            "default": null,
+            "title": "Title",
+            "type": "string"
+          },
+          "total_length": {
+            "default": null,
+            "title": "Total Length",
+            "type": "integer"
+          },
+          "total_elements": {
+            "default": null,
+            "title": "Total Elements",
+            "type": "integer"
+          },
+          "statistics": {
+            "default": null,
+            "$ref": "#/$defs/DocsStructureStatistics"
+          },
+          "elements": {
+            "items": {
+              "$ref": "#/$defs/DocsElementSummary"
+            },
+            "title": "Elements",
+            "type": "array"
+          },
+          "tables": {
+            "items": {
+              "$ref": "#/$defs/DocsTableSummary"
+            },
+            "title": "Tables",
+            "type": "array"
+          },
+          "table_details": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Table Details",
+            "type": "array"
+          },
+          "web_link": {
+            "default": "",
+            "title": "Web Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ],
+        "$defs": {
+          "DocsElementSummary": {
+            "properties": {
+              "element_type": {
+                "title": "Element Type",
+                "type": "string"
+              },
+              "start_index": {
+                "title": "Start Index",
+                "type": "integer"
+              },
+              "end_index": {
+                "title": "End Index",
+                "type": "integer"
+              },
+              "rows": {
+                "default": null,
+                "title": "Rows",
+                "type": "integer"
+              },
+              "columns": {
+                "default": null,
+                "title": "Columns",
+                "type": "integer"
+              },
+              "cell_count": {
+                "default": null,
+                "title": "Cell Count",
+                "type": "integer"
+              },
+              "text_preview": {
+                "default": null,
+                "title": "Text Preview",
+                "type": "string"
+              }
+            },
+            "required": [
+              "element_type",
+              "start_index",
+              "end_index"
+            ],
+            "title": "DocsElementSummary",
+            "type": "object"
+          },
+          "DocsStructureStatistics": {
+            "properties": {
+              "elements": {
+                "title": "Elements",
+                "type": "integer"
+              },
+              "tables": {
+                "title": "Tables",
+                "type": "integer"
+              },
+              "paragraphs": {
+                "title": "Paragraphs",
+                "type": "integer"
+              },
+              "has_headers": {
+                "title": "Has Headers",
+                "type": "boolean"
+              },
+              "has_footers": {
+                "title": "Has Footers",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "elements",
+              "tables",
+              "paragraphs",
+              "has_headers",
+              "has_footers"
+            ],
+            "title": "DocsStructureStatistics",
+            "type": "object"
+          },
+          "DocsTableDimensions": {
+            "properties": {
+              "rows": {
+                "title": "Rows",
+                "type": "integer"
+              },
+              "columns": {
+                "title": "Columns",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "rows",
+              "columns"
+            ],
+            "title": "DocsTableDimensions",
+            "type": "object"
+          },
+          "DocsTablePosition": {
+            "properties": {
+              "start": {
+                "title": "Start",
+                "type": "integer"
+              },
+              "end": {
+                "title": "End",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "title": "DocsTablePosition",
+            "type": "object"
+          },
+          "DocsTableSummary": {
+            "properties": {
+              "index": {
+                "title": "Index",
+                "type": "integer"
+              },
+              "position": {
+                "$ref": "#/$defs/DocsTablePosition"
+              },
+              "dimensions": {
+                "$ref": "#/$defs/DocsTableDimensions"
+              },
+              "preview": {
+                "items": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "title": "Preview",
+                "type": "array"
+              }
+            },
+            "required": [
+              "index",
+              "position",
+              "dimensions"
+            ],
+            "title": "DocsTableSummary",
+            "type": "object"
+          }
+        },
+        "title": "DocsStructureResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_table_with_data",
+      "description": "Creates a table and populates it with data in one reliable operation.\n\nCRITICAL: YOU MUST CALL inspect_doc_structure FIRST TO GET THE INDEX!\n\nMANDATORY WORKFLOW - DO THESE STEPS IN ORDER:\n\nStep 1: ALWAYS call inspect_doc_structure first\nStep 2: Use the 'total_length' value from inspect_doc_structure as your index\nStep 3: Format data as 2D list: [[\"col1\", \"col2\"], [\"row1col1\", \"row1col2\"]]\nStep 4: Call this function with the correct index and data\n\nEXAMPLE DATA FORMAT:\ntable_data = [\n    [\"Header1\", \"Header2\", \"Header3\"],    # Row 0 - headers\n    [\"Data1\", \"Data2\", \"Data3\"],          # Row 1 - first data row\n    [\"Data4\", \"Data5\", \"Data6\"]           # Row 2 - second data row\n]\n\nCRITICAL INDEX REQUIREMENTS:\n- NEVER use index values like 1, 2, 10 without calling inspect_doc_structure first\n- ALWAYS get index from inspect_doc_structure 'total_length' field\n- Index must be a valid insertion point in the document\n\nDATA FORMAT REQUIREMENTS:\n- Must be 2D list of strings only\n- Each inner list = one table row\n- All rows MUST have same number of columns\n- Use empty strings \"\" for empty cells, never None\n- Use debug_table_structure after creation to verify results\n\nArgs:\n    document_id: ID of the document to update\n    table_data: 2D list of strings - EXACT format: [[\"col1\", \"col2\"], [\"row1col1\", \"row1col2\"]]\n    index: Document position (MANDATORY: get from inspect_doc_structure 'total_length')\n    bold_headers: Whether to make first row bold (default: true)\n\nReturns:\n    ToolResult: Confirmation with table details and link, plus structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "table_data": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "index": {
+            "type": "integer"
+          },
+          "bold_headers": {
+            "default": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "document_id",
+          "table_data",
+          "index"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "columns": {
+            "title": "Columns",
+            "type": "integer"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "web_link": {
+            "title": "Web Link",
+            "type": "string"
+          },
+          "success": {
+            "title": "Success",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "document_id",
+          "rows",
+          "columns",
+          "index",
+          "message",
+          "web_link",
+          "success"
+        ],
+        "title": "DocsCreateTableResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "debug_table_structure",
+      "description": "ESSENTIAL DEBUGGING TOOL - Use this whenever tables don't work as expected.\n\nUSE THIS IMMEDIATELY WHEN:\n- Table population put data in wrong cells\n- You get \"table not found\" errors\n- Data appears concatenated in first cell\n- Need to understand existing table structure\n- Planning to use populate_existing_table\n\nWHAT THIS SHOWS YOU:\n- Exact table dimensions (rows \u00d7 columns)\n- Each cell's position coordinates (row,col)\n- Current content in each cell\n- Insertion indices for each cell\n- Table boundaries and ranges\n\nHOW TO READ THE OUTPUT:\n- \"dimensions\": \"2x3\" = 2 rows, 3 columns\n- \"position\": \"(0,0)\" = first row, first column\n- \"current_content\": What's actually in each cell right now\n- \"insertion_index\": Where new text would be inserted in that cell\n\nWORKFLOW INTEGRATION:\n1. After creating table \u2192 Use this to verify structure\n2. Before populating \u2192 Use this to plan your data format\n3. After population fails \u2192 Use this to see what went wrong\n4. When debugging \u2192 Compare your data array to actual table structure\n\nArgs:\n    document_id: ID of the document to inspect\n    table_index: Which table to debug (0 = first table, 1 = second table, etc.)\n\nReturns:\n    ToolResult: Detailed JSON structure showing table layout, cell positions, and current content, plus structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "table_index": {
+            "default": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "table_index": {
+            "title": "Table Index",
+            "type": "integer"
+          },
+          "dimensions": {
+            "title": "Dimensions",
+            "type": "string"
+          },
+          "table_range": {
+            "title": "Table Range",
+            "type": "string"
+          },
+          "cells": {
+            "items": {
+              "items": {
+                "$ref": "#/$defs/DocsCellDebugInfo"
+              },
+              "type": "array"
+            },
+            "title": "Cells",
+            "type": "array"
+          },
+          "web_link": {
+            "title": "Web Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "table_index",
+          "dimensions",
+          "table_range",
+          "cells",
+          "web_link"
+        ],
+        "$defs": {
+          "DocsCellDebugInfo": {
+            "properties": {
+              "position": {
+                "title": "Position",
+                "type": "string"
+              },
+              "range": {
+                "title": "Range",
+                "type": "string"
+              },
+              "insertion_index": {
+                "title": "Insertion Index",
+                "type": "string"
+              },
+              "current_content": {
+                "title": "Current Content",
+                "type": "string"
+              },
+              "content_elements_count": {
+                "title": "Content Elements Count",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "position",
+              "range",
+              "insertion_index",
+              "current_content",
+              "content_elements_count"
+            ],
+            "title": "DocsCellDebugInfo",
+            "type": "object"
+          }
+        },
+        "title": "DocsTableDebugResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "export_doc_to_pdf",
+      "description": "Exports a Google Doc to PDF format and saves it to Google Drive.\n\nArgs:\n    document_id: ID of the Google Doc to export\n    pdf_filename: Name for the PDF file (optional - if not provided, uses original name + \"_PDF\")\n    folder_id: Drive folder ID to save PDF in (optional - if not provided, saves in root)\n\nReturns:\n    ToolResult: Confirmation message with PDF file details and links, plus structured data",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "pdf_filename": {
+            "default": null,
+            "type": "string"
+          },
+          "folder_id": {
+            "default": null,
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "original_document_id": {
+            "title": "Original Document Id",
+            "type": "string"
+          },
+          "original_name": {
+            "title": "Original Name",
+            "type": "string"
+          },
+          "pdf_file_id": {
+            "title": "Pdf File Id",
+            "type": "string"
+          },
+          "pdf_filename": {
+            "title": "Pdf Filename",
+            "type": "string"
+          },
+          "pdf_size_bytes": {
+            "title": "Pdf Size Bytes",
+            "type": "integer"
+          },
+          "folder_id": {
+            "default": null,
+            "title": "Folder Id",
+            "type": "string"
+          },
+          "pdf_web_link": {
+            "default": "",
+            "title": "Pdf Web Link",
+            "type": "string"
+          },
+          "original_web_link": {
+            "default": "",
+            "title": "Original Web Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "original_document_id",
+          "original_name",
+          "pdf_file_id",
+          "pdf_filename",
+          "pdf_size_bytes"
+        ],
+        "title": "DocsExportPdfResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "update_paragraph_style",
+      "description": "Apply paragraph-level formatting and/or heading styles to a range in a Google Doc.\n\nThis tool can apply named heading styles (H1-H6) for semantic document structure,\nand/or customize paragraph properties like alignment, spacing, and indentation.\nBoth can be applied in a single operation.\n\nArgs:\n    document_id: Document ID to modify\n    start_index: Start position (1-based)\n    end_index: End position (exclusive) - should cover the entire paragraph\n    heading_level: Heading level 0-6 (0 = NORMAL_TEXT, 1 = H1, 2 = H2, etc.)\n                   Use for semantic document structure\n    alignment: Text alignment - 'START' (left), 'CENTER', 'END' (right), or 'JUSTIFIED'\n    line_spacing: Line spacing multiplier (1.0 = single, 1.5 = 1.5x, 2.0 = double)\n    indent_first_line: First line indent in points (e.g., 36 for 0.5 inch)\n    indent_start: Left/start indent in points\n    indent_end: Right/end indent in points\n    space_above: Space above paragraph in points (e.g., 12 for one line)\n    space_below: Space below paragraph in points\n\nReturns:\n    ToolResult: Confirmation message with formatting details and structured data\n\nExamples:\n    # Apply H1 heading style\n    update_paragraph_style(document_id=\"...\", start_index=1, end_index=20, heading_level=1)\n\n    # Center-align a paragraph with double spacing\n    update_paragraph_style(document_id=\"...\", start_index=1, end_index=50,\n                           alignment=\"CENTER\", line_spacing=2.0)\n\n    # Apply H2 heading with custom spacing\n    update_paragraph_style(document_id=\"...\", start_index=1, end_index=30,\n                           heading_level=2, space_above=18, space_below=12)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "start_index": {
+            "type": "integer"
+          },
+          "end_index": {
+            "type": "integer"
+          },
+          "heading_level": {
+            "default": null,
+            "type": "integer"
+          },
+          "alignment": {
+            "default": null,
+            "type": "string"
+          },
+          "line_spacing": {
+            "default": null,
+            "type": "number"
+          },
+          "indent_first_line": {
+            "default": null,
+            "type": "number"
+          },
+          "indent_start": {
+            "default": null,
+            "type": "number"
+          },
+          "indent_end": {
+            "default": null,
+            "type": "number"
+          },
+          "space_above": {
+            "default": null,
+            "type": "number"
+          },
+          "space_below": {
+            "default": null,
+            "type": "number"
+          }
+        },
+        "required": [
+          "document_id",
+          "start_index",
+          "end_index"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "start_index": {
+            "title": "Start Index",
+            "type": "integer"
+          },
+          "end_index": {
+            "title": "End Index",
+            "type": "integer"
+          },
+          "applied_styles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Applied Styles",
+            "type": "array"
+          },
+          "web_link": {
+            "title": "Web Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "start_index",
+          "end_index",
+          "applied_styles",
+          "web_link"
+        ],
+        "title": "DocsParagraphStyleResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "read_document_comments",
+      "description": "Read all comments from a Google Document.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_document_comment",
+      "description": "Create a new comment on a Google Document.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "comment_content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "comment_content"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "reply_to_document_comment",
+      "description": "Reply to a specific comment in a Google Document.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "comment_id": {
+            "type": "string"
+          },
+          "reply_content": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "comment_id",
+          "reply_content"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "resolve_document_comment",
+      "description": "Resolve a comment in a Google Document.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "type": "string"
+          },
+          "comment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "comment_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    }
+  ]
+}

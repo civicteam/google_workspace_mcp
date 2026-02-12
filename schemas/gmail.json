@@ -1,0 +1,1031 @@
+{
+  "tools": [
+    {
+      "name": "start_google_auth",
+      "description": "Manually initiate Google OAuth authentication flow.\n\nNOTE: This tool should typically NOT be called directly. The authentication system\nautomatically handles credential checks and prompts for authentication when needed.\nOnly use this tool if:\n1. You need to re-authenticate with different credentials\n2. You want to proactively authenticate before using other tools\n3. The automatic authentication flow failed and you need to retry\n\nIn most cases, simply try calling the Google Workspace tool you need - it will\nautomatically handle authentication if required.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "search_gmail_messages",
+      "description": "Searches messages in a user's Gmail account based on a query.\nReturns both Message IDs and Thread IDs for each found message, along with Gmail web interface links for manual verification.\nSupports pagination via page_token parameter.\n\nArgs:\n    query (str): The search query. Supports standard Gmail search operators.\n    page_size (int): The maximum number of messages to return. Defaults to 10.\n    page_token (Optional[str]): Token for retrieving the next page of results. Use the next_page_token from a previous response.\n\nReturns:\n    ToolResult: LLM-friendly structured results with Message IDs, Thread IDs, and clickable Gmail web interface URLs for each found message.\n    Includes pagination token if more results are available. Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "page_size": {
+            "default": 10,
+            "type": "integer"
+          },
+          "page_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "total_found": {
+            "title": "Total Found",
+            "type": "integer"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/$defs/GmailMessageSummary"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "next_page_token": {
+            "default": null,
+            "title": "Next Page Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "total_found",
+          "messages"
+        ],
+        "$defs": {
+          "GmailMessageSummary": {
+            "properties": {
+              "message_id": {
+                "title": "Message Id",
+                "type": "string"
+              },
+              "thread_id": {
+                "title": "Thread Id",
+                "type": "string"
+              },
+              "web_link": {
+                "title": "Web Link",
+                "type": "string"
+              },
+              "thread_link": {
+                "title": "Thread Link",
+                "type": "string"
+              }
+            },
+            "required": [
+              "message_id",
+              "thread_id",
+              "web_link",
+              "thread_link"
+            ],
+            "title": "GmailMessageSummary",
+            "type": "object"
+          }
+        },
+        "title": "GmailSearchResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_gmail_message_content",
+      "description": "Retrieves the full content (subject, sender, recipients, plain text body) of a specific Gmail message.\n\nArgs:\n    message_id (str): The unique ID of the Gmail message to retrieve.\n\nReturns:\n    ToolResult: The message details including subject, sender, date, Message-ID, recipients (To, Cc), and body content.\n    Also includes structured_content for machine parsing.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "title": "Message Id",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "sender": {
+            "title": "Sender",
+            "type": "string"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "to": {
+            "default": null,
+            "title": "To",
+            "type": "string"
+          },
+          "cc": {
+            "default": null,
+            "title": "Cc",
+            "type": "string"
+          },
+          "rfc822_message_id": {
+            "default": null,
+            "title": "Rfc822 Message Id",
+            "type": "string"
+          },
+          "body": {
+            "default": "",
+            "title": "Body",
+            "type": "string"
+          },
+          "attachments": {
+            "items": {
+              "$ref": "#/$defs/GmailAttachment"
+            },
+            "title": "Attachments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "message_id",
+          "subject",
+          "sender",
+          "date"
+        ],
+        "$defs": {
+          "GmailAttachment": {
+            "properties": {
+              "filename": {
+                "title": "Filename",
+                "type": "string"
+              },
+              "mime_type": {
+                "title": "Mime Type",
+                "type": "string"
+              },
+              "size_bytes": {
+                "title": "Size Bytes",
+                "type": "integer"
+              },
+              "attachment_id": {
+                "title": "Attachment Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "filename",
+              "mime_type",
+              "size_bytes",
+              "attachment_id"
+            ],
+            "title": "GmailAttachment",
+            "type": "object"
+          }
+        },
+        "title": "GmailMessageContent"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_gmail_messages_content_batch",
+      "description": "Retrieves the content of multiple Gmail messages in a single batch request.\nSupports up to 25 messages per batch to prevent SSL connection exhaustion.\n\nArgs:\n    message_ids (List[str]): List of Gmail message IDs to retrieve (max 25 per batch).\n    format (Literal[\"full\", \"metadata\"]): Message format. \"full\" includes body, \"metadata\" only headers.\n\nReturns:\n    str: A formatted list of message contents including subject, sender, date, Message-ID, recipients (To, Cc), and body (if full format).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "message_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "format": {
+            "default": "full",
+            "enum": [
+              "full",
+              "metadata"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_ids"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_gmail_attachment_content",
+      "description": "Downloads the content of a specific email attachment.\n\nArgs:\n    message_id (str): The ID of the Gmail message containing the attachment.\n    attachment_id (str): The ID of the attachment to download.\n\nReturns:\n    str: Attachment metadata and base64-encoded content that can be decoded and saved.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "attachment_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message_id",
+          "attachment_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "send_gmail_message",
+      "description": "Sends an email using the user's Gmail account. Supports both new emails and replies with optional attachments.\nSupports Gmail's \"Send As\" feature to send from configured alias addresses.\n\nArgs:\n    to (str): Recipient email address.\n    subject (str): Email subject.\n    body (str): Email body content.\n    body_format (Literal['plain', 'html']): Email body format. Defaults to 'plain'.\n    attachments (Optional[List[Dict[str, str]]]): Optional list of attachments. Each dict can contain:\n        Option 1 - File path (auto-encodes):\n          - 'path' (required): File path to attach\n          - 'filename' (optional): Override filename\n          - 'mime_type' (optional): Override MIME type (auto-detected if not provided)\n        Option 2 - Base64 content:\n          - 'content' (required): Standard base64-encoded file content (not urlsafe)\n          - 'filename' (required): Name of the file\n          - 'mime_type' (optional): MIME type (defaults to 'application/octet-stream')\n    cc (Optional[str]): Optional CC email address.\n    bcc (Optional[str]): Optional BCC email address.\n    from_name (Optional[str]): Optional sender display name. If provided, the From header will be formatted as 'Name <email>'.\n    from_email (Optional[str]): Optional 'Send As' alias email address. The alias must be\n        configured in Gmail settings (Settings > Accounts > Send mail as). If not provided,\n        the email will be sent from the authenticated user's primary email address.\n    thread_id (Optional[str]): Optional Gmail thread ID to reply within. When provided, sends a reply.\n    in_reply_to (Optional[str]): Optional Message-ID of the message being replied to. Used for proper threading.\n    references (Optional[str]): Optional chain of Message-IDs for proper threading. Should include all previous Message-IDs.\n\nReturns:\n    ToolResult: Confirmation message with the sent email's message ID.\n    Also includes structured_content for machine parsing.\n\nExamples:\n    # Send a new email\n    send_gmail_message(to=\"user@example.com\", subject=\"Hello\", body=\"Hi there!\")\n\n    # Send with a custom display name\n    send_gmail_message(to=\"user@example.com\", subject=\"Hello\", body=\"Hi there!\", from_name=\"John Doe\")\n\n    # Send an HTML email\n    send_gmail_message(\n        to=\"user@example.com\",\n        subject=\"Hello\",\n        body=\"<strong>Hi there!</strong>\",\n        body_format=\"html\"\n    )\n\n    # Send from a configured alias (Send As)\n    send_gmail_message(\n        to=\"user@example.com\",\n        subject=\"Business Inquiry\",\n        body=\"Hello from my business address...\",\n        from_email=\"business@mydomain.com\"\n    )\n\n    # Send an email with CC and BCC\n    send_gmail_message(\n        to=\"user@example.com\",\n        cc=\"manager@example.com\",\n        bcc=\"archive@example.com\",\n        subject=\"Project Update\",\n        body=\"Here's the latest update...\"\n    )\n\n    # Send an email with attachments (using file path)\n    send_gmail_message(\n        to=\"user@example.com\",\n        subject=\"Report\",\n        body=\"Please see attached report.\",\n        attachments=[{\n            \"path\": \"/path/to/report.pdf\"\n        }]\n    )\n\n    # Send an email with attachments (using base64 content)\n    send_gmail_message(\n        to=\"user@example.com\",\n        subject=\"Report\",\n        body=\"Please see attached report.\",\n        attachments=[{\n            \"filename\": \"report.pdf\",\n            \"content\": \"JVBERi0xLjQK...\",  # base64 encoded PDF\n            \"mime_type\": \"application/pdf\"\n        }]\n    )\n\n    # Send a reply\n    send_gmail_message(\n        to=\"user@example.com\",\n        subject=\"Re: Meeting tomorrow\",\n        body=\"Thanks for the update!\",\n        thread_id=\"thread_123\",\n        in_reply_to=\"<message123@gmail.com>\",\n        references=\"<original@gmail.com> <message123@gmail.com>\"\n    )",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "description": "Recipient email address.",
+            "type": "string"
+          },
+          "subject": {
+            "description": "Email subject.",
+            "type": "string"
+          },
+          "body": {
+            "description": "Email body content (plain text or HTML).",
+            "type": "string"
+          },
+          "body_format": {
+            "default": "plain",
+            "description": "Email body format. Use 'plain' for plaintext or 'html' for HTML content.",
+            "enum": [
+              "plain",
+              "html"
+            ],
+            "type": "string"
+          },
+          "cc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional CC email address."
+          },
+          "bcc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional BCC email address."
+          },
+          "from_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional sender display name (e.g., 'Peter Hartree'). If provided, the From header will be formatted as 'Name <email>'."
+          },
+          "from_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional 'Send As' alias email address. Must be configured in Gmail settings (Settings > Accounts > Send mail as). If not provided, uses the authenticated user's email."
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Gmail thread ID to reply within."
+          },
+          "in_reply_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Message-ID of the message being replied to."
+          },
+          "references": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional chain of Message-IDs for proper threading."
+          },
+          "attachments": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional list of attachments. Each can have: \"path\" (file path, auto-encodes), OR \"content\" (standard base64, not urlsafe) + \"filename\". Optional \"mime_type\". Example: [{\"path\": \"/path/to/file.pdf\"}] or [{\"filename\": \"doc.pdf\", \"content\": \"base64data\", \"mime_type\": \"application/pdf\"}]"
+          }
+        },
+        "required": [
+          "to",
+          "subject",
+          "body"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "title": "Message Id",
+            "type": "string"
+          },
+          "thread_id": {
+            "default": null,
+            "title": "Thread Id",
+            "type": "string"
+          },
+          "attachment_count": {
+            "default": 0,
+            "title": "Attachment Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "message_id"
+        ],
+        "title": "GmailSendResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "draft_gmail_message",
+      "description": "Creates a draft email in the user's Gmail account. Supports both new drafts and reply drafts with optional attachments.\nSupports Gmail's \"Send As\" feature to draft from configured alias addresses.\n\nArgs:\n    subject (str): Email subject.\n    body (str): Email body (plain text).\n    body_format (Literal['plain', 'html']): Email body format. Defaults to 'plain'.\n    to (Optional[str]): Optional recipient email address. Can be left empty for drafts.\n    cc (Optional[str]): Optional CC email address.\n    bcc (Optional[str]): Optional BCC email address.\n    from_name (Optional[str]): Optional sender display name. If provided, the From header will be formatted as 'Name <email>'.\n    from_email (Optional[str]): Optional 'Send As' alias email address. The alias must be\n        configured in Gmail settings (Settings > Accounts > Send mail as). If not provided,\n        the draft will be from the authenticated user's primary email address.\n    thread_id (Optional[str]): Optional Gmail thread ID to reply within. When provided, creates a reply draft.\n    in_reply_to (Optional[str]): Optional Message-ID of the message being replied to. Used for proper threading.\n    references (Optional[str]): Optional chain of Message-IDs for proper threading. Should include all previous Message-IDs.\n    attachments (List[Dict[str, str]]): Optional list of attachments. Each dict can contain:\n        Option 1 - File path (auto-encodes):\n          - 'path' (required): File path to attach\n          - 'filename' (optional): Override filename\n          - 'mime_type' (optional): Override MIME type (auto-detected if not provided)\n        Option 2 - Base64 content:\n          - 'content' (required): Standard base64-encoded file content (not urlsafe)\n          - 'filename' (required): Name of the file\n          - 'mime_type' (optional): MIME type (defaults to 'application/octet-stream')\n\nReturns:\n    str: Confirmation message with the created draft's ID.\n\nExamples:\n    # Create a new draft\n    draft_gmail_message(subject=\"Hello\", body=\"Hi there!\", to=\"user@example.com\")\n\n    # Create a draft from a configured alias (Send As)\n    draft_gmail_message(\n        subject=\"Business Inquiry\",\n        body=\"Hello from my business address...\",\n        to=\"user@example.com\",\n        from_email=\"business@mydomain.com\"\n    )\n\n    # Create a plaintext draft with CC and BCC\n    draft_gmail_message(\n        subject=\"Project Update\",\n        body=\"Here's the latest update...\",\n        to=\"user@example.com\",\n        cc=\"manager@example.com\",\n        bcc=\"archive@example.com\"\n    )\n\n    # Create a HTML draft with CC and BCC\n    draft_gmail_message(\n        subject=\"Project Update\",\n        body=\"<strong>Hi there!</strong>\",\n        body_format=\"html\",\n        to=\"user@example.com\",\n        cc=\"manager@example.com\",\n        bcc=\"archive@example.com\"\n    )\n\n    # Create a reply draft in plaintext\n    draft_gmail_message(\n        subject=\"Re: Meeting tomorrow\",\n        body=\"Thanks for the update!\",\n        to=\"user@example.com\",\n        thread_id=\"thread_123\",\n        in_reply_to=\"<message123@gmail.com>\",\n        references=\"<original@gmail.com> <message123@gmail.com>\"\n    )\n\n    # Create a reply draft in HTML\n    draft_gmail_message(\n        subject=\"Re: Meeting tomorrow\",\n        body=\"<strong>Thanks for the update!</strong>\",\n        body_format=\"html\",\n        to=\"user@example.com\",\n        thread_id=\"thread_123\",\n        in_reply_to=\"<message123@gmail.com>\",\n        references=\"<original@gmail.com> <message123@gmail.com>\"\n    )",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "description": "Email subject.",
+            "type": "string"
+          },
+          "body": {
+            "description": "Email body (plain text).",
+            "type": "string"
+          },
+          "body_format": {
+            "default": "plain",
+            "description": "Email body format. Use 'plain' for plaintext or 'html' for HTML content.",
+            "enum": [
+              "plain",
+              "html"
+            ],
+            "type": "string"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional recipient email address."
+          },
+          "cc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional CC email address."
+          },
+          "bcc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional BCC email address."
+          },
+          "from_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional sender display name (e.g., 'Peter Hartree'). If provided, the From header will be formatted as 'Name <email>'."
+          },
+          "from_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional 'Send As' alias email address. Must be configured in Gmail settings (Settings > Accounts > Send mail as). If not provided, uses the authenticated user's email."
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Gmail thread ID to reply within."
+          },
+          "in_reply_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional Message-ID of the message being replied to."
+          },
+          "references": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional chain of Message-IDs for proper threading."
+          },
+          "attachments": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional list of attachments. Each can have: 'path' (file path, auto-encodes), OR 'content' (standard base64, not urlsafe) + 'filename'. Optional 'mime_type' (auto-detected from path if not provided)."
+          }
+        },
+        "required": [
+          "subject",
+          "body"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_gmail_thread_content",
+      "description": "Retrieves the complete content of a Gmail conversation thread, including all messages.\n\nArgs:\n    thread_id (str): The unique ID of the Gmail thread to retrieve.\n\nReturns:\n    str: The complete thread content with all messages formatted for reading.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "thread_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "thread_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_gmail_threads_content_batch",
+      "description": "Retrieves the content of multiple Gmail threads in a single batch request.\nSupports up to 25 threads per batch to prevent SSL connection exhaustion.\n\nArgs:\n    thread_ids (List[str]): A list of Gmail thread IDs to retrieve. The function will automatically batch requests in chunks of 25.\n\nReturns:\n    str: A formatted list of thread contents with separators.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "thread_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "thread_ids"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_gmail_user_email",
+      "description": "Retrieves the email address of the currently authenticated Gmail user.\n\nReturns:\n    str: The user's email address.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "list_gmail_labels",
+      "description": "Lists all labels in the user's Gmail account.\n\nReturns:\n    str: A formatted list of all labels with their IDs, names, and types.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "manage_gmail_label",
+      "description": "Manages Gmail labels: create, update, or delete labels.\n\nArgs:\n    action (Literal[\"create\", \"update\", \"delete\"]): Action to perform on the label.\n    name (Optional[str]): Label name. Required for create, optional for update.\n    label_id (Optional[str]): Label ID. Required for update and delete operations.\n    label_list_visibility (Literal[\"labelShow\", \"labelHide\"]): Whether the label is shown in the label list.\n    message_list_visibility (Literal[\"show\", \"hide\"]): Whether the label is shown in the message list.\n\nReturns:\n    str: Confirmation message of the label operation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "enum": [
+              "create",
+              "update",
+              "delete"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "label_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "label_list_visibility": {
+            "default": "labelShow",
+            "enum": [
+              "labelShow",
+              "labelHide"
+            ],
+            "type": "string"
+          },
+          "message_list_visibility": {
+            "default": "show",
+            "enum": [
+              "show",
+              "hide"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "list_gmail_filters",
+      "description": "Lists all Gmail filters configured in the user's mailbox.\n\nReturns:\n    str: A formatted list of filters with their criteria and actions.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_gmail_filter",
+      "description": "Creates a Gmail filter using the users.settings.filters API.\n\nArgs:\n    criteria (Dict[str, Any]): Criteria for matching messages.\n    action (Dict[str, Any]): Actions to apply to matched messages.\n\nReturns:\n    str: Confirmation message with the created filter ID.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "criteria": {
+            "additionalProperties": true,
+            "description": "Filter criteria object as defined in the Gmail API.",
+            "type": "object"
+          },
+          "action": {
+            "additionalProperties": true,
+            "description": "Filter action object as defined in the Gmail API.",
+            "type": "object"
+          }
+        },
+        "required": [
+          "criteria",
+          "action"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "delete_gmail_filter",
+      "description": "Deletes a Gmail filter by ID.\n\nArgs:\n    filter_id (str): The ID of the filter to delete.\n\nReturns:\n    str: Confirmation message for the deletion.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "filter_id": {
+            "description": "ID of the filter to delete.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filter_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "modify_gmail_message_labels",
+      "description": "Adds or removes labels from a Gmail message.\nTo archive an email, remove the INBOX label.\nTo delete an email, add the TRASH label.\n\nArgs:\n    message_id (str): The ID of the message to modify.\n    add_label_ids (Optional[List[str]]): List of label IDs to add to the message.\n    remove_label_ids (Optional[List[str]]): List of label IDs to remove from the message.\n\nReturns:\n    str: Confirmation message of the label changes applied to the message.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "message_id": {
+            "type": "string"
+          },
+          "add_label_ids": {
+            "default": [],
+            "description": "Label IDs to add to the message.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "remove_label_ids": {
+            "default": [],
+            "description": "Label IDs to remove from the message.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "message_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "batch_modify_gmail_message_labels",
+      "description": "Adds or removes labels from multiple Gmail messages in a single batch request.\n\nArgs:\n    message_ids (List[str]): A list of message IDs to modify.\n    add_label_ids (Optional[List[str]]): List of label IDs to add to the messages.\n    remove_label_ids (Optional[List[str]]): List of label IDs to remove from the messages.\n\nReturns:\n    str: Confirmation message of the label changes applied to the messages.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "message_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "add_label_ids": {
+            "default": [],
+            "description": "Label IDs to add to messages.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "remove_label_ids": {
+            "default": [],
+            "description": "Label IDs to remove from messages.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "message_ids"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    }
+  ]
+}

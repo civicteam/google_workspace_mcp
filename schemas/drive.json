@@ -1,0 +1,1602 @@
+{
+  "tools": [
+    {
+      "name": "start_google_auth",
+      "description": "Manually initiate Google OAuth authentication flow.\n\nNOTE: This tool should typically NOT be called directly. The authentication system\nautomatically handles credential checks and prompts for authentication when needed.\nOnly use this tool if:\n1. You need to re-authenticate with different credentials\n2. You want to proactively authenticate before using other tools\n3. The automatic authentication flow failed and you need to retry\n\nIn most cases, simply try calling the Google Workspace tool you need - it will\nautomatically handle authentication if required.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "service_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "x-fastmcp-wrap-result": true
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "search_drive_files",
+      "description": "Searches for files and folders within a user's Google Drive, including shared drives.\n\nArgs:\n    query (str): The search query string. Supports Google Drive search operators.\n    page_size (int): The maximum number of files to return. Defaults to 10.\n    drive_id (Optional[str]): ID of the shared drive to search. If None, behavior depends on `corpora` and `include_items_from_all_drives`.\n    include_items_from_all_drives (bool): Whether shared drive items should be included in results. Defaults to True. This is effective when not specifying a `drive_id`.\n    corpora (Optional[str]): Bodies of items to query (e.g., 'user', 'domain', 'drive', 'allDrives').\n                             If 'drive_id' is specified and 'corpora' is None, it defaults to 'drive'.\n                             Otherwise, Drive API default behavior applies. Prefer 'user' or 'drive' over 'allDrives' for efficiency.\n\nReturns:\n    str: A formatted list of found files/folders with their details (ID, name, type, size, modified time, link).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "page_size": {
+            "default": 10,
+            "type": "integer"
+          },
+          "drive_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "include_items_from_all_drives": {
+            "default": true,
+            "type": "boolean"
+          },
+          "corpora": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "title": "Query",
+            "type": "string"
+          },
+          "total_found": {
+            "title": "Total Found",
+            "type": "integer"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/$defs/DriveFileItem"
+            },
+            "title": "Files",
+            "type": "array"
+          }
+        },
+        "required": [
+          "query",
+          "total_found",
+          "files"
+        ],
+        "$defs": {
+          "DriveFileItem": {
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "mime_type": {
+                "title": "Mime Type",
+                "type": "string"
+              },
+              "web_view_link": {
+                "title": "Web View Link",
+                "type": "string"
+              },
+              "modified_time": {
+                "default": null,
+                "title": "Modified Time",
+                "type": "string"
+              },
+              "size": {
+                "default": null,
+                "title": "Size",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "mime_type",
+              "web_view_link"
+            ],
+            "title": "DriveFileItem",
+            "type": "object"
+          }
+        },
+        "title": "DriveSearchResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_drive_file_content",
+      "description": "Retrieves the content of a specific Google Drive file by ID, supporting files in shared drives.\n\n\u2022 Native Google Docs, Sheets, Slides \u2192 exported as text / CSV.\n\u2022 Office files (.docx, .xlsx, .pptx) \u2192 unzipped & parsed with std-lib to\n  extract readable text.\n\u2022 Any other file \u2192 downloaded; tries UTF-8 decode, else notes binary.\n\nArgs:\n    file_id: Drive file ID.\n\nReturns:\n    str: The file content as plain text with metadata header.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "title": "File Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "mime_type": {
+            "title": "Mime Type",
+            "type": "string"
+          },
+          "web_view_link": {
+            "title": "Web View Link",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "name",
+          "mime_type",
+          "web_view_link",
+          "content"
+        ],
+        "title": "DriveFileContent"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_drive_file_download_url",
+      "description": "Gets a download URL for a Google Drive file. The file is prepared and made available via HTTP URL.\n\nFor Google native files (Docs, Sheets, Slides), exports to a useful format:\n\u2022 Google Docs \u2192 PDF (default) or DOCX if export_format='docx'\n\u2022 Google Sheets \u2192 XLSX (default), PDF if export_format='pdf', or CSV if export_format='csv'\n\u2022 Google Slides \u2192 PDF (default) or PPTX if export_format='pptx'\n\nFor other files, downloads the original file format.\n\nArgs:\n    file_id: The Google Drive file ID to get a download URL for.\n    export_format: Optional export format for Google native files.\n                  Options: 'pdf', 'docx', 'xlsx', 'csv', 'pptx'.\n                  If not specified, uses sensible defaults (PDF for Docs/Slides, XLSX for Sheets).\n                  For Sheets: supports 'csv', 'pdf', or 'xlsx' (default).\n\nReturns:\n    str: Download URL and file metadata. The file is available at the URL for 1 hour.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "export_format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "title": "File Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "mime_type": {
+            "title": "Mime Type",
+            "type": "string"
+          },
+          "download_url": {
+            "default": null,
+            "title": "Download Url",
+            "type": "string"
+          },
+          "stateless_mode": {
+            "default": false,
+            "title": "Stateless Mode",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "file_id",
+          "name",
+          "size_bytes",
+          "mime_type"
+        ],
+        "title": "DriveDownloadResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "list_drive_items",
+      "description": "Lists files and folders, supporting shared drives.\nIf `drive_id` is specified, lists items within that shared drive. `folder_id` is then relative to that drive (or use drive_id as folder_id for root).\nIf `drive_id` is not specified, lists items from user's \"My Drive\" and accessible shared drives (if `include_items_from_all_drives` is True).\n\nArgs:\n    folder_id (str): The ID of the Google Drive folder. Defaults to 'root'. For a shared drive, this can be the shared drive's ID to list its root, or a folder ID within that shared drive.\n    page_size (int): The maximum number of items to return. Defaults to 100.\n    drive_id (Optional[str]): ID of the shared drive. If provided, the listing is scoped to this drive.\n    include_items_from_all_drives (bool): Whether items from all accessible shared drives should be included if `drive_id` is not set. Defaults to True.\n    corpora (Optional[str]): Corpus to query ('user', 'drive', 'allDrives'). If `drive_id` is set and `corpora` is None, 'drive' is used. If None and no `drive_id`, API defaults apply.\n\nReturns:\n    str: A formatted list of files/folders in the specified folder.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "default": "root",
+            "type": "string"
+          },
+          "page_size": {
+            "default": 100,
+            "type": "integer"
+          },
+          "drive_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "include_items_from_all_drives": {
+            "default": true,
+            "type": "boolean"
+          },
+          "corpora": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "folder_id": {
+            "title": "Folder Id",
+            "type": "string"
+          },
+          "total_found": {
+            "title": "Total Found",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/$defs/DriveFileItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "folder_id",
+          "total_found",
+          "items"
+        ],
+        "$defs": {
+          "DriveFileItem": {
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "name": {
+                "title": "Name",
+                "type": "string"
+              },
+              "mime_type": {
+                "title": "Mime Type",
+                "type": "string"
+              },
+              "web_view_link": {
+                "title": "Web View Link",
+                "type": "string"
+              },
+              "modified_time": {
+                "default": null,
+                "title": "Modified Time",
+                "type": "string"
+              },
+              "size": {
+                "default": null,
+                "title": "Size",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "mime_type",
+              "web_view_link"
+            ],
+            "title": "DriveFileItem",
+            "type": "object"
+          }
+        },
+        "title": "DriveListResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "create_drive_file",
+      "description": "Creates a new file in Google Drive, supporting creation within shared drives.\nAccepts either direct content or a fileUrl to fetch the content from.\n\nArgs:\n    file_name (str): The name for the new file.\n    content (Optional[str]): If provided, the content to write to the file.\n    folder_id (str): The ID of the parent folder. Defaults to 'root'. For shared drives, this must be a folder ID within the shared drive.\n    mime_type (str): The MIME type of the file. Defaults to 'text/plain'.\n    fileUrl (Optional[str]): If provided, fetches the file content from this URL. Supports file://, http://, and https:// protocols.\n\nReturns:\n    str: Confirmation message of the successful file creation with file link.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_name": {
+            "type": "string"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "folder_id": {
+            "default": "root",
+            "type": "string"
+          },
+          "mime_type": {
+            "default": "text/plain",
+            "type": "string"
+          },
+          "fileUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "file_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "title": "File Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "folder_id": {
+            "title": "Folder Id",
+            "type": "string"
+          },
+          "web_view_link": {
+            "title": "Web View Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "name",
+          "folder_id",
+          "web_view_link"
+        ],
+        "title": "DriveCreateResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "import_to_google_doc",
+      "description": "Imports a file (Markdown, DOCX, TXT, HTML, RTF, ODT) into Google Docs format with automatic conversion.\n\nGoogle Drive automatically converts the source file to native Google Docs format,\npreserving formatting like headings, lists, bold, italic, etc.\n\nArgs:\n\n    file_name (str): The name for the new Google Doc (extension will be ignored).\n    content (Optional[str]): Text content for text-based formats (MD, TXT, HTML).\n    file_path (Optional[str]): Local file path for binary formats (DOCX, ODT). Supports file:// URLs.\n    file_url (Optional[str]): Remote URL to fetch the file from (http/https).\n    source_format (Optional[str]): Source format hint ('md', 'markdown', 'docx', 'txt', 'html', 'rtf', 'odt').\n                                   Auto-detected from file_name extension if not provided.\n    folder_id (str): The ID of the parent folder. Defaults to 'root'.\n\nReturns:\n    str: Confirmation message with the new Google Doc link.\n\nExamples:\n    # Import markdown content directly\n    import_to_google_doc(file_name=\"My Doc.md\", content=\"# Title\\n\\nHello **world**\")\n\n    # Import a local DOCX file\n    import_to_google_doc(file_name=\"Report\", file_path=\"/path/to/report.docx\")\n\n    # Import from URL\n    import_to_google_doc(file_name=\"Remote Doc\", file_url=\"https://example.com/doc.md\")",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_name": {
+            "type": "string"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "file_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "file_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "source_format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "folder_id": {
+            "default": "root",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "source_format": {
+            "title": "Source Format",
+            "type": "string"
+          },
+          "folder_id": {
+            "title": "Folder Id",
+            "type": "string"
+          },
+          "web_view_link": {
+            "title": "Web View Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "name",
+          "source_format",
+          "folder_id",
+          "web_view_link"
+        ],
+        "title": "DriveImportResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_drive_file_permissions",
+      "description": "Gets detailed metadata about a Google Drive file including sharing permissions.\n\nArgs:\n    file_id (str): The ID of the file to check permissions for.\n\nReturns:\n    str: Detailed file metadata including sharing status and URLs.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "title": "File Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "mime_type": {
+            "title": "Mime Type",
+            "type": "string"
+          },
+          "size": {
+            "default": null,
+            "title": "Size",
+            "type": "string"
+          },
+          "modified_time": {
+            "default": null,
+            "title": "Modified Time",
+            "type": "string"
+          },
+          "is_shared": {
+            "default": false,
+            "title": "Is Shared",
+            "type": "boolean"
+          },
+          "web_view_link": {
+            "default": null,
+            "title": "Web View Link",
+            "type": "string"
+          },
+          "web_content_link": {
+            "default": null,
+            "title": "Web Content Link",
+            "type": "string"
+          },
+          "has_public_link": {
+            "default": false,
+            "title": "Has Public Link",
+            "type": "boolean"
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/$defs/DrivePermission"
+            },
+            "title": "Permissions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "file_id",
+          "name",
+          "mime_type"
+        ],
+        "$defs": {
+          "DrivePermission": {
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "type": {
+                "title": "Type",
+                "type": "string"
+              },
+              "role": {
+                "title": "Role",
+                "type": "string"
+              },
+              "email_address": {
+                "default": null,
+                "title": "Email Address",
+                "type": "string"
+              },
+              "domain": {
+                "default": null,
+                "title": "Domain",
+                "type": "string"
+              },
+              "expiration_time": {
+                "default": null,
+                "title": "Expiration Time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "role"
+            ],
+            "title": "DrivePermission",
+            "type": "object"
+          }
+        },
+        "title": "DrivePermissionsResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "check_drive_file_public_access",
+      "description": "Searches for a file by name and checks if it has public link sharing enabled.\n\nArgs:\n    file_name (str): The name of the file to check.\n\nReturns:\n    str: Information about the file's sharing status and whether it can be used in Google Docs.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_name"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "title": "File Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "mime_type": {
+            "title": "Mime Type",
+            "type": "string"
+          },
+          "is_shared": {
+            "title": "Is Shared",
+            "type": "boolean"
+          },
+          "has_public_link": {
+            "title": "Has Public Link",
+            "type": "boolean"
+          },
+          "drive_image_url": {
+            "default": null,
+            "title": "Drive Image Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "name",
+          "mime_type",
+          "is_shared",
+          "has_public_link"
+        ],
+        "title": "DrivePublicAccessResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "update_drive_file",
+      "description": "Updates metadata and properties of a Google Drive file.\n\nArgs:\n    file_id (str): The ID of the file to update. Required.\n    name (Optional[str]): New name for the file.\n    description (Optional[str]): New description for the file.\n    mime_type (Optional[str]): New MIME type (note: changing type may require content upload).\n    add_parents (Optional[str]): Comma-separated folder IDs to add as parents.\n    remove_parents (Optional[str]): Comma-separated folder IDs to remove from parents.\n    starred (Optional[bool]): Whether to star/unstar the file.\n    trashed (Optional[bool]): Whether to move file to/from trash.\n    writers_can_share (Optional[bool]): Whether editors can share the file.\n    copy_requires_writer_permission (Optional[bool]): Whether copying requires writer permission.\n    properties (Optional[dict]): Custom key-value properties for the file.\n\nReturns:\n    str: Confirmation message with details of the updates applied.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "add_parents": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "remove_parents": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "starred": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "trashed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "writers_can_share": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "copy_requires_writer_permission": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "properties": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "title": "File Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "web_view_link": {
+            "title": "Web View Link",
+            "type": "string"
+          },
+          "changes_applied": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Changes Applied",
+            "type": "array"
+          }
+        },
+        "required": [
+          "file_id",
+          "name",
+          "web_view_link"
+        ],
+        "title": "DriveUpdateResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "get_drive_shareable_link",
+      "description": "Gets the shareable link for a Google Drive file or folder.\n\nArgs:\n\n    file_id (str): The ID of the file or folder to get the shareable link for. Required.\n\nReturns:\n    str: The shareable links and current sharing status.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "title": "File Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "mime_type": {
+            "title": "Mime Type",
+            "type": "string"
+          },
+          "is_shared": {
+            "title": "Is Shared",
+            "type": "boolean"
+          },
+          "web_view_link": {
+            "default": null,
+            "title": "Web View Link",
+            "type": "string"
+          },
+          "web_content_link": {
+            "default": null,
+            "title": "Web Content Link",
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "$ref": "#/$defs/DrivePermission"
+            },
+            "title": "Permissions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "file_id",
+          "name",
+          "mime_type",
+          "is_shared"
+        ],
+        "$defs": {
+          "DrivePermission": {
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "type": {
+                "title": "Type",
+                "type": "string"
+              },
+              "role": {
+                "title": "Role",
+                "type": "string"
+              },
+              "email_address": {
+                "default": null,
+                "title": "Email Address",
+                "type": "string"
+              },
+              "domain": {
+                "default": null,
+                "title": "Domain",
+                "type": "string"
+              },
+              "expiration_time": {
+                "default": null,
+                "title": "Expiration Time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "role"
+            ],
+            "title": "DrivePermission",
+            "type": "object"
+          }
+        },
+        "title": "DriveShareableLinkResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "share_drive_file",
+      "description": "Shares a Google Drive file or folder with a user, group, domain, or anyone with the link.\n\nWhen sharing a folder, all files inside inherit the permission.\n\nArgs:\n\n    file_id (str): The ID of the file or folder to share. Required.\n    share_with (Optional[str]): Email address (for user/group), domain name (for domain), or omit for 'anyone'.\n    role (str): Permission role - 'reader', 'commenter', or 'writer'. Defaults to 'reader'.\n    share_type (str): Type of sharing - 'user', 'group', 'domain', or 'anyone'. Defaults to 'user'.\n    send_notification (bool): Whether to send a notification email. Defaults to True.\n    email_message (Optional[str]): Custom message for the notification email.\n    expiration_time (Optional[str]): Expiration time in RFC 3339 format (e.g., \"2025-01-15T00:00:00Z\"). Permission auto-revokes after this time.\n    allow_file_discovery (Optional[bool]): For 'domain' or 'anyone' shares - whether the file can be found via search. Defaults to None (API default).\n\nReturns:\n    str: Confirmation with permission details and shareable link.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "share_with": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "role": {
+            "default": "reader",
+            "type": "string"
+          },
+          "share_type": {
+            "default": "user",
+            "type": "string"
+          },
+          "send_notification": {
+            "default": true,
+            "type": "boolean"
+          },
+          "email_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "expiration_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "allow_file_discovery": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "title": "File Id",
+            "type": "string"
+          },
+          "file_name": {
+            "title": "File Name",
+            "type": "string"
+          },
+          "permission": {
+            "$ref": "#/$defs/DrivePermission"
+          },
+          "web_view_link": {
+            "title": "Web View Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "file_name",
+          "permission",
+          "web_view_link"
+        ],
+        "$defs": {
+          "DrivePermission": {
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "type": {
+                "title": "Type",
+                "type": "string"
+              },
+              "role": {
+                "title": "Role",
+                "type": "string"
+              },
+              "email_address": {
+                "default": null,
+                "title": "Email Address",
+                "type": "string"
+              },
+              "domain": {
+                "default": null,
+                "title": "Domain",
+                "type": "string"
+              },
+              "expiration_time": {
+                "default": null,
+                "title": "Expiration Time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "role"
+            ],
+            "title": "DrivePermission",
+            "type": "object"
+          }
+        },
+        "title": "DriveShareResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "batch_share_drive_file",
+      "description": "Shares a Google Drive file or folder with multiple users or groups in a single operation.\n\nEach recipient can have a different role and optional expiration time.\n\nNote: Each recipient is processed sequentially. For very large recipient lists,\nconsider splitting into multiple calls.\n\nArgs:\n\n    file_id (str): The ID of the file or folder to share. Required.\n    recipients (List[Dict]): List of recipient objects. Each should have:\n        - email (str): Recipient email address. Required for 'user' or 'group' share_type.\n        - role (str): Permission role - 'reader', 'commenter', or 'writer'. Defaults to 'reader'.\n        - share_type (str, optional): 'user', 'group', or 'domain'. Defaults to 'user'.\n        - expiration_time (str, optional): Expiration in RFC 3339 format (e.g., \"2025-01-15T00:00:00Z\").\n        For domain shares, use 'domain' field instead of 'email':\n        - domain (str): Domain name. Required when share_type is 'domain'.\n    send_notification (bool): Whether to send notification emails. Defaults to True.\n    email_message (Optional[str]): Custom message for notification emails.\n\nReturns:\n    str: Summary of created permissions with success/failure for each recipient.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "recipients": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "send_notification": {
+            "default": true,
+            "type": "boolean"
+          },
+          "email_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "file_id",
+          "recipients"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "title": "File Id",
+            "type": "string"
+          },
+          "file_name": {
+            "title": "File Name",
+            "type": "string"
+          },
+          "success_count": {
+            "title": "Success Count",
+            "type": "integer"
+          },
+          "failure_count": {
+            "title": "Failure Count",
+            "type": "integer"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/$defs/DriveBatchShareResultItem"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "web_view_link": {
+            "title": "Web View Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "file_name",
+          "success_count",
+          "failure_count",
+          "results",
+          "web_view_link"
+        ],
+        "$defs": {
+          "DriveBatchShareResultItem": {
+            "properties": {
+              "identifier": {
+                "title": "Identifier",
+                "type": "string"
+              },
+              "success": {
+                "title": "Success",
+                "type": "boolean"
+              },
+              "permission": {
+                "default": null,
+                "$ref": "#/$defs/DrivePermission"
+              },
+              "error": {
+                "default": null,
+                "title": "Error",
+                "type": "string"
+              }
+            },
+            "required": [
+              "identifier",
+              "success"
+            ],
+            "title": "DriveBatchShareResultItem",
+            "type": "object"
+          },
+          "DrivePermission": {
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "type": {
+                "title": "Type",
+                "type": "string"
+              },
+              "role": {
+                "title": "Role",
+                "type": "string"
+              },
+              "email_address": {
+                "default": null,
+                "title": "Email Address",
+                "type": "string"
+              },
+              "domain": {
+                "default": null,
+                "title": "Domain",
+                "type": "string"
+              },
+              "expiration_time": {
+                "default": null,
+                "title": "Expiration Time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "role"
+            ],
+            "title": "DrivePermission",
+            "type": "object"
+          }
+        },
+        "title": "DriveBatchShareResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "update_drive_permission",
+      "description": "Updates an existing permission on a Google Drive file or folder.\n\nArgs:\n\n    file_id (str): The ID of the file or folder. Required.\n    permission_id (str): The ID of the permission to update (from get_drive_file_permissions). Required.\n    role (Optional[str]): New role - 'reader', 'commenter', or 'writer'. If not provided, role unchanged.\n    expiration_time (Optional[str]): Expiration time in RFC 3339 format (e.g., \"2025-01-15T00:00:00Z\"). Set or update when permission expires.\n\nReturns:\n    str: Confirmation with updated permission details.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "permission_id": {
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "expiration_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "file_id",
+          "permission_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "title": "File Id",
+            "type": "string"
+          },
+          "file_name": {
+            "title": "File Name",
+            "type": "string"
+          },
+          "permission": {
+            "$ref": "#/$defs/DrivePermission"
+          }
+        },
+        "required": [
+          "file_id",
+          "file_name",
+          "permission"
+        ],
+        "$defs": {
+          "DrivePermission": {
+            "properties": {
+              "id": {
+                "title": "Id",
+                "type": "string"
+              },
+              "type": {
+                "title": "Type",
+                "type": "string"
+              },
+              "role": {
+                "title": "Role",
+                "type": "string"
+              },
+              "email_address": {
+                "default": null,
+                "title": "Email Address",
+                "type": "string"
+              },
+              "domain": {
+                "default": null,
+                "title": "Domain",
+                "type": "string"
+              },
+              "expiration_time": {
+                "default": null,
+                "title": "Expiration Time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "type",
+              "role"
+            ],
+            "title": "DrivePermission",
+            "type": "object"
+          }
+        },
+        "title": "DrivePermissionUpdateResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "remove_drive_permission",
+      "description": "Removes a permission from a Google Drive file or folder, revoking access.\n\nArgs:\n\n    file_id (str): The ID of the file or folder. Required.\n    permission_id (str): The ID of the permission to remove (from get_drive_file_permissions). Required.\n\nReturns:\n    str: Confirmation of the removed permission.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "permission_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "permission_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "title": "File Id",
+            "type": "string"
+          },
+          "file_name": {
+            "title": "File Name",
+            "type": "string"
+          },
+          "permission_id": {
+            "title": "Permission Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id",
+          "file_name",
+          "permission_id"
+        ],
+        "title": "DrivePermissionRemoveResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "copy_drive_file",
+      "description": "Creates a copy of an existing Google Drive file.\n\nThis tool copies the template document to a new location with an optional new name.\nThe copy maintains all formatting and content from the original file.\n\nArgs:\n\n    file_id (str): The ID of the file to copy. Required.\n    new_name (Optional[str]): New name for the copied file. If not provided, uses \"Copy of [original name]\".\n    parent_folder_id (str): The ID of the folder where the copy should be created. Defaults to 'root' (My Drive).\n\nReturns:\n    str: Confirmation message with details of the copied file and its link.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "new_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "parent_folder_id": {
+            "default": "root",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file_id"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "original_file_id": {
+            "title": "Original File Id",
+            "type": "string"
+          },
+          "original_name": {
+            "title": "Original Name",
+            "type": "string"
+          },
+          "new_file_id": {
+            "title": "New File Id",
+            "type": "string"
+          },
+          "new_name": {
+            "title": "New Name",
+            "type": "string"
+          },
+          "mime_type": {
+            "title": "Mime Type",
+            "type": "string"
+          },
+          "parent_folder_id": {
+            "title": "Parent Folder Id",
+            "type": "string"
+          },
+          "web_view_link": {
+            "title": "Web View Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "original_file_id",
+          "original_name",
+          "new_file_id",
+          "new_name",
+          "mime_type",
+          "parent_folder_id",
+          "web_view_link"
+        ],
+        "title": "DriveCopyResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    },
+    {
+      "name": "transfer_drive_ownership",
+      "description": "Transfers ownership of a Google Drive file or folder to another user.\n\nThis is an irreversible operation. The current owner will become an editor.\nOnly works within the same Google Workspace domain or for personal accounts.\n\nArgs:\n\n    file_id (str): The ID of the file or folder to transfer. Required.\n    new_owner_email (str): Email address of the new owner. Required.\n    move_to_new_owners_root (bool): If True, moves the file to the new owner's My Drive root. Defaults to False.\n\nReturns:\n    str: Confirmation of the ownership transfer.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "type": "string"
+          },
+          "new_owner_email": {
+            "type": "string"
+          },
+          "move_to_new_owners_root": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "file_id",
+          "new_owner_email"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": {
+            "title": "File Id",
+            "type": "string"
+          },
+          "file_name": {
+            "title": "File Name",
+            "type": "string"
+          },
+          "new_owner_email": {
+            "title": "New Owner Email",
+            "type": "string"
+          },
+          "previous_owner_emails": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Previous Owner Emails",
+            "type": "array"
+          },
+          "moved_to_new_owners_root": {
+            "default": false,
+            "title": "Moved To New Owners Root",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "file_id",
+          "file_name",
+          "new_owner_email",
+          "previous_owner_emails"
+        ],
+        "title": "DriveOwnershipTransferResult"
+      },
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    }
+  ]
+}
