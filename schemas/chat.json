@@ -61,7 +61,27 @@
           },
           "spaces": {
             "items": {
-              "$ref": "#/$defs/ChatSpace"
+              "properties": {
+                "space_id": {
+                  "title": "Space Id",
+                  "type": "string"
+                },
+                "display_name": {
+                  "title": "Display Name",
+                  "type": "string"
+                },
+                "space_type": {
+                  "title": "Space Type",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "space_id",
+                "display_name",
+                "space_type"
+              ],
+              "title": "ChatSpace",
+              "type": "object"
             },
             "title": "Spaces",
             "type": "array"
@@ -72,31 +92,6 @@
           "total_found",
           "spaces"
         ],
-        "$defs": {
-          "ChatSpace": {
-            "properties": {
-              "space_id": {
-                "title": "Space Id",
-                "type": "string"
-              },
-              "display_name": {
-                "title": "Display Name",
-                "type": "string"
-              },
-              "space_type": {
-                "title": "Space Type",
-                "type": "string"
-              }
-            },
-            "required": [
-              "space_id",
-              "display_name",
-              "space_type"
-            ],
-            "title": "ChatSpace",
-            "type": "object"
-          }
-        },
         "title": "ChatListSpacesResult"
       },
       "_meta": {
@@ -144,7 +139,32 @@
           },
           "messages": {
             "items": {
-              "$ref": "#/$defs/ChatMessage"
+              "properties": {
+                "message_id": {
+                  "title": "Message Id",
+                  "type": "string"
+                },
+                "sender": {
+                  "title": "Sender",
+                  "type": "string"
+                },
+                "create_time": {
+                  "title": "Create Time",
+                  "type": "string"
+                },
+                "text": {
+                  "title": "Text",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "message_id",
+                "sender",
+                "create_time",
+                "text"
+              ],
+              "title": "ChatMessage",
+              "type": "object"
             },
             "title": "Messages",
             "type": "array"
@@ -156,36 +176,6 @@
           "total_messages",
           "messages"
         ],
-        "$defs": {
-          "ChatMessage": {
-            "properties": {
-              "message_id": {
-                "title": "Message Id",
-                "type": "string"
-              },
-              "sender": {
-                "title": "Sender",
-                "type": "string"
-              },
-              "create_time": {
-                "title": "Create Time",
-                "type": "string"
-              },
-              "text": {
-                "title": "Text",
-                "type": "string"
-              }
-            },
-            "required": [
-              "message_id",
-              "sender",
-              "create_time",
-              "text"
-            ],
-            "title": "ChatMessage",
-            "type": "object"
-          }
-        },
         "title": "ChatGetMessagesResult"
       },
       "_meta": {
@@ -298,7 +288,32 @@
           },
           "messages": {
             "items": {
-              "$ref": "#/$defs/ChatSearchMessage"
+              "properties": {
+                "sender": {
+                  "title": "Sender",
+                  "type": "string"
+                },
+                "create_time": {
+                  "title": "Create Time",
+                  "type": "string"
+                },
+                "text": {
+                  "title": "Text",
+                  "type": "string"
+                },
+                "space_name": {
+                  "title": "Space Name",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "sender",
+                "create_time",
+                "text",
+                "space_name"
+              ],
+              "title": "ChatSearchMessage",
+              "type": "object"
             },
             "title": "Messages",
             "type": "array"
@@ -310,36 +325,6 @@
           "total_found",
           "messages"
         ],
-        "$defs": {
-          "ChatSearchMessage": {
-            "properties": {
-              "sender": {
-                "title": "Sender",
-                "type": "string"
-              },
-              "create_time": {
-                "title": "Create Time",
-                "type": "string"
-              },
-              "text": {
-                "title": "Text",
-                "type": "string"
-              },
-              "space_name": {
-                "title": "Space Name",
-                "type": "string"
-              }
-            },
-            "required": [
-              "sender",
-              "create_time",
-              "text",
-              "space_name"
-            ],
-            "title": "ChatSearchMessage",
-            "type": "object"
-          }
-        },
         "title": "ChatSearchMessagesResult"
       },
       "_meta": {

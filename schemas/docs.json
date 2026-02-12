@@ -63,7 +63,32 @@
           },
           "documents": {
             "items": {
-              "$ref": "#/$defs/DocsSearchResultItem"
+              "properties": {
+                "doc_id": {
+                  "title": "Doc Id",
+                  "type": "string"
+                },
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "modified_time": {
+                  "default": null,
+                  "title": "Modified Time",
+                  "type": "string"
+                },
+                "web_link": {
+                  "default": null,
+                  "title": "Web Link",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "doc_id",
+                "name"
+              ],
+              "title": "DocsSearchResultItem",
+              "type": "object"
             },
             "title": "Documents",
             "type": "array"
@@ -74,36 +99,6 @@
           "total_found",
           "documents"
         ],
-        "$defs": {
-          "DocsSearchResultItem": {
-            "properties": {
-              "doc_id": {
-                "title": "Doc Id",
-                "type": "string"
-              },
-              "name": {
-                "title": "Name",
-                "type": "string"
-              },
-              "modified_time": {
-                "default": null,
-                "title": "Modified Time",
-                "type": "string"
-              },
-              "web_link": {
-                "default": null,
-                "title": "Web Link",
-                "type": "string"
-              }
-            },
-            "required": [
-              "doc_id",
-              "name"
-            ],
-            "title": "DocsSearchResultItem",
-            "type": "object"
-          }
-        },
         "title": "DocsSearchResult"
       },
       "_meta": {
@@ -194,7 +189,32 @@
           },
           "documents": {
             "items": {
-              "$ref": "#/$defs/DocsSearchResultItem"
+              "properties": {
+                "doc_id": {
+                  "title": "Doc Id",
+                  "type": "string"
+                },
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "modified_time": {
+                  "default": null,
+                  "title": "Modified Time",
+                  "type": "string"
+                },
+                "web_link": {
+                  "default": null,
+                  "title": "Web Link",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "doc_id",
+                "name"
+              ],
+              "title": "DocsSearchResultItem",
+              "type": "object"
             },
             "title": "Documents",
             "type": "array"
@@ -205,36 +225,6 @@
           "total_found",
           "documents"
         ],
-        "$defs": {
-          "DocsSearchResultItem": {
-            "properties": {
-              "doc_id": {
-                "title": "Doc Id",
-                "type": "string"
-              },
-              "name": {
-                "title": "Name",
-                "type": "string"
-              },
-              "modified_time": {
-                "default": null,
-                "title": "Modified Time",
-                "type": "string"
-              },
-              "web_link": {
-                "default": null,
-                "title": "Web Link",
-                "type": "string"
-              }
-            },
-            "required": [
-              "doc_id",
-              "name"
-            ],
-            "title": "DocsSearchResultItem",
-            "type": "object"
-          }
-        },
         "title": "DocsListResult"
       },
       "_meta": {
@@ -760,84 +750,6 @@
           },
           "statistics": {
             "default": null,
-            "$ref": "#/$defs/DocsStructureStatistics"
-          },
-          "elements": {
-            "items": {
-              "$ref": "#/$defs/DocsElementSummary"
-            },
-            "title": "Elements",
-            "type": "array"
-          },
-          "tables": {
-            "items": {
-              "$ref": "#/$defs/DocsTableSummary"
-            },
-            "title": "Tables",
-            "type": "array"
-          },
-          "table_details": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "title": "Table Details",
-            "type": "array"
-          },
-          "web_link": {
-            "default": "",
-            "title": "Web Link",
-            "type": "string"
-          }
-        },
-        "required": [
-          "document_id"
-        ],
-        "$defs": {
-          "DocsElementSummary": {
-            "properties": {
-              "element_type": {
-                "title": "Element Type",
-                "type": "string"
-              },
-              "start_index": {
-                "title": "Start Index",
-                "type": "integer"
-              },
-              "end_index": {
-                "title": "End Index",
-                "type": "integer"
-              },
-              "rows": {
-                "default": null,
-                "title": "Rows",
-                "type": "integer"
-              },
-              "columns": {
-                "default": null,
-                "title": "Columns",
-                "type": "integer"
-              },
-              "cell_count": {
-                "default": null,
-                "title": "Cell Count",
-                "type": "integer"
-              },
-              "text_preview": {
-                "default": null,
-                "title": "Text Preview",
-                "type": "string"
-              }
-            },
-            "required": [
-              "element_type",
-              "start_index",
-              "end_index"
-            ],
-            "title": "DocsElementSummary",
-            "type": "object"
-          },
-          "DocsStructureStatistics": {
             "properties": {
               "elements": {
                 "title": "Elements",
@@ -870,74 +782,135 @@
             "title": "DocsStructureStatistics",
             "type": "object"
           },
-          "DocsTableDimensions": {
-            "properties": {
-              "rows": {
-                "title": "Rows",
-                "type": "integer"
-              },
-              "columns": {
-                "title": "Columns",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "rows",
-              "columns"
-            ],
-            "title": "DocsTableDimensions",
-            "type": "object"
-          },
-          "DocsTablePosition": {
-            "properties": {
-              "start": {
-                "title": "Start",
-                "type": "integer"
-              },
-              "end": {
-                "title": "End",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "start",
-              "end"
-            ],
-            "title": "DocsTablePosition",
-            "type": "object"
-          },
-          "DocsTableSummary": {
-            "properties": {
-              "index": {
-                "title": "Index",
-                "type": "integer"
-              },
-              "position": {
-                "$ref": "#/$defs/DocsTablePosition"
-              },
-              "dimensions": {
-                "$ref": "#/$defs/DocsTableDimensions"
-              },
-              "preview": {
-                "items": {
-                  "items": {
-                    "type": "string"
-                  },
-                  "type": "array"
+          "elements": {
+            "items": {
+              "properties": {
+                "element_type": {
+                  "title": "Element Type",
+                  "type": "string"
                 },
-                "title": "Preview",
-                "type": "array"
-              }
+                "start_index": {
+                  "title": "Start Index",
+                  "type": "integer"
+                },
+                "end_index": {
+                  "title": "End Index",
+                  "type": "integer"
+                },
+                "rows": {
+                  "default": null,
+                  "title": "Rows",
+                  "type": "integer"
+                },
+                "columns": {
+                  "default": null,
+                  "title": "Columns",
+                  "type": "integer"
+                },
+                "cell_count": {
+                  "default": null,
+                  "title": "Cell Count",
+                  "type": "integer"
+                },
+                "text_preview": {
+                  "default": null,
+                  "title": "Text Preview",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "element_type",
+                "start_index",
+                "end_index"
+              ],
+              "title": "DocsElementSummary",
+              "type": "object"
             },
-            "required": [
-              "index",
-              "position",
-              "dimensions"
-            ],
-            "title": "DocsTableSummary",
-            "type": "object"
+            "title": "Elements",
+            "type": "array"
+          },
+          "tables": {
+            "items": {
+              "properties": {
+                "index": {
+                  "title": "Index",
+                  "type": "integer"
+                },
+                "position": {
+                  "properties": {
+                    "start": {
+                      "title": "Start",
+                      "type": "integer"
+                    },
+                    "end": {
+                      "title": "End",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "start",
+                    "end"
+                  ],
+                  "title": "DocsTablePosition",
+                  "type": "object"
+                },
+                "dimensions": {
+                  "properties": {
+                    "rows": {
+                      "title": "Rows",
+                      "type": "integer"
+                    },
+                    "columns": {
+                      "title": "Columns",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "rows",
+                    "columns"
+                  ],
+                  "title": "DocsTableDimensions",
+                  "type": "object"
+                },
+                "preview": {
+                  "items": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "title": "Preview",
+                  "type": "array"
+                }
+              },
+              "required": [
+                "index",
+                "position",
+                "dimensions"
+              ],
+              "title": "DocsTableSummary",
+              "type": "object"
+            },
+            "title": "Tables",
+            "type": "array"
+          },
+          "table_details": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Table Details",
+            "type": "array"
+          },
+          "web_link": {
+            "default": "",
+            "title": "Web Link",
+            "type": "string"
           }
         },
+        "required": [
+          "document_id"
+        ],
         "title": "DocsStructureResult"
       },
       "_meta": {
@@ -1067,7 +1040,37 @@
           "cells": {
             "items": {
               "items": {
-                "$ref": "#/$defs/DocsCellDebugInfo"
+                "properties": {
+                  "position": {
+                    "title": "Position",
+                    "type": "string"
+                  },
+                  "range": {
+                    "title": "Range",
+                    "type": "string"
+                  },
+                  "insertion_index": {
+                    "title": "Insertion Index",
+                    "type": "string"
+                  },
+                  "current_content": {
+                    "title": "Current Content",
+                    "type": "string"
+                  },
+                  "content_elements_count": {
+                    "title": "Content Elements Count",
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "position",
+                  "range",
+                  "insertion_index",
+                  "current_content",
+                  "content_elements_count"
+                ],
+                "title": "DocsCellDebugInfo",
+                "type": "object"
               },
               "type": "array"
             },
@@ -1087,41 +1090,6 @@
           "cells",
           "web_link"
         ],
-        "$defs": {
-          "DocsCellDebugInfo": {
-            "properties": {
-              "position": {
-                "title": "Position",
-                "type": "string"
-              },
-              "range": {
-                "title": "Range",
-                "type": "string"
-              },
-              "insertion_index": {
-                "title": "Insertion Index",
-                "type": "string"
-              },
-              "current_content": {
-                "title": "Current Content",
-                "type": "string"
-              },
-              "content_elements_count": {
-                "title": "Content Elements Count",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "position",
-              "range",
-              "insertion_index",
-              "current_content",
-              "content_elements_count"
-            ],
-            "title": "DocsCellDebugInfo",
-            "type": "object"
-          }
-        },
         "title": "DocsTableDebugResult"
       },
       "_meta": {

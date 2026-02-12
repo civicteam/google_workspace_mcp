@@ -53,7 +53,32 @@
           },
           "spreadsheets": {
             "items": {
-              "$ref": "#/$defs/SpreadsheetItem"
+              "properties": {
+                "spreadsheet_id": {
+                  "title": "Spreadsheet Id",
+                  "type": "string"
+                },
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "modified_time": {
+                  "title": "Modified Time",
+                  "type": "string"
+                },
+                "web_link": {
+                  "title": "Web Link",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "spreadsheet_id",
+                "name",
+                "modified_time",
+                "web_link"
+              ],
+              "title": "SpreadsheetItem",
+              "type": "object"
             },
             "title": "Spreadsheets",
             "type": "array"
@@ -63,36 +88,6 @@
           "total_found",
           "spreadsheets"
         ],
-        "$defs": {
-          "SpreadsheetItem": {
-            "properties": {
-              "spreadsheet_id": {
-                "title": "Spreadsheet Id",
-                "type": "string"
-              },
-              "name": {
-                "title": "Name",
-                "type": "string"
-              },
-              "modified_time": {
-                "title": "Modified Time",
-                "type": "string"
-              },
-              "web_link": {
-                "title": "Web Link",
-                "type": "string"
-              }
-            },
-            "required": [
-              "spreadsheet_id",
-              "name",
-              "modified_time",
-              "web_link"
-            ],
-            "title": "SpreadsheetItem",
-            "type": "object"
-          }
-        },
         "title": "ListSpreadsheetsResult"
       },
       "_meta": {
@@ -132,7 +127,37 @@
           },
           "sheets": {
             "items": {
-              "$ref": "#/$defs/SheetInfo"
+              "properties": {
+                "sheet_id": {
+                  "title": "Sheet Id",
+                  "type": "integer"
+                },
+                "title": {
+                  "title": "Title",
+                  "type": "string"
+                },
+                "row_count": {
+                  "title": "Row Count",
+                  "type": "integer"
+                },
+                "column_count": {
+                  "title": "Column Count",
+                  "type": "integer"
+                },
+                "conditional_format_count": {
+                  "title": "Conditional Format Count",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "sheet_id",
+                "title",
+                "row_count",
+                "column_count",
+                "conditional_format_count"
+              ],
+              "title": "SheetInfo",
+              "type": "object"
             },
             "title": "Sheets",
             "type": "array"
@@ -144,41 +169,6 @@
           "locale",
           "sheets"
         ],
-        "$defs": {
-          "SheetInfo": {
-            "properties": {
-              "sheet_id": {
-                "title": "Sheet Id",
-                "type": "integer"
-              },
-              "title": {
-                "title": "Title",
-                "type": "string"
-              },
-              "row_count": {
-                "title": "Row Count",
-                "type": "integer"
-              },
-              "column_count": {
-                "title": "Column Count",
-                "type": "integer"
-              },
-              "conditional_format_count": {
-                "title": "Conditional Format Count",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "sheet_id",
-              "title",
-              "row_count",
-              "column_count",
-              "conditional_format_count"
-            ],
-            "title": "SheetInfo",
-            "type": "object"
-          }
-        },
         "title": "SpreadsheetInfoResult"
       },
       "_meta": {

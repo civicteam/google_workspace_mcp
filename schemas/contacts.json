@@ -79,7 +79,53 @@
           },
           "contacts": {
             "items": {
-              "$ref": "#/$defs/ContactSummary"
+              "properties": {
+                "contact_id": {
+                  "title": "Contact Id",
+                  "type": "string"
+                },
+                "name": {
+                  "default": null,
+                  "title": "Name",
+                  "type": "string"
+                },
+                "emails": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Emails",
+                  "type": "array"
+                },
+                "phones": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Phones",
+                  "type": "array"
+                },
+                "organization": {
+                  "default": null,
+                  "properties": {
+                    "name": {
+                      "default": null,
+                      "title": "Name",
+                      "type": "string"
+                    },
+                    "title": {
+                      "default": null,
+                      "title": "Title",
+                      "type": "string"
+                    }
+                  },
+                  "title": "ContactOrganization",
+                  "type": "object"
+                }
+              },
+              "required": [
+                "contact_id"
+              ],
+              "title": "ContactSummary",
+              "type": "object"
             },
             "title": "Contacts",
             "type": "array"
@@ -95,60 +141,6 @@
           "returned_count",
           "contacts"
         ],
-        "$defs": {
-          "ContactOrganization": {
-            "properties": {
-              "name": {
-                "default": null,
-                "title": "Name",
-                "type": "string"
-              },
-              "title": {
-                "default": null,
-                "title": "Title",
-                "type": "string"
-              }
-            },
-            "title": "ContactOrganization",
-            "type": "object"
-          },
-          "ContactSummary": {
-            "properties": {
-              "contact_id": {
-                "title": "Contact Id",
-                "type": "string"
-              },
-              "name": {
-                "default": null,
-                "title": "Name",
-                "type": "string"
-              },
-              "emails": {
-                "items": {
-                  "type": "string"
-                },
-                "title": "Emails",
-                "type": "array"
-              },
-              "phones": {
-                "items": {
-                  "type": "string"
-                },
-                "title": "Phones",
-                "type": "array"
-              },
-              "organization": {
-                "default": null,
-                "$ref": "#/$defs/ContactOrganization"
-              }
-            },
-            "required": [
-              "contact_id"
-            ],
-            "title": "ContactSummary",
-            "type": "object"
-          }
-        },
         "title": "ListContactsResult"
       },
       "_meta": {
@@ -175,14 +167,6 @@
         "type": "object",
         "properties": {
           "contact": {
-            "$ref": "#/$defs/ContactDetails"
-          }
-        },
-        "required": [
-          "contact"
-        ],
-        "$defs": {
-          "ContactDetails": {
             "properties": {
               "contact_id": {
                 "title": "Contact Id",
@@ -209,7 +193,20 @@
               },
               "organization": {
                 "default": null,
-                "$ref": "#/$defs/ContactOrganization"
+                "properties": {
+                  "name": {
+                    "default": null,
+                    "title": "Name",
+                    "type": "string"
+                  },
+                  "title": {
+                    "default": null,
+                    "title": "Title",
+                    "type": "string"
+                  }
+                },
+                "title": "ContactOrganization",
+                "type": "object"
               },
               "address": {
                 "default": null,
@@ -246,24 +243,11 @@
             ],
             "title": "ContactDetails",
             "type": "object"
-          },
-          "ContactOrganization": {
-            "properties": {
-              "name": {
-                "default": null,
-                "title": "Name",
-                "type": "string"
-              },
-              "title": {
-                "default": null,
-                "title": "Title",
-                "type": "string"
-              }
-            },
-            "title": "ContactOrganization",
-            "type": "object"
           }
         },
+        "required": [
+          "contact"
+        ],
         "title": "GetContactResult"
       },
       "_meta": {
@@ -303,7 +287,53 @@
           },
           "contacts": {
             "items": {
-              "$ref": "#/$defs/ContactSummary"
+              "properties": {
+                "contact_id": {
+                  "title": "Contact Id",
+                  "type": "string"
+                },
+                "name": {
+                  "default": null,
+                  "title": "Name",
+                  "type": "string"
+                },
+                "emails": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Emails",
+                  "type": "array"
+                },
+                "phones": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Phones",
+                  "type": "array"
+                },
+                "organization": {
+                  "default": null,
+                  "properties": {
+                    "name": {
+                      "default": null,
+                      "title": "Name",
+                      "type": "string"
+                    },
+                    "title": {
+                      "default": null,
+                      "title": "Title",
+                      "type": "string"
+                    }
+                  },
+                  "title": "ContactOrganization",
+                  "type": "object"
+                }
+              },
+              "required": [
+                "contact_id"
+              ],
+              "title": "ContactSummary",
+              "type": "object"
             },
             "title": "Contacts",
             "type": "array"
@@ -314,60 +344,6 @@
           "result_count",
           "contacts"
         ],
-        "$defs": {
-          "ContactOrganization": {
-            "properties": {
-              "name": {
-                "default": null,
-                "title": "Name",
-                "type": "string"
-              },
-              "title": {
-                "default": null,
-                "title": "Title",
-                "type": "string"
-              }
-            },
-            "title": "ContactOrganization",
-            "type": "object"
-          },
-          "ContactSummary": {
-            "properties": {
-              "contact_id": {
-                "title": "Contact Id",
-                "type": "string"
-              },
-              "name": {
-                "default": null,
-                "title": "Name",
-                "type": "string"
-              },
-              "emails": {
-                "items": {
-                  "type": "string"
-                },
-                "title": "Emails",
-                "type": "array"
-              },
-              "phones": {
-                "items": {
-                  "type": "string"
-                },
-                "title": "Phones",
-                "type": "array"
-              },
-              "organization": {
-                "default": null,
-                "$ref": "#/$defs/ContactOrganization"
-              }
-            },
-            "required": [
-              "contact_id"
-            ],
-            "title": "ContactSummary",
-            "type": "object"
-          }
-        },
         "title": "SearchContactsResult"
       },
       "_meta": {
@@ -465,14 +441,6 @@
         "type": "object",
         "properties": {
           "contact": {
-            "$ref": "#/$defs/ContactDetails"
-          }
-        },
-        "required": [
-          "contact"
-        ],
-        "$defs": {
-          "ContactDetails": {
             "properties": {
               "contact_id": {
                 "title": "Contact Id",
@@ -499,7 +467,20 @@
               },
               "organization": {
                 "default": null,
-                "$ref": "#/$defs/ContactOrganization"
+                "properties": {
+                  "name": {
+                    "default": null,
+                    "title": "Name",
+                    "type": "string"
+                  },
+                  "title": {
+                    "default": null,
+                    "title": "Title",
+                    "type": "string"
+                  }
+                },
+                "title": "ContactOrganization",
+                "type": "object"
               },
               "address": {
                 "default": null,
@@ -536,24 +517,11 @@
             ],
             "title": "ContactDetails",
             "type": "object"
-          },
-          "ContactOrganization": {
-            "properties": {
-              "name": {
-                "default": null,
-                "title": "Name",
-                "type": "string"
-              },
-              "title": {
-                "default": null,
-                "title": "Title",
-                "type": "string"
-              }
-            },
-            "title": "ContactOrganization",
-            "type": "object"
           }
         },
+        "required": [
+          "contact"
+        ],
         "title": "CreateContactResult"
       },
       "_meta": {
@@ -657,14 +625,6 @@
         "type": "object",
         "properties": {
           "contact": {
-            "$ref": "#/$defs/ContactDetails"
-          }
-        },
-        "required": [
-          "contact"
-        ],
-        "$defs": {
-          "ContactDetails": {
             "properties": {
               "contact_id": {
                 "title": "Contact Id",
@@ -691,7 +651,20 @@
               },
               "organization": {
                 "default": null,
-                "$ref": "#/$defs/ContactOrganization"
+                "properties": {
+                  "name": {
+                    "default": null,
+                    "title": "Name",
+                    "type": "string"
+                  },
+                  "title": {
+                    "default": null,
+                    "title": "Title",
+                    "type": "string"
+                  }
+                },
+                "title": "ContactOrganization",
+                "type": "object"
               },
               "address": {
                 "default": null,
@@ -728,24 +701,11 @@
             ],
             "title": "ContactDetails",
             "type": "object"
-          },
-          "ContactOrganization": {
-            "properties": {
-              "name": {
-                "default": null,
-                "title": "Name",
-                "type": "string"
-              },
-              "title": {
-                "default": null,
-                "title": "Title",
-                "type": "string"
-              }
-            },
-            "title": "ContactOrganization",
-            "type": "object"
           }
         },
+        "required": [
+          "contact"
+        ],
         "title": "UpdateContactResult"
       },
       "_meta": {
@@ -824,7 +784,32 @@
           },
           "groups": {
             "items": {
-              "$ref": "#/$defs/ContactGroupSummary"
+              "properties": {
+                "group_id": {
+                  "title": "Group Id",
+                  "type": "string"
+                },
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "group_type": {
+                  "title": "Group Type",
+                  "type": "string"
+                },
+                "member_count": {
+                  "title": "Member Count",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "group_id",
+                "name",
+                "group_type",
+                "member_count"
+              ],
+              "title": "ContactGroupSummary",
+              "type": "object"
             },
             "title": "Groups",
             "type": "array"
@@ -839,36 +824,6 @@
           "group_count",
           "groups"
         ],
-        "$defs": {
-          "ContactGroupSummary": {
-            "properties": {
-              "group_id": {
-                "title": "Group Id",
-                "type": "string"
-              },
-              "name": {
-                "title": "Name",
-                "type": "string"
-              },
-              "group_type": {
-                "title": "Group Type",
-                "type": "string"
-              },
-              "member_count": {
-                "title": "Member Count",
-                "type": "integer"
-              }
-            },
-            "required": [
-              "group_id",
-              "name",
-              "group_type",
-              "member_count"
-            ],
-            "title": "ContactGroupSummary",
-            "type": "object"
-          }
-        },
         "title": "ListContactGroupsResult"
       },
       "_meta": {
@@ -899,14 +854,6 @@
         "type": "object",
         "properties": {
           "group": {
-            "$ref": "#/$defs/ContactGroupDetails"
-          }
-        },
-        "required": [
-          "group"
-        ],
-        "$defs": {
-          "ContactGroupDetails": {
             "properties": {
               "group_id": {
                 "title": "Group Id",
@@ -942,6 +889,9 @@
             "type": "object"
           }
         },
+        "required": [
+          "group"
+        ],
         "title": "GetContactGroupResult"
       },
       "_meta": {
@@ -979,7 +929,53 @@
           },
           "contacts": {
             "items": {
-              "$ref": "#/$defs/ContactSummary"
+              "properties": {
+                "contact_id": {
+                  "title": "Contact Id",
+                  "type": "string"
+                },
+                "name": {
+                  "default": null,
+                  "title": "Name",
+                  "type": "string"
+                },
+                "emails": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Emails",
+                  "type": "array"
+                },
+                "phones": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Phones",
+                  "type": "array"
+                },
+                "organization": {
+                  "default": null,
+                  "properties": {
+                    "name": {
+                      "default": null,
+                      "title": "Name",
+                      "type": "string"
+                    },
+                    "title": {
+                      "default": null,
+                      "title": "Title",
+                      "type": "string"
+                    }
+                  },
+                  "title": "ContactOrganization",
+                  "type": "object"
+                }
+              },
+              "required": [
+                "contact_id"
+              ],
+              "title": "ContactSummary",
+              "type": "object"
             },
             "title": "Contacts",
             "type": "array"
@@ -989,60 +985,6 @@
           "created_count",
           "contacts"
         ],
-        "$defs": {
-          "ContactOrganization": {
-            "properties": {
-              "name": {
-                "default": null,
-                "title": "Name",
-                "type": "string"
-              },
-              "title": {
-                "default": null,
-                "title": "Title",
-                "type": "string"
-              }
-            },
-            "title": "ContactOrganization",
-            "type": "object"
-          },
-          "ContactSummary": {
-            "properties": {
-              "contact_id": {
-                "title": "Contact Id",
-                "type": "string"
-              },
-              "name": {
-                "default": null,
-                "title": "Name",
-                "type": "string"
-              },
-              "emails": {
-                "items": {
-                  "type": "string"
-                },
-                "title": "Emails",
-                "type": "array"
-              },
-              "phones": {
-                "items": {
-                  "type": "string"
-                },
-                "title": "Phones",
-                "type": "array"
-              },
-              "organization": {
-                "default": null,
-                "$ref": "#/$defs/ContactOrganization"
-              }
-            },
-            "required": [
-              "contact_id"
-            ],
-            "title": "ContactSummary",
-            "type": "object"
-          }
-        },
         "title": "BatchCreateContactsResult"
       },
       "_meta": {
@@ -1080,7 +1022,53 @@
           },
           "contacts": {
             "items": {
-              "$ref": "#/$defs/ContactSummary"
+              "properties": {
+                "contact_id": {
+                  "title": "Contact Id",
+                  "type": "string"
+                },
+                "name": {
+                  "default": null,
+                  "title": "Name",
+                  "type": "string"
+                },
+                "emails": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Emails",
+                  "type": "array"
+                },
+                "phones": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Phones",
+                  "type": "array"
+                },
+                "organization": {
+                  "default": null,
+                  "properties": {
+                    "name": {
+                      "default": null,
+                      "title": "Name",
+                      "type": "string"
+                    },
+                    "title": {
+                      "default": null,
+                      "title": "Title",
+                      "type": "string"
+                    }
+                  },
+                  "title": "ContactOrganization",
+                  "type": "object"
+                }
+              },
+              "required": [
+                "contact_id"
+              ],
+              "title": "ContactSummary",
+              "type": "object"
             },
             "title": "Contacts",
             "type": "array"
@@ -1090,60 +1078,6 @@
           "updated_count",
           "contacts"
         ],
-        "$defs": {
-          "ContactOrganization": {
-            "properties": {
-              "name": {
-                "default": null,
-                "title": "Name",
-                "type": "string"
-              },
-              "title": {
-                "default": null,
-                "title": "Title",
-                "type": "string"
-              }
-            },
-            "title": "ContactOrganization",
-            "type": "object"
-          },
-          "ContactSummary": {
-            "properties": {
-              "contact_id": {
-                "title": "Contact Id",
-                "type": "string"
-              },
-              "name": {
-                "default": null,
-                "title": "Name",
-                "type": "string"
-              },
-              "emails": {
-                "items": {
-                  "type": "string"
-                },
-                "title": "Emails",
-                "type": "array"
-              },
-              "phones": {
-                "items": {
-                  "type": "string"
-                },
-                "title": "Phones",
-                "type": "array"
-              },
-              "organization": {
-                "default": null,
-                "$ref": "#/$defs/ContactOrganization"
-              }
-            },
-            "required": [
-              "contact_id"
-            ],
-            "title": "ContactSummary",
-            "type": "object"
-          }
-        },
         "title": "BatchUpdateContactsResult"
       },
       "_meta": {
@@ -1211,14 +1145,6 @@
         "type": "object",
         "properties": {
           "group": {
-            "$ref": "#/$defs/ContactGroupSummary"
-          }
-        },
-        "required": [
-          "group"
-        ],
-        "$defs": {
-          "ContactGroupSummary": {
             "properties": {
               "group_id": {
                 "title": "Group Id",
@@ -1247,6 +1173,9 @@
             "type": "object"
           }
         },
+        "required": [
+          "group"
+        ],
         "title": "CreateContactGroupResult"
       },
       "_meta": {
