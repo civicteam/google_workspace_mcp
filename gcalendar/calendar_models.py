@@ -123,7 +123,6 @@ class CalendarFreeBusy:
 class FreeBusyResult:
     """Structured result from query_freebusy."""
 
-
     time_min: str
     time_max: str
     calendars: list[CalendarFreeBusy]

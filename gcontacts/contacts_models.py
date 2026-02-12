@@ -50,7 +50,6 @@ class ContactDetails:
 class ListContactsResult:
     """Structured result from list_contacts."""
 
-
     total_count: int
     returned_count: int
     contacts: list[ContactSummary]
@@ -61,14 +60,12 @@ class ListContactsResult:
 class GetContactResult:
     """Structured result from get_contact."""
 
-
     contact: ContactDetails
 
 
 @dataclass
 class SearchContactsResult:
     """Structured result from search_contacts."""
-
 
     query: str
     result_count: int
@@ -79,7 +76,6 @@ class SearchContactsResult:
 class CreateContactResult:
     """Structured result from create_contact."""
 
-
     contact: ContactDetails
 
 
@@ -87,14 +83,12 @@ class CreateContactResult:
 class UpdateContactResult:
     """Structured result from update_contact."""
 
-
     contact: ContactDetails
 
 
 @dataclass
 class DeleteContactResult:
     """Structured result from delete_contact."""
-
 
     contact_id: str
     deleted: bool
@@ -113,7 +107,6 @@ class ContactGroupSummary:
 @dataclass
 class ListContactGroupsResult:
     """Structured result from list_contact_groups."""
-
 
     group_count: int
     groups: list[ContactGroupSummary]
@@ -135,14 +128,12 @@ class ContactGroupDetails:
 class GetContactGroupResult:
     """Structured result from get_contact_group."""
 
-
     group: ContactGroupDetails
 
 
 @dataclass
 class BatchCreateContactsResult:
     """Structured result from batch_create_contacts."""
-
 
     created_count: int
     contacts: list[ContactSummary]
@@ -152,7 +143,6 @@ class BatchCreateContactsResult:
 class BatchUpdateContactsResult:
     """Structured result from batch_update_contacts."""
 
-
     updated_count: int
     contacts: list[ContactSummary]
 
@@ -160,7 +150,6 @@ class BatchUpdateContactsResult:
 @dataclass
 class BatchDeleteContactsResult:
     """Structured result from batch_delete_contacts."""
-
 
     deleted_count: int
     deleted: bool
@@ -170,14 +159,12 @@ class BatchDeleteContactsResult:
 class CreateContactGroupResult:
     """Structured result from create_contact_group."""
 
-
     group: ContactGroupSummary
 
 
 @dataclass
 class UpdateContactGroupResult:
     """Structured result from update_contact_group."""
-
 
     group_id: str
     name: str
@@ -187,7 +174,6 @@ class UpdateContactGroupResult:
 class DeleteContactGroupResult:
     """Structured result from delete_contact_group."""
 
-
     group_id: str
     deleted: bool
     contacts_deleted: bool
@@ -196,7 +182,6 @@ class DeleteContactGroupResult:
 @dataclass
 class ModifyContactGroupMembersResult:
     """Structured result from modify_contact_group_members."""
-
 
     group_id: str
     added_count: int
