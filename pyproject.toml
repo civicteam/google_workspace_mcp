@@ -20,7 +20,7 @@ dependencies = [
  "pyjwt>=2.10.1",
  "python-dotenv>=1.1.0",
  "pyyaml>=6.0.2",
- "cryptography>=45.0.0",
+ "cryptography>=46.0.5",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
