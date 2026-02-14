@@ -2169,3 +2169,48 @@ async def transfer_drive_ownership(
         moved_to_new_owners_root=move_to_new_owners_root,
     )
     return create_tool_result(text=text_output, data=result)
+
+
+# ── MCP Resource Templates ──────────────────────────────────────────────
+
+
+@server.resource(
+    "gdrive://files/{file_id}",
+    name="drive_file",
+    description=(
+        "Raw file content from Google Drive, returned as base64-encoded bytes. "
+        "Google Docs/Sheets/Slides are exported as PDF (Sheets as XLSX)."
+    ),
+    mime_type="application/octet-stream",
+)
+@require_google_service("drive", "drive_read")
+async def drive_file_resource(
+    service,
+    file_id: str,
+) -> bytes:
+    """Fetch raw file bytes from Google Drive."""
+    resolved_file_id, file_metadata = await resolve_drive_item(service, file_id)
+    mime_type = file_metadata.get("mimeType", "")
+
+    export_mime = {
+        "application/vnd.google-apps.document": "application/pdf",
+        "application/vnd.google-apps.spreadsheet": (
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
+        "application/vnd.google-apps.presentation": "application/pdf",
+    }.get(mime_type)
+
+    request_obj = (
+        service.files().export_media(fileId=resolved_file_id, mimeType=export_mime)
+        if export_mime
+        else service.files().get_media(fileId=resolved_file_id)
+    )
+
+    fh = io.BytesIO()
+    downloader = MediaIoBaseDownload(fh, request_obj)
+    loop = asyncio.get_event_loop()
+    done = False
+    while not done:
+        _, done = await loop.run_in_executor(None, downloader.next_chunk)
+
+    return fh.getvalue()
