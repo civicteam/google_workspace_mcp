@@ -1968,3 +1968,30 @@ async def batch_modify_gmail_message_labels(
         actions.append(f"Removed labels: {', '.join(remove_label_ids)}")
 
     return f"Labels updated for {len(message_ids)} messages: {'; '.join(actions)}"
+
+
+# ── MCP Resource Templates ──────────────────────────────────────────────
+
+
+@server.resource(
+    "gmail://messages/{message_id}/attachments/{attachment_id}",
+    name="gmail_attachment",
+    description="Raw attachment content from a Gmail message, returned as base64-encoded bytes.",
+    mime_type="application/octet-stream",
+)
+@require_google_service("gmail", "gmail_read")
+async def gmail_attachment_resource(
+    service,
+    message_id: str,
+    attachment_id: str,
+) -> bytes:
+    """Fetch raw attachment bytes from a Gmail message."""
+    attachment = await asyncio.to_thread(
+        service.users()
+        .messages()
+        .attachments()
+        .get(userId="me", messageId=message_id, id=attachment_id)
+        .execute
+    )
+    base64_data = attachment.get("data", "")
+    return base64.urlsafe_b64decode(base64_data)

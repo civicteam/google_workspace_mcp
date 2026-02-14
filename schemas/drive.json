@@ -1560,5 +1560,18 @@
         }
       }
     }
+  ],
+  "resourceTemplates": [
+    {
+      "name": "drive_file",
+      "uriTemplate": "gdrive://files/{file_id}",
+      "description": "Raw file content from Google Drive, returned as base64-encoded bytes. Google Docs/Sheets/Slides are exported as PDF (Sheets as XLSX).",
+      "mimeType": "application/octet-stream",
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    }
   ]
 }

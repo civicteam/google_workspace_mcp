@@ -1017,5 +1017,18 @@
         }
       }
     }
+  ],
+  "resourceTemplates": [
+    {
+      "name": "gmail_attachment",
+      "uriTemplate": "gmail://messages/{message_id}/attachments/{attachment_id}",
+      "description": "Raw attachment content from a Gmail message, returned as base64-encoded bytes.",
+      "mimeType": "application/octet-stream",
+      "_meta": {
+        "_fastmcp": {
+          "tags": []
+        }
+      }
+    }
   ]
 }
