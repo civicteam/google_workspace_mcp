@@ -103,6 +103,9 @@ dev = [
     "twine>=5.0.0",
 ]
 
+[tool.uv]
+exclude-dependencies = ["diskcache"]
+
 [tool.setuptools]
 py-modules = [ "fastmcp_server", "main"]
 
